@@ -1,0 +1,84 @@
+import { loadPackageDefinition, Server, ServerCredentials, status } from '@grpc/grpc-js';
+import { loadSync } from '@grpc/proto-loader';
+
+function getNested(root, path) {
+  return path.split('.').reduce((value, key) => value?.[key], root);
+}
+
+export function loadGrpcService({ protoPath, includeDirs = [], packageName, serviceName }) {
+  const definition = loadSync(protoPath, {
+    includeDirs,
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+  });
+  const packageDefinition = loadPackageDefinition(definition);
+  const service = getNested(packageDefinition, packageName)?.[serviceName];
+
+  if (!service?.service) {
+    throw new Error(`grpc_service_not_found:${packageName}.${serviceName}`);
+  }
+
+  return service;
+}
+
+export function createUnimplementedImplementation(service) {
+  return Object.fromEntries(
+    Object.keys(service).map((method) => [
+      method,
+      (_call, callback) => {
+        callback({
+          code: status.UNIMPLEMENTED,
+          message: `${method} is not implemented`,
+        });
+      },
+    ]),
+  );
+}
+
+export async function startGrpcServer({
+  protoPath,
+  includeDirs = [],
+  packageName,
+  serviceName,
+  implementation,
+  host = '0.0.0.0',
+  port = 50051,
+}) {
+  const service = loadGrpcService({
+    protoPath,
+    includeDirs,
+    packageName,
+    serviceName,
+  });
+  const server = new Server();
+
+  server.addService(
+    service.service,
+    implementation ?? createUnimplementedImplementation(service.service),
+  );
+
+  const boundPort = await new Promise((resolve, reject) => {
+    server.bindAsync(
+      `${host}:${port}`,
+      ServerCredentials.createInsecure(),
+      (error, assignedPort) => {
+        if (error) reject(error);
+        else resolve(assignedPort);
+      },
+    );
+  });
+
+  let closed = false;
+  const close = async () => {
+    if (closed) return;
+    closed = true;
+    await new Promise((resolve, reject) => {
+      server.tryShutdown((error) => (error ? reject(error) : resolve()));
+    });
+  };
+
+  return { server, service, port: boundPort, close };
+}

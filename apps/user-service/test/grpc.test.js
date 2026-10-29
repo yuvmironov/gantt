@@ -1,0 +1,30 @@
+import { credentials } from '@grpc/grpc-js';
+import { afterEach, describe, expect, it } from 'vitest';
+import { loadUserService, startUserGrpcServer } from '../src/grpc.js';
+
+const servers = [];
+
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((server) => server.close()));
+});
+
+describe('user-service gRPC contract', () => {
+  it('loads all UserService methods from proto', () => {
+    const service = loadUserService();
+    expect(Object.keys(service.service)).toHaveLength(52);
+  });
+
+  it('starts a gRPC server and returns UNIMPLEMENTED for stubs', async () => {
+    const server = await startUserGrpcServer({ host: '127.0.0.1', port: 0 });
+    servers.push(server);
+
+    const client = new server.service(`127.0.0.1:${server.port}`, credentials.createInsecure());
+
+    const error = await new Promise((resolve) => {
+      client.GetRoles({}, (grpcError) => resolve(grpcError));
+    });
+
+    expect(error.code).toBe(12);
+    client.close();
+  });
+});
