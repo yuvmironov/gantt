@@ -27,6 +27,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/service-kit
 
+  apps/project-service:
+    dependencies:
+      '@grpc/grpc-js':
+        specifier: ^1.14.0
+        version: 1.14.6
+      '@smart-oati/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
+
   apps/user-service:
     dependencies:
       '@grpc/grpc-js':

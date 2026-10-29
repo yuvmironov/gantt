@@ -1,8 +1,8 @@
 # Локальная инфраструктура SMART OATI
 
-Поднимает инфраструктуру, API Gateway и User & Access: PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, `api-gateway` и `user-service`.
+Поднимает инфраструктуру, API Gateway, User & Access и Project / Diagram: PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, `api-gateway`, `user-service` и `project-service`.
 
-Остальные приложения `frontend`, `project-service`, `notification-service`, `audit-service`, `sync-service` появятся следующими этапами. До этого их Traefik-маршруты будут возвращать 502.
+Остальные приложения `frontend`, `notification-service`, `audit-service`, `sync-service` появятся следующими этапами. До этого их Traefik-маршруты будут возвращать 502.
 
 ## Запуск
 
@@ -58,6 +58,7 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 | Mailpit SMTP | 1025 |
 | Mailpit UI | 8025 |
 | User & Access gRPC | 50051 |
+| Project / Diagram gRPC | 50052 |
 | Traefik HTTP/HTTPS | 80/443 |
 
 ## Проверено
@@ -71,6 +72,7 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
 - REST auth proxy: register/login/session/logout проверены через API Gateway.
 - User & Access: HTTP health healthy, gRPC `50051` отвечает `SERVING`, Register/Login/ValidateSession/Logout работают, остальные методы — `UNIMPLEMENTED`.
+- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, методы — `UNIMPLEMENTED`.
 - `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
 - Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
 - TLS: если `mkcert` не установлен, можно использовать self-signed сертификаты; браузер будет предупреждать.
@@ -80,4 +82,4 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
 - Traefik требует сгенерированные сертификаты.
-- API Gateway и User & Access добавлены; остальные сервисы и frontend еще не добавлены.
+- API Gateway, User & Access и Project / Diagram добавлены; остальные сервисы и frontend еще не добавлены.
