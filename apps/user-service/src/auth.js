@@ -56,6 +56,32 @@ function toTimestamp(value) {
   };
 }
 
+function toProjectRole(role) {
+  return (
+    {
+      project_owner: 'PROJECT_ROLE_OWNER',
+      project_manager: 'PROJECT_ROLE_MANAGER',
+      project_editor: 'PROJECT_ROLE_EDITOR',
+      project_participant: 'PROJECT_ROLE_PARTICIPANT',
+      project_viewer: 'PROJECT_ROLE_VIEWER',
+    }[role] ?? 'PROJECT_ROLE_UNSPECIFIED'
+  );
+}
+
+function toMembership(row) {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    user_id: row.user_id,
+    role: toProjectRole(row.role_code),
+    status: row.status,
+    invited_at: toTimestamp(row.invited_at),
+    joined_at: toTimestamp(row.joined_at),
+    revoked_at: toTimestamp(row.revoked_at),
+    revoked_reason: row.revoked_reason ?? '',
+  };
+}
+
 function toUser(row, roles) {
   return {
     id: row.id,
@@ -383,6 +409,85 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
         callback(mapDbError(error));
       } finally {
         client?.release();
+      }
+    },
+
+    async EnsureProjectOwner(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const ownerUserId = String(call.request.owner_user_id ?? '');
+      if (!projectId || !ownerUserId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'project_owner_required'));
+        return;
+      }
+
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const user = await client.query(
+          'SELECT status FROM access.users WHERE id = $1 FOR UPDATE',
+          [ownerUserId],
+        );
+        if (user.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        if (user.rows[0].status !== 'active') {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.PERMISSION_DENIED, 'account_blocked'));
+          return;
+        }
+
+        const result = await client.query(
+          `INSERT INTO access.project_memberships
+             (project_id, user_id, role_code, status, joined_at)
+           VALUES ($1, $2, 'project_owner', 'active', now())
+           ON CONFLICT (project_id, user_id) DO UPDATE
+             SET role_code = 'project_owner',
+                 status = 'active',
+                 joined_at = COALESCE(access.project_memberships.joined_at, now()),
+                 revoked_at = NULL,
+                 revoked_reason = NULL,
+                 updated_at = now()
+           RETURNING *`,
+          [projectId, ownerUserId],
+        );
+        await client.query('COMMIT');
+        callback(null, { membership: toMembership(result.rows[0]) });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async ListAccessibleProjectIds(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+
+      try {
+        const result = await db.query(
+          `SELECT project_id, role_code
+           FROM access.project_memberships
+           WHERE user_id = $1 AND status = 'active'
+           ORDER BY created_at DESC`,
+          [userId],
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            project_id: row.project_id,
+            role: toProjectRole(row.role_code),
+            permissions: [],
+            is_accessible: true,
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
       }
     },
 

@@ -1,0 +1,115 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { buildApp } from '../src/app.js';
+
+const apps = [];
+
+function build(userClient, projectClient) {
+  const app = buildApp({
+    env: {
+      PORT: '8080',
+      LOG_LEVEL: 'silent',
+      NODE_ENV: 'test',
+      USER_SERVICE_GRPC: '127.0.0.1:50051',
+      PROJECT_SERVICE_GRPC: '127.0.0.1:50051',
+    },
+    logger: false,
+    userClient,
+    projectClient,
+  });
+  apps.push(app);
+  return app;
+}
+
+afterEach(async () => {
+  await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+
+const sessionUser = {
+  ValidateSession(_request, callback) {
+    callback(null, { user_id: 'user-1', session_id: 'session-1' });
+  },
+};
+
+const project = {
+  id: 'project-1',
+  name: 'Проект',
+  description: '',
+  owner_user_id: 'user-1',
+  status: 'PROJECT_STATUS_ACTIVE',
+  settings: {},
+  my_role: 'PROJECT_ROLE_OWNER',
+  created_by_user_id: 'user-1',
+  updated_by_user_id: 'user-1',
+  created_at: { seconds: '1793290000', nanos: 0 },
+  updated_at: { seconds: '1793290000', nanos: 0 },
+};
+
+describe('api-gateway project routes', () => {
+  it('lists accessible projects', async () => {
+    const app = build(sessionUser, {
+      ListProjects(_request, callback) {
+        callback(null, {
+          items: [project],
+          page: { total: 1, limit: 50, offset: 0 },
+        });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects',
+      cookies: { '__Host-session': 'token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [{ id: 'project-1', status: 'active', myRole: 'project_owner' }],
+      page: { total: 1 },
+    });
+  });
+
+  it('creates a project for the current user', async () => {
+    let received;
+    const app = build(sessionUser, {
+      CreateProject(request, callback) {
+        received = request;
+        callback(null, { project });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      cookies: {
+        '__Host-session': 'token',
+        '__Host-csrf': 'csrf',
+      },
+      headers: { 'x-csrf-token': 'csrf' },
+      payload: { name: 'Проект', description: 'Описание' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(received).toMatchObject({
+      name: 'Проект',
+      owner_user_id: 'user-1',
+    });
+    expect(response.json()).toMatchObject({
+      id: 'project-1',
+      status: 'active',
+      myRole: 'project_owner',
+    });
+  });
+
+  it('rejects project creation without CSRF', async () => {
+    const app = build(sessionUser, {});
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      cookies: { '__Host-session': 'token' },
+      payload: { name: 'Проект' },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+});

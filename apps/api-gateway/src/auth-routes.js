@@ -57,7 +57,7 @@ export function mapUser(user) {
   };
 }
 
-function sendProblem(reply, request, error) {
+export function sendProblem(reply, request, error) {
   const grpcCode = error.code ?? 13;
   const status = GRPC_STATUS[grpcCode] ?? 500;
   const code = status >= 500 ? 'internal_error' : error.message || 'request_failed';
@@ -82,7 +82,7 @@ function setCookies(reply, cookies = []) {
   if (cookies.length > 0) reply.raw.setHeader('set-cookie', cookies);
 }
 
-function csrfValid(request) {
+export function csrfValid(request) {
   const cookieToken = request.cookies['__Host-csrf'];
   const headerToken = request.headers['x-csrf-token'];
   return Boolean(cookieToken && headerToken && cookieToken === headerToken);
