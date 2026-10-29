@@ -147,8 +147,25 @@ services:
     environment:
       NODE_ENV: production
       PORT: "8080"
-      LOG_LEVEL: 
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     networks: [smart-oati]
+
+  user-service:
+    profiles: ["apps"]
+    build:
+      context: ../..
+      dockerfile: apps/user-service/Dockerfile
+    image: smart-oati/user-service:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      GRPC_PORT: ${GRPC_PORT:-50051}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${GRPC_PORT:-50051}:${GRPC_PORT:-50051}"
+    networks: [smart-oati]
+
 volumes:
   postgres_data:
   redis_data:

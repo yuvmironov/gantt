@@ -41,7 +41,7 @@ export function createService({
   return app;
 }
 
-export async function startService(app, { port, host } = {}) {
+export async function startService(app, { port, host, shutdownHooks = [] } = {}) {
   const config = app.serviceConfig;
 
   try {
@@ -64,6 +64,8 @@ export async function startService(app, { port, host } = {}) {
     } catch (error) {
       app.log.error({ err: error }, 'service failed to stop');
       process.exitCode = 1;
+    } finally {
+      await Promise.allSettled(shutdownHooks.map((hook) => hook()));
     }
   };
 
