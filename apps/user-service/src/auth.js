@@ -491,6 +491,52 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
       }
     },
 
+    async CheckProjectPermission(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const projectId = String(call.request.project_id ?? '');
+      const permission = String(call.request.permission ?? '');
+      if (!userId || !projectId || !permission) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'permission_request_invalid'));
+        return;
+      }
+
+      try {
+        const admin = await db.query(
+          `SELECT 1 FROM access.user_roles WHERE user_id = $1 AND role_code = 'app_admin'`,
+          [userId],
+        );
+        if (admin.rowCount > 0) {
+          callback(null, { allowed: true, role: 'PROJECT_ROLE_UNSPECIFIED' });
+          return;
+        }
+
+        const membership = await db.query(
+          `SELECT role_code
+           FROM access.project_memberships
+           WHERE user_id = $1 AND project_id = $2 AND status = 'active'`,
+          [userId, projectId],
+        );
+        if (membership.rowCount === 0) {
+          callback(null, { allowed: false, role: 'PROJECT_ROLE_UNSPECIFIED' });
+          return;
+        }
+
+        const role = membership.rows[0].role_code;
+        const permissionResult = await db.query(
+          `SELECT 1
+           FROM access.role_permissions
+           WHERE role_code = $1 AND permission_code = $2`,
+          [role, permission],
+        );
+        callback(null, {
+          allowed: permissionResult.rowCount > 0,
+          role: toProjectRole(role),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
     async GetCurrentUser(call, callback) {
       const userId = String(call.request.user_id ?? '');
       if (!userId) {

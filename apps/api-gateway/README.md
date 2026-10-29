@@ -16,6 +16,12 @@
 - REST projects:
   - `GET /api/v1/projects`;
   - `POST /api/v1/projects`;
+  - `GET /api/v1/projects/{projectId}`;
+  - `PATCH /api/v1/projects/{projectId}`;
+  - `POST /api/v1/projects/{projectId}/archive`;
+  - `POST /api/v1/projects/{projectId}/unarchive`;
+  - `DELETE /api/v1/projects/{projectId}`;
+  - `POST /api/v1/projects/{projectId}/restore`;
 - gRPC-клиенты к User Service и Project Service;
 - передача `Set-Cookie` от User Service клиенту;
 - CSRF-проверка logout и создания проекта;

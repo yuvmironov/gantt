@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import {
   credentials,
   loadPackageDefinition,
+  Metadata,
   Server,
   ServerCredentials,
   status,
@@ -33,6 +34,14 @@ export function loadGrpcService({ protoPath, includeDirs = [], packageName, serv
   }
 
   return service;
+}
+
+export function createMetadata(values = {}) {
+  const metadata = new Metadata();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) metadata.set(key, String(value));
+  }
+  return metadata;
 }
 
 export function createGrpcClient({

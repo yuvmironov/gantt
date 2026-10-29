@@ -1,3 +1,4 @@
+import { createMetadata } from '@smart-oati/service-kit';
 import { csrfValid, sendProblem } from './auth-routes.js';
 import { call } from './project-client.js';
 
@@ -64,6 +65,24 @@ async function session(request, userClient) {
   });
 }
 
+function actorMetadata(userId) {
+  return createMetadata({ 'x-actor-user-id': userId });
+}
+
+function requireCsrf(request, reply) {
+  if (csrfValid(request)) return false;
+  reply.code(403).type('application/problem+json').send({
+    type: 'https://smart-oati.local/problems/csrf_invalid',
+    title: 'Forbidden',
+    status: 403,
+    detail: 'Invalid CSRF token',
+    instance: request.url,
+    code: 'csrf_invalid',
+    traceId: request.id,
+  });
+  return true;
+}
+
 export async function projectRoutes(app, { userClient, projectClient }) {
   app.get('/api/v1/projects', async (request, reply) => {
     try {
@@ -84,17 +103,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
   });
 
   app.post('/api/v1/projects', async (request, reply) => {
-    if (!csrfValid(request)) {
-      return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
-        title: 'Forbidden',
-        status: 403,
-        detail: 'Invalid CSRF token',
-        instance: request.url,
-        code: 'csrf_invalid',
-        traceId: request.id,
-      });
-    }
+    if (requireCsrf(request, reply)) return reply;
 
     try {
       const current = await session(request, userClient);
@@ -105,6 +114,105 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         owner_user_id: current.user_id,
       });
       return reply.code(201).send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+  app.get('/api/v1/projects/:projectId', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetProject',
+        { project_id: request.params.projectId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.patch('/api/v1/projects/:projectId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'UpdateProject',
+        {
+          project_id: request.params.projectId,
+          name: request.body?.name,
+          description: request.body?.description,
+          settings: request.body?.settings,
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/projects/:projectId/archive', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'ArchiveProject',
+        { project_id: request.params.projectId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/projects/:projectId/unarchive', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'UnarchiveProject',
+        { project_id: request.params.projectId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/projects/:projectId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteProject',
+        { project_id: request.params.projectId },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/projects/:projectId/restore', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'RestoreProject',
+        { project_id: request.params.projectId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapProject(response.project));
     } catch (error) {
       return sendProblem(reply, request, error);
     }

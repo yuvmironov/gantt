@@ -15,11 +15,13 @@ export function createProjectClient({
   });
 }
 
-export function call(client, method, request) {
+export function call(client, method, request, metadata) {
   return new Promise((resolve, reject) => {
-    client[method](request, (error, response) => {
+    const callback = (error, response) => {
       if (error) reject(error);
       else resolve(response);
-    });
+    };
+    if (metadata) client[method](request, metadata, callback);
+    else client[method](request, callback);
   });
 }
