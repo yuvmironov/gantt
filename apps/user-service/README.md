@@ -6,6 +6,7 @@
 
 - HTTP health `/health/live`, `/health/ready`;
 - gRPC-сервер на `50051`;
+- стандартный `grpc.health.v1.Health` со статусом `SERVING`;
 - загрузка контракта `smartoati.user.v1.UserService`;
 - все 52 метода зарегистрированы как `UNIMPLEMENTED` до реализации доменной логики;
 - graceful shutdown HTTP и gRPC;
