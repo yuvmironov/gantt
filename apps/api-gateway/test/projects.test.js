@@ -32,7 +32,7 @@ const sessionUser = {
 
 const project = {
   id: 'project-1',
-  name: 'Проект',
+  name: 'РџСЂРѕРµРєС‚',
   description: '',
   owner_user_id: 'user-1',
   status: 'PROJECT_STATUS_ACTIVE',
@@ -68,6 +68,26 @@ describe('api-gateway project routes', () => {
     });
   });
 
+  it('loads project details with actor metadata', async () => {
+    let metadata;
+    const app = build(sessionUser, {
+      GetProject(_request, requestMetadata, callback) {
+        metadata = requestMetadata;
+        callback(null, { project });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/project-1',
+      cookies: { '__Host-session': 'token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ id: 'project-1', status: 'active' });
+    expect(metadata.get('x-actor-user-id')).toEqual(['user-1']);
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {
@@ -85,12 +105,12 @@ describe('api-gateway project routes', () => {
         '__Host-csrf': 'csrf',
       },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'Проект', description: 'Описание' },
+      payload: { name: 'РџСЂРѕРµРєС‚', description: 'РћРїРёСЃР°РЅРёРµ' },
     });
 
     expect(response.statusCode).toBe(201);
     expect(received).toMatchObject({
-      name: 'Проект',
+      name: 'РџСЂРѕРµРєС‚',
       owner_user_id: 'user-1',
     });
     expect(response.json()).toMatchObject({
@@ -107,7 +127,7 @@ describe('api-gateway project routes', () => {
       method: 'POST',
       url: '/api/v1/projects',
       cookies: { '__Host-session': 'token' },
-      payload: { name: 'Проект' },
+      payload: { name: 'РџСЂРѕРµРєС‚' },
     });
 
     expect(response.statusCode).toBe(403);

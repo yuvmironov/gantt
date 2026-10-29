@@ -53,6 +53,27 @@ function mapDbError(error) {
   return error;
 }
 
+function actorUserId(call_) {
+  return call_.metadata.get('x-actor-user-id')[0] ?? '';
+}
+
+async function checkPermission(call_, userClient, projectId, permission) {
+  const actor = actorUserId(call_);
+  if (!actor) {
+    throw grpcError(status.INVALID_ARGUMENT, 'actor_user_id_required');
+  }
+
+  const access = await call(userClient, 'CheckProjectPermission', {
+    user_id: actor,
+    project_id: projectId,
+    permission,
+  });
+  if (!access.allowed) {
+    throw grpcError(status.PERMISSION_DENIED, 'permission_denied');
+  }
+  return access.role;
+}
+
 export function createProjectImplementation({ db, userClient }) {
   return {
     async CreateProject(call_, callback) {
@@ -155,6 +176,147 @@ export function createProjectImplementation({ db, userClient }) {
             offset,
           },
         });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.view');
+        const result = await db.query('SELECT * FROM project.projects WHERE id = $1', [projectId]);
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'project_not_found'));
+          return;
+        }
+        callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.update');
+        const current = await db.query('SELECT * FROM project.projects WHERE id = $1', [projectId]);
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'project_not_found'));
+          return;
+        }
+        if (current.rows[0].status !== 'active') {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_not_active'));
+          return;
+        }
+
+        const result = await db.query(
+          `UPDATE project.projects
+           SET name = COALESCE($2, name),
+               description = COALESCE($3, description),
+               settings = COALESCE($4, settings),
+               updated_at = now()
+           WHERE id = $1
+           RETURNING *`,
+          [
+            projectId,
+            call_.request.name ?? null,
+            call_.request.description ?? null,
+            call_.request.settings ?? null,
+          ],
+        );
+        callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ArchiveProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.archive');
+        const result = await db.query(
+          `UPDATE project.projects
+           SET status = 'archived', archived_at = now(), updated_at = now()
+           WHERE id = $1 AND status = 'active'
+           RETURNING *`,
+          [projectId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_not_active'));
+          return;
+        }
+        callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UnarchiveProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.restore');
+        const result = await db.query(
+          `UPDATE project.projects
+           SET status = 'active', archived_at = NULL, updated_at = now()
+           WHERE id = $1 AND status = 'archived'
+           RETURNING *`,
+          [projectId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_not_archived'));
+          return;
+        }
+        callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.delete');
+        const result = await db.query(
+          `UPDATE project.projects
+           SET status = 'deleted',
+               deleted_at = now(),
+               purge_after = now() + interval '1 year',
+               updated_at = now()
+           WHERE id = $1 AND status = 'archived'
+           RETURNING *`,
+          [projectId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_not_archived'));
+          return;
+        }
+        callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RestoreProject(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      try {
+        const role = await checkPermission(call_, userClient, projectId, 'project.restore');
+        const result = await db.query(
+          `UPDATE project.projects
+           SET status = 'archived',
+               deleted_at = NULL,
+               purge_after = NULL,
+               archived_at = now(),
+               updated_at = now()
+           WHERE id = $1 AND status = 'deleted'
+           RETURNING *`,
+          [projectId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_not_deleted'));
+          return;
+        }
+        callback(null, { project: toProject(result.rows[0], role) });
       } catch (error) {
         callback(mapDbError(error));
       }
