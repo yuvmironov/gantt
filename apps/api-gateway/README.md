@@ -7,6 +7,15 @@
 - Fastify 5;
 - `/health/live`, `/health/ready`;
 - `/api/v1/health`;
+- REST auth:
+  - `POST /api/v1/auth/register`;
+  - `POST /api/v1/auth/email/verify`;
+  - `POST /api/v1/auth/login`;
+  - `GET /api/v1/auth/session`;
+  - `POST /api/v1/auth/logout`;
+- gRPC-клиент к User Service;
+- передача `Set-Cookie` от User Service клиенту;
+- CSRF-проверка logout;
 - request id;
 - RFC 7807 errors;
 - graceful shutdown;

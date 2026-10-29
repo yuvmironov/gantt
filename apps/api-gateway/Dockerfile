@@ -21,6 +21,7 @@ COPY --from=deps --chown=app:app /app/node_modules ./node_modules
 COPY --chown=app:app package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=app:app packages ./packages
 COPY --chown=app:app apps ./apps
+COPY --chown=app:app proto ./proto
 COPY --from=deps --chown=app:app /app/packages/service-kit/node_modules ./packages/service-kit/node_modules
 COPY --from=deps --chown=app:app /app/apps/api-gateway/node_modules ./apps/api-gateway/node_modules
 

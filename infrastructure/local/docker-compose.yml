@@ -148,6 +148,7 @@ services:
       NODE_ENV: production
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      USER_SERVICE_GRPC: user-service:50051
     networks: [smart-oati]
 
   user-service:

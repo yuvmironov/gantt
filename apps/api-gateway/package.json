@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
     "@smart-oati/service-kit": "workspace:*"
   }
 }
