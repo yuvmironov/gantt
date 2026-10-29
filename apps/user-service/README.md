@@ -8,8 +8,11 @@
 - gRPC-сервер на `50051`;
 - стандартный `grpc.health.v1.Health` со статусом `SERVING`;
 - загрузка контракта `smartoati.user.v1.UserService`;
-- все 52 метода зарегистрированы как `UNIMPLEMENTED` до реализации доменной логики;
-- graceful shutdown HTTP и gRPC;
+- реализованы `Register`, `VerifyEmail`, `Login`, `ValidateSession`, `Logout`;
+- остальные методы зарегистрированы как `UNIMPLEMENTED`;
+- PostgreSQL, Argon2id, cookie-сессии, lockout после неудачных попыток;
+- `DEV_AUTO_VERIFY=true` для local автоматически подтверждает email при регистрации;
+- graceful shutdown HTTP, gRPC и PostgreSQL pool;
 - Dockerfile для non-root runtime.
 
 Проверка gRPC-контракта:

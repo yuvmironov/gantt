@@ -12,12 +12,13 @@ export function loadUserService() {
   });
 }
 
-export function startUserGrpcServer({ port = 50051, host = '0.0.0.0' } = {}) {
+export function startUserGrpcServer({ port = 50051, host = '0.0.0.0', implementation } = {}) {
   return startGrpcServer({
     protoPath: `${protoRoot}/smartoati/user/v1/user_service.proto`,
     includeDirs: [protoRoot],
     packageName: 'smartoati.user.v1',
     serviceName: 'UserService',
+    implementation,
     port,
     host,
   });
