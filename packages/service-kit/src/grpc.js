@@ -1,5 +1,11 @@
 import { fileURLToPath } from 'node:url';
-import { loadPackageDefinition, Server, ServerCredentials, status } from '@grpc/grpc-js';
+import {
+  credentials,
+  loadPackageDefinition,
+  Server,
+  ServerCredentials,
+  status,
+} from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
 
 const healthProtoPath = fileURLToPath(
@@ -27,6 +33,23 @@ export function loadGrpcService({ protoPath, includeDirs = [], packageName, serv
   }
 
   return service;
+}
+
+export function createGrpcClient({
+  protoPath,
+  includeDirs = [],
+  packageName,
+  serviceName,
+  address,
+}) {
+  const service = loadGrpcService({
+    protoPath,
+    includeDirs,
+    packageName,
+    serviceName,
+  });
+
+  return new service(address, credentials.createInsecure());
 }
 
 export function createUnimplementedImplementation(service) {

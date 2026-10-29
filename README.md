@@ -52,7 +52,7 @@ pnpm start:user-service
 ## Структура
 
 ```text
-apps/api-gateway/      # HTTP API Gateway + health/config/errors/shutdown
+apps/api-gateway/      # HTTP API Gateway + REST auth proxy + health/config/errors
 apps/user-service/     # User & Access: auth, sessions, HTTP health + gRPC
 packages/service-kit/  # общий каркас Fastify/gRPC-сервисов
 packages/shared/       # общие утилиты
@@ -81,6 +81,7 @@ tools/                 # проверки контрактов
 - [x] Helm service template.
 - [x] API Gateway skeleton + Dockerfile.
 - [x] API Gateway Compose profile + Helm chart.
+- [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [ ] Остальные сервисы.
 - [ ] Staging/prod Helm values.

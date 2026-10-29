@@ -386,6 +386,26 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
       }
     },
 
+    async GetCurrentUser(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+
+      try {
+        const result = await db.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        const roles = await getRoles(db, userId);
+        callback(null, { user: toUser(result.rows[0], roles) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
     async ValidateSession(call, callback) {
       const sessionToken = String(call.request.session_token ?? '');
       if (!sessionToken) {
