@@ -25,7 +25,7 @@ pnpm test
 
 ```bash
 cp infrastructure/local/.env.example infrastructure/local/.env.local
-docker compose --env-file infrastructure/local/.env.local --profile infra -f infrastructure/local/docker-compose.yml up -d
+docker compose --env-file infrastructure/local/.env.local --profile infra --profile apps -f infrastructure/local/docker-compose.yml up -d --build
 ```
 
 HTTPS-сертификаты:
@@ -78,6 +78,7 @@ tools/                 # проверки контрактов
 - [x] Docker Compose для инфраструктуры.
 - [x] Helm service template.
 - [x] API Gateway skeleton + Dockerfile.
+- [x] API Gateway Compose profile + Helm chart.
 - [ ] Остальные сервисы.
 - [ ] Staging/prod Helm values.
 - [ ] E2E и load tests.

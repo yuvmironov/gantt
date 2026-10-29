@@ -1,32 +1,33 @@
 # Локальная инфраструктура SMART OATI
 
-Поднимает только инфраструктуру: PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram и Traefik.
+Поднимает инфраструктуру и API Gateway: PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik и `api-gateway`.
 
-Приложения `frontend`, `api-gateway`, `user-service`, `project-service`, `notification-service`, `audit-service`, `sync-service` появятся следующими этапами. До этого Traefik-маршруты будут возвращать 502.
+Остальные приложения `frontend`, `user-service`, `project-service`, `notification-service`, `audit-service`, `sync-service` появятся следующими этапами. До этого их Traefik-маршруты будут возвращать 502.
 
 ## Запуск
 
 ```bash
 cp .env.example .env.local
-docker compose --env-file .env.local --profile infra up -d
+docker compose --env-file .env.local --profile infra --profile apps up -d --build
 ```
 
 Проверка:
 
 ```bash
-docker compose --env-file .env.local --profile infra ps
+docker compose --env-file .env.local --profile infra --profile apps ps
+curl -k https://api.localhost/api/v1/health
 ```
 
 Остановка:
 
 ```bash
-docker compose --env-file .env.local --profile infra down
+docker compose --env-file .env.local --profile infra --profile apps down
 ```
 
 Удаление данных:
 
 ```bash
-docker compose --env-file .env.local --profile infra down -v
+docker compose --env-file .env.local --profile infra --profile apps down -v
 ```
 
 ## HTTPS
@@ -66,7 +67,8 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - Mailpit: SMTP-письмо принято и видно в API.
 - Telegram WireMock: `sendMessage` возвращает `ok: true`.
 - Traefik: HTTP→HTTPS, `mail.localhost` и `kafka.localhost` отдают 200.
-- `api/app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
+- API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
+- `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
 - Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
 - TLS: если `mkcert` не установлен, можно использовать self-signed сертификаты; браузер будет предупреждать.
 
@@ -75,4 +77,4 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
 - Traefik требует сгенерированные сертификаты.
-- Приложения и Dockerfile еще не добавлены.
+- API Gateway добавлен; остальные сервисы и frontend еще не добавлены.

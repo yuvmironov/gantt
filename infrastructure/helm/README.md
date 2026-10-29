@@ -34,6 +34,25 @@ helm template api-gateway ./service-template \
   --set replicaCount=2
 ```
 
+## API Gateway
+
+Чарт `infrastructure/helm/api-gateway` собран из `service-template` и содержит:
+
+- image `ghcr.io/yuvmironov/smart-oati/api-gateway`;
+- 2 реплики;
+- HPA 2–6;
+- PDB;
+- probes `/health/live` и `/health/ready`;
+- Yandex ALB ingress для `api.example.com`;
+- non-root UID 10001.
+
+Проверка:
+
+```bash
+helm lint infrastructure/helm/api-gateway
+helm template api-gateway infrastructure/helm/api-gateway
+```
+
 ## Проверено
 
 - Helm `v4.3.1`.
