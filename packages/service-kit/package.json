@@ -1,0 +1,16 @@
+{
+  "name": "@smart-oati/service-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

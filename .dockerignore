@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.git/
+.github/
+.vscode/
+.idea/
+certs/
+coverage/
+dist/
+build/
+generated/
+.env
+.env.local
+*.local
+*.log
+frontend/design/

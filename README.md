@@ -45,12 +45,14 @@ pnpm test
 pnpm test:unit
 pnpm test:contract
 pnpm build
+pnpm start:api-gateway
 ```
 
 ## Структура
 
 ```text
-apps/                  # приложения сервисов (следующий этап)
+apps/api-gateway/      # первый сервис: health/config/errors/shutdown
+packages/service-kit/  # общий каркас Fastify-сервисов
 packages/shared/       # общие утилиты
 contracts/             # REST/gRPC mapping, import/export
 proto/                 # protobuf-контракты
@@ -75,7 +77,7 @@ tools/                 # проверки контрактов
 - [x] Базовый CI и проверки контрактов.
 - [x] Docker Compose для инфраструктуры.
 - [x] Helm service template.
-- [ ] Приложения API Gateway и сервисов.
-- [ ] Dockerfile приложений.
+- [x] API Gateway skeleton + Dockerfile.
+- [ ] Остальные сервисы.
 - [ ] Staging/prod Helm values.
 - [ ] E2E и load tests.
