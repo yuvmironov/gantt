@@ -31,7 +31,7 @@ jobs:
         run: buf lint proto
 
       - name: Buf breaking
-        run: buf breaking proto --against ".git#branch=main,subdir=proto"
+        run: buf breaking proto --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=proto"
 
       - name: OpenAPI lint
         run: npx --yes @redocly/cli@latest lint openapi/openapi.yaml
