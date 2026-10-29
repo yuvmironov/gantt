@@ -27,19 +27,32 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@v3
 
-  dependency-review:
-    if: github.event_name == 'pull_request'
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Dependency review
-        uses: actions/dependency-review-action@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit
+        run: pnpm audit --audit-level high
 
   security-required:
     if: always()
-    needs: [codeql, dependency-review]
+    needs: [codeql, audit]
     runs-on: ubuntu-latest
     steps:
       - name: Check security jobs
@@ -48,8 +61,8 @@ jobs:
             echo "codeql failed"
             exit 1
           fi
-          if [ "${{ needs.dependency-review.result }}" != "success" ] && [ "${{ needs.dependency-review.result }}" != "skipped" ]; then
-            echo "dependency review failed"
+          if [ "${{ needs.audit.result }}" != "success" ]; then
+            echo "audit failed"
             exit 1
           fi
           echo "security ok"
