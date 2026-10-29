@@ -1,21 +1,22 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, expect, it } from 'vitest';
 import { clamp, isNonEmptyString, toArray } from '../src/index.js';
 
-test('isNonEmptyString', () => {
-  assert.equal(isNonEmptyString('value'), true);
-  assert.equal(isNonEmptyString('  '), false);
-  assert.equal(isNonEmptyString(null), false);
-});
+describe('shared', () => {
+  it('detects non-empty strings', () => {
+    expect(isNonEmptyString('value')).toBe(true);
+    expect(isNonEmptyString('  ')).toBe(false);
+    expect(isNonEmptyString(null)).toBe(false);
+  });
 
-test('toArray', () => {
-  assert.deepEqual(toArray(undefined), []);
-  assert.deepEqual(toArray('value'), ['value']);
-  assert.deepEqual(toArray([1, 2]), [1, 2]);
-});
+  it('normalizes values to arrays', () => {
+    expect(toArray(undefined)).toEqual([]);
+    expect(toArray('value')).toEqual(['value']);
+    expect(toArray([1, 2])).toEqual([1, 2]);
+  });
 
-test('clamp', () => {
-  assert.equal(clamp(5, 0, 10), 5);
-  assert.equal(clamp(-1, 0, 10), 0);
-  assert.equal(clamp(11, 0, 10), 10);
+  it('clamps numbers', () => {
+    expect(clamp(5, 0, 10)).toBe(5);
+    expect(clamp(-1, 0, 10)).toBe(0);
+    expect(clamp(11, 0, 10)).toBe(10);
+  });
 });
