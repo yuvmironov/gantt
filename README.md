@@ -47,6 +47,7 @@ pnpm test:contract
 pnpm build
 pnpm start:api-gateway
 pnpm start:user-service
+pnpm start:project-service
 ```
 
 ## Структура
@@ -54,6 +55,7 @@ pnpm start:user-service
 ```text
 apps/api-gateway/      # HTTP API Gateway + REST auth proxy + health/config/errors
 apps/user-service/     # User & Access: auth, sessions, HTTP health + gRPC
+apps/project-service/  # Project/Diagram: HTTP health + gRPC contract
 packages/service-kit/  # общий каркас Fastify/gRPC-сервисов
 packages/shared/       # общие утилиты
 contracts/             # REST/gRPC mapping, import/export
@@ -83,6 +85,7 @@ tools/                 # проверки контрактов
 - [x] API Gateway Compose profile + Helm chart.
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
+- [x] Project / Diagram skeleton + gRPC health.
 - [ ] Остальные сервисы.
 - [ ] Staging/prod Helm values.
 - [ ] E2E и load tests.

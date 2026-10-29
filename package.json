@@ -15,6 +15,7 @@
     "test:contract": "node tools/check-contracts.mjs",
     "start:api-gateway": "node apps/api-gateway/src/index.js",
     "start:user-service": "node apps/user-service/src/index.js",
+    "start:project-service": "node apps/project-service/src/index.js",
     "build": "pnpm -r --if-present build"
   },
   "devDependencies": {
