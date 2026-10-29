@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/ws-subscribed.json",
+  "title": "WsSubscribed",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "requestId", "diagramId", "projectId", "currentRevision"],
+  "properties": {
+    "type": { "const": "subscribed" },
+    "requestId": { "type": "string", "format": "uuid" },
+    "diagramId": { "type": "string", "format": "uuid" },
+    "projectId": { "type": "string", "format": "uuid" },
+    "currentRevision": { "type": "integer", "minimum": 0 }
+  }
+}

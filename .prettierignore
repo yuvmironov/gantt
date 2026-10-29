@@ -1,0 +1,14 @@
+node_modules/
+pnpm-lock.yaml
+coverage/
+dist/
+build/
+generated/
+openapi/
+proto/
+frontend/design/
+*.md
+*.yaml
+*.yml
+*.json
+notifications/templates/

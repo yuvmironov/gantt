@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+coverage/
+dist/
+build/
+generated/
+certs/
+.env
+.env.local
+.env.*.local
+*.local
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

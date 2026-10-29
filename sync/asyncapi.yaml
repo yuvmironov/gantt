@@ -1,0 +1,88 @@
+asyncapi: 3.0.0
+info:
+  title: SMART OATI Sync WebSocket
+  version: 1.0.0
+  description: WebSocket-контракт Sync / Realtime Service.
+servers:
+  production:
+    host: api.smart-oati.local
+    pathname: /ws
+    protocol: wss
+channels:
+  sync:
+    address: /ws
+    messages:
+      subscribe:
+        $ref: '#/components/messages/Subscribe'
+      subscribed:
+        $ref: '#/components/messages/Subscribed'
+      unsubscribe:
+        $ref: '#/components/messages/Unsubscribe'
+      unsubscribed:
+        $ref: '#/components/messages/Unsubscribed'
+      diagramChanged:
+        $ref: '#/components/messages/DiagramChanged'
+      snapshotRequired:
+        $ref: '#/components/messages/SnapshotRequired'
+      error:
+        $ref: '#/components/messages/Error'
+      ping:
+        $ref: '#/components/messages/Ping'
+      pong:
+        $ref: '#/components/messages/Pong'
+operations:
+  clientMessages:
+    action: send
+    channel:
+      $ref: '#/channels/sync'
+  serverMessages:
+    action: receive
+    channel:
+      $ref: '#/channels/sync'
+components:
+  messages:
+    Subscribe:
+      name: Subscribe
+      contentType: application/json
+      payload:
+        $ref: './schemas/subscribe.schema.json'
+    Subscribed:
+      name: Subscribed
+      contentType: application/json
+      payload:
+        $ref: './schemas/subscribed.schema.json'
+    Unsubscribe:
+      name: Unsubscribe
+      contentType: application/json
+      payload:
+        $ref: './schemas/unsubscribe.schema.json'
+    Unsubscribed:
+      name: Unsubscribed
+      contentType: application/json
+      payload:
+        $ref: './schemas/unsubscribed.schema.json'
+    DiagramChanged:
+      name: DiagramChanged
+      contentType: application/json
+      payload:
+        $ref: './schemas/diagram-changed.schema.json'
+    SnapshotRequired:
+      name: SnapshotRequired
+      contentType: application/json
+      payload:
+        $ref: './schemas/snapshot-required.schema.json'
+    Error:
+      name: Error
+      contentType: application/json
+      payload:
+        $ref: './schemas/error.schema.json'
+    Ping:
+      name: Ping
+      contentType: application/json
+      payload:
+        $ref: './schemas/ping.schema.json'
+    Pong:
+      name: Pong
+      contentType: application/json
+      payload:
+        $ref: './schemas/pong.schema.json'

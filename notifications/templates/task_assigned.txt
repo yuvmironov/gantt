@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+В проекте «{{projectName}}» вам назначена задача «{{taskName}}» в роли «{{roleName}}».
+
+{{actionUrl}}

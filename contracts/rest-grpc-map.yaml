@@ -1,0 +1,104 @@
+version: 1
+basePath: /api/v1
+rules:
+  oneRequestOneGrpcCall: true
+  gatewayAggregation: false
+  sessionValidationAtGateway: true
+  internalProtocol: grpc
+operations:
+  register: { service: UserService, method: Register }
+  verifyEmail: { service: UserService, method: VerifyEmail }
+  resendEmailVerification: { service: UserService, method: ResendEmailVerification }
+  login: { service: UserService, method: Login }
+  restoreSession: { service: UserService, method: RestoreSession }
+  getSession: { service: UserService, method: GetCurrentUser, afterSessionValidation: true }
+  logout: { service: UserService, method: Logout }
+  logoutAll: { service: UserService, method: LogoutAll }
+  listMySessions: { service: UserService, method: ListMySessions }
+  revokeMySession: { service: UserService, method: RevokeMySession }
+  requestPasswordReset: { service: UserService, method: RequestPasswordReset }
+  resetPassword: { service: UserService, method: ResetPassword }
+  changePassword: { service: UserService, method: ChangePassword }
+  listUsers: { service: UserService, method: ListUsers }
+  adminCreateUser: { service: UserService, method: AdminCreateUser }
+  getCurrentUser: { service: UserService, method: GetCurrentUser }
+  updateMyProfile: { service: UserService, method: UpdateUserProfile }
+  getUsersByIds: { service: UserService, method: GetUsersByIds }
+  getUser: { service: UserService, method: GetUser }
+  deleteUser: { service: UserService, method: DeleteUser }
+  getUserRoles: { service: UserService, method: GetUserRoles }
+  setUserGlobalRoles: { service: UserService, method: SetUserGlobalRoles }
+  blockUser: { service: UserService, method: BlockUser }
+  unblockUser: { service: UserService, method: UnblockUser }
+  getRoles: { service: UserService, method: GetRoles }
+  getPermissions: { service: UserService, method: GetPermissions }
+  listExecutors: { service: UserService, method: ListExecutors }
+  createExecutor: { service: UserService, method: CreateExecutor }
+  updateExecutor: { service: UserService, method: UpdateExecutor }
+  deleteExecutor: { service: UserService, method: DeleteExecutor }
+  linkExecutorUser: { service: UserService, method: LinkExecutorUser }
+  unlinkExecutorUser: { service: UserService, method: UnlinkExecutorUser }
+  listProjects: { service: ProjectService, method: ListProjects }
+  createProject: { service: ProjectService, method: CreateProject }
+  getProject: { service: ProjectService, method: GetProject }
+  updateProject: { service: ProjectService, method: UpdateProject }
+  deleteProject: { service: ProjectService, method: DeleteProject }
+  archiveProject: { service: ProjectService, method: ArchiveProject }
+  unarchiveProject: { service: ProjectService, method: UnarchiveProject }
+  restoreProject: { service: ProjectService, method: RestoreProject }
+  transferProjectOwner: { service: ProjectService, method: TransferProjectOwner }
+  listProjectMembers: { service: UserService, method: ListProjectMembers }
+  updateProjectMemberRole: { service: UserService, method: UpdateProjectMemberRole }
+  removeProjectMember: { service: UserService, method: RemoveProjectMember }
+  listProjectInvitations: { service: UserService, method: ListProjectInvitations }
+  createInvitation: { service: UserService, method: CreateInvitation }
+  resendInvitation: { service: UserService, method: ResendInvitation }
+  revokeInvitation: { service: UserService, method: RevokeInvitation }
+  acceptInvitation: { service: UserService, method: AcceptInvitation }
+  listDiagrams: { service: ProjectService, method: ListDiagrams }
+  createDiagram: { service: ProjectService, method: CreateDiagram }
+  getDiagram: { service: ProjectService, method: GetDiagram }
+  updateDiagram: { service: ProjectService, method: UpdateDiagram }
+  deleteDiagram: { service: ProjectService, method: DeleteDiagram }
+  getDiagramSnapshot: { service: ProjectService, method: GetDiagramSnapshot }
+  listDiagramChanges: { service: ProjectService, method: ListDiagramChanges }
+  createDirection: { service: ProjectService, method: CreateDirection }
+  updateDirection: { service: ProjectService, method: UpdateDirection }
+  deleteDirection: { service: ProjectService, method: DeleteDirection }
+  setDirectionResponsible: { service: ProjectService, method: SetDirectionResponsible }
+  reorderDirections: { service: ProjectService, method: ReorderDirections }
+  createTask: { service: ProjectService, method: CreateTask }
+  getTask: { service: ProjectService, method: GetTask }
+  updateTask: { service: ProjectService, method: UpdateTask }
+  deleteTask: { service: ProjectService, method: DeleteTask }
+  moveTask: { service: ProjectService, method: MoveTask }
+  updateTaskProgress: { service: ProjectService, method: UpdateTaskProgress }
+  setTaskAssignments: { service: ProjectService, method: SetTaskAssignments }
+  listDependencies: { service: ProjectService, method: ListDependencies }
+  createDependency: { service: ProjectService, method: CreateDependency }
+  updateDependency: { service: ProjectService, method: UpdateDependency }
+  deleteDependency: { service: ProjectService, method: DeleteDependency }
+  listComments: { service: ProjectService, method: ListComments }
+  createComment: { service: ProjectService, method: CreateComment }
+  updateComment: { service: ProjectService, method: UpdateComment }
+  deleteComment: { service: ProjectService, method: DeleteComment }
+  getHolidays: { service: ProjectService, method: GetHolidays }
+  updateHolidays: { service: ProjectService, method: UpdateHolidays }
+  startImport: { service: ProjectService, method: StartImport }
+  getImportStatus: { service: ProjectService, method: GetImportStatus }
+  cancelImport: { service: ProjectService, method: CancelImport }
+  exportDiagram: { service: ProjectService, method: ExportDiagram }
+  listNotifications: { service: NotificationService, method: ListNotifications }
+  getUnreadCount: { service: NotificationService, method: GetUnreadCount }
+  markNotificationRead: { service: NotificationService, method: MarkRead }
+  markAllNotificationsRead: { service: NotificationService, method: MarkAllRead }
+  getNotificationPreferences: { service: NotificationService, method: GetPreferences }
+  updateNotificationPreferences: { service: NotificationService, method: UpdatePreferences }
+  getDeliveryLog: { service: NotificationService, method: GetDeliveryLog }
+  getDeliveryStats: { service: NotificationService, method: GetDeliveryStats }
+  listAuditEvents: { service: AuditService, method: ListAuditEvents }
+  getAuditEvent: { service: AuditService, method: GetAuditEvent }
+  listPrivilegedAuditEvents: { service: AuditService, method: ListPrivilegedAuditEvents }
+  getPrivilegedAuditEvent: { service: AuditService, method: GetPrivilegedAuditEvent }
+  getAuditActions: { service: AuditService, method: GetAuditActions }
+  getAuditStats: { service: AuditService, method: GetAuditStats }

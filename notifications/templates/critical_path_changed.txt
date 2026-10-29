@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+В проекте «{{projectName}}» изменился критический путь. Критических задач: {{criticalTaskCount}}.
+
+{{actionUrl}}

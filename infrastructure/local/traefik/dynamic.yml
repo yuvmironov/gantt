@@ -1,0 +1,63 @@
+http:
+  routers:
+    app:
+      rule: Host(`app.localhost`)
+      entryPoints: [websecure]
+      service: frontend
+      tls: {}
+    api:
+      rule: Host(`api.localhost`)
+      entryPoints: [websecure]
+      service: api-gateway
+      tls: {}
+    sync:
+      rule: Host(`sync.localhost`)
+      entryPoints: [websecure]
+      service: sync
+      tls: {}
+    notify:
+      rule: Host(`notify.localhost`)
+      entryPoints: [websecure]
+      service: notification
+      tls: {}
+    mail:
+      rule: Host(`mail.localhost`)
+      entryPoints: [websecure]
+      service: mailpit
+      tls: {}
+    kafka:
+      rule: Host(`kafka.localhost`)
+      entryPoints: [websecure]
+      service: kafka-ui
+      tls: {}
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: http://frontend:3000
+    api-gateway:
+      loadBalancer:
+        servers:
+          - url: http://api-gateway:8080
+    sync:
+      loadBalancer:
+        servers:
+          - url: http://sync:8080
+    notification:
+      loadBalancer:
+        servers:
+          - url: http://notification:8080
+    mailpit:
+      loadBalancer:
+        servers:
+          - url: http://mailpit:8025
+    kafka-ui:
+      loadBalancer:
+        servers:
+          - url: http://kafka-ui:8080
+
+tls:
+  certificates:
+    - certFile: /certs/local.pem
+      keyFile: /certs/local-key.pem

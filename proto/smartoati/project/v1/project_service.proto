@@ -1,0 +1,746 @@
+syntax = "proto3";
+
+package smartoati.project.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "smartoati/common/v1/common.proto";
+
+service ProjectService {
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
+  rpc ArchiveProject(ArchiveProjectRequest) returns (ArchiveProjectResponse);
+  rpc UnarchiveProject(UnarchiveProjectRequest) returns (UnarchiveProjectResponse);
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+  rpc RestoreProject(RestoreProjectRequest) returns (RestoreProjectResponse);
+  rpc TransferProjectOwner(TransferProjectOwnerRequest) returns (TransferProjectOwnerResponse);
+  rpc CheckUserOwnsProjects(CheckUserOwnsProjectsRequest) returns (CheckUserOwnsProjectsResponse);
+  rpc PurgeExpiredProjects(PurgeExpiredProjectsRequest) returns (PurgeExpiredProjectsResponse);
+  rpc CreateDiagram(CreateDiagramRequest) returns (CreateDiagramResponse);
+  rpc GetDiagram(GetDiagramRequest) returns (GetDiagramResponse);
+  rpc ListDiagrams(ListDiagramsRequest) returns (ListDiagramsResponse);
+  rpc UpdateDiagram(UpdateDiagramRequest) returns (UpdateDiagramResponse);
+  rpc DeleteDiagram(DeleteDiagramRequest) returns (DeleteDiagramResponse);
+  rpc GetDiagramSnapshot(GetDiagramSnapshotRequest) returns (GetDiagramSnapshotResponse);
+  rpc ListDiagramChanges(ListDiagramChangesRequest) returns (ListDiagramChangesResponse);
+  rpc CreateDirection(CreateDirectionRequest) returns (CreateDirectionResponse);
+  rpc UpdateDirection(UpdateDirectionRequest) returns (UpdateDirectionResponse);
+  rpc DeleteDirection(DeleteDirectionRequest) returns (DeleteDirectionResponse);
+  rpc ReorderDirections(ReorderDirectionsRequest) returns (ReorderDirectionsResponse);
+  rpc SetDirectionResponsible(SetDirectionResponsibleRequest) returns (SetDirectionResponsibleResponse);
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc MoveTask(MoveTaskRequest) returns (MoveTaskResponse);
+  rpc UpdateTaskProgress(UpdateTaskProgressRequest) returns (UpdateTaskProgressResponse);
+  rpc SetTaskAssignments(SetTaskAssignmentsRequest) returns (SetTaskAssignmentsResponse);
+  rpc CreateDependency(CreateDependencyRequest) returns (CreateDependencyResponse);
+  rpc UpdateDependency(UpdateDependencyRequest) returns (UpdateDependencyResponse);
+  rpc DeleteDependency(DeleteDependencyRequest) returns (DeleteDependencyResponse);
+  rpc ListDependencies(ListDependenciesRequest) returns (ListDependenciesResponse);
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc UpdateComment(UpdateCommentRequest) returns (UpdateCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc GetHolidays(GetHolidaysRequest) returns (GetHolidaysResponse);
+  rpc UpdateHolidays(UpdateHolidaysRequest) returns (UpdateHolidaysResponse);
+  rpc StartImport(StartImportRequest) returns (StartImportResponse);
+  rpc GetImportStatus(GetImportStatusRequest) returns (GetImportStatusResponse);
+  rpc CancelImport(CancelImportRequest) returns (CancelImportResponse);
+  rpc ExportDiagram(ExportDiagramRequest) returns (ExportDiagramResponse);
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_user_id = 4;
+  smartoati.common.v1.UserRef owner = 5;
+  smartoati.common.v1.ProjectStatus status = 6;
+  google.protobuf.Struct settings = 7;
+  smartoati.common.v1.ProjectRole my_role = 8;
+  string created_by_user_id = 9;
+  string updated_by_user_id = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp archived_at = 13;
+  google.protobuf.Timestamp deleted_at = 14;
+  google.protobuf.Timestamp purge_after = 15;
+  bool names_resolved = 16;
+}
+
+message Diagram {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string description = 4;
+  smartoati.common.v1.DayMode day_mode = 5;
+  int64 current_revision = 6;
+  string created_by_user_id = 7;
+  string updated_by_user_id = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  google.protobuf.Timestamp archived_at = 11;
+  google.protobuf.Timestamp deleted_at = 12;
+}
+
+message Assignment {
+  string id = 1;
+  smartoati.common.v1.AssignmentRole role = 2;
+  smartoati.common.v1.AssigneeType assignee_type = 3;
+  string assignee_id = 4;
+  string display_name = 5;
+  string linked_user_id = 6;
+  bool resolved = 7;
+}
+
+message Direction {
+  string id = 1;
+  string diagram_id = 2;
+  string wbs_code = 3;
+  int32 sort_order = 4;
+  string name = 5;
+  string description = 6;
+  string result = 7;
+  smartoati.common.v1.Priority priority = 8;
+  google.protobuf.Timestamp start_date = 9;
+  google.protobuf.Timestamp end_date = 10;
+  string jira_number = 11;
+  bool bp_flag = 12;
+  bool sp_flag = 13;
+  int32 version = 14;
+  repeated Assignment assignments = 15;
+  string created_by_user_id = 16;
+  string updated_by_user_id = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  google.protobuf.Timestamp deleted_at = 20;
+}
+
+message Task {
+  string id = 1;
+  string diagram_id = 2;
+  string direction_id = 3;
+  string parent_task_id = 4;
+  int32 level = 5;
+  string wbs_code = 6;
+  int32 sort_order = 7;
+  string name = 8;
+  string description = 9;
+  string result = 10;
+  smartoati.common.v1.TaskStatus status = 11;
+  int32 progress = 12;
+  smartoati.common.v1.Priority priority = 13;
+  google.protobuf.Timestamp start_date = 14;
+  google.protobuf.Timestamp end_date = 15;
+  google.protobuf.Timestamp actual_end_date = 16;
+  string jira_number = 17;
+  bool bp_flag = 18;
+  bool sp_flag = 19;
+  int32 version = 20;
+  repeated Assignment assignments = 21;
+  int32 comments_count = 22;
+  string created_by_user_id = 23;
+  string updated_by_user_id = 24;
+  google.protobuf.Timestamp created_at = 25;
+  google.protobuf.Timestamp updated_at = 26;
+  google.protobuf.Timestamp deleted_at = 27;
+}
+
+message Dependency {
+  string id = 1;
+  string diagram_id = 2;
+  string predecessor_type = 3;
+  string predecessor_id = 4;
+  string successor_type = 5;
+  string successor_id = 6;
+  smartoati.common.v1.DependencyLinkType link_type = 7;
+  string color = 8;
+  smartoati.common.v1.DependencyLineStyle line_style = 9;
+  smartoati.common.v1.DependencyArrowShape arrow_shape = 10;
+  string created_by_user_id = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message Comment {
+  string id = 1;
+  string entity_type = 2;
+  string entity_id = 3;
+  string author_user_id = 4;
+  smartoati.common.v1.UserRef author = 5;
+  repeated string mentioned_user_ids = 6;
+  repeated smartoati.common.v1.UserRef mentioned_users = 7;
+  string body = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  google.protobuf.Timestamp deleted_at = 11;
+}
+
+message Holiday {
+  string id = 1;
+  string diagram_id = 2;
+  google.protobuf.Timestamp holiday_date = 3;
+  string name = 4;
+}
+
+message DiagramChange {
+  int64 id = 1;
+  string diagram_id = 2;
+  int64 revision = 3;
+  string entity_type = 4;
+  string entity_id = 5;
+  string operation = 6;
+  google.protobuf.Struct payload = 7;
+  string actor_user_id = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message ImportIssue {
+  string task_id = 1;
+  string wbs_code = 2;
+  string task_name = 3;
+  string code = 4;
+  string message = 5;
+}
+
+message ImportReport {
+  int32 directions_count = 1;
+  int32 tasks_count = 2;
+  int32 assignments_count = 3;
+  int32 without_responsible_count = 4;
+  int32 without_executor_count = 5;
+  int32 without_coexecutor_count = 6;
+  repeated ImportIssue issues = 7;
+}
+
+message ImportJob {
+  string id = 1;
+  string project_id = 2;
+  string diagram_id = 3;
+  string initiator_user_id = 4;
+  smartoati.common.v1.ImportFormat format = 5;
+  smartoati.common.v1.ImportStatus status = 6;
+  string file_name = 7;
+  int64 size_bytes = 8;
+  ImportReport report = 9;
+  string error_code = 10;
+  string error_message = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp started_at = 13;
+  google.protobuf.Timestamp finished_at = 14;
+  google.protobuf.Timestamp expires_at = 15;
+}
+
+message DiagramSnapshot {
+  Diagram diagram = 1;
+  repeated Direction directions = 2;
+  repeated Task tasks = 3;
+  repeated Dependency dependencies = 4;
+  repeated Comment comments = 5;
+  repeated Holiday holidays = 6;
+  int64 current_revision = 7;
+  bool names_resolved = 8;
+}
+
+message AssignmentInput {
+  smartoati.common.v1.AssignmentRole role = 1;
+  smartoati.common.v1.AssigneeType assignee_type = 2;
+  string assignee_id = 3;
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  string description = 2;
+  google.protobuf.Struct settings = 3;
+  string owner_user_id = 4;
+}
+
+message CreateProjectResponse {
+  Project project = 1;
+}
+
+message GetProjectRequest {
+  string project_id = 1;
+}
+
+message GetProjectResponse {
+  Project project = 1;
+}
+
+message ListProjectsRequest {
+  string user_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListProjectsResponse {
+  repeated Project items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message UpdateProjectRequest {
+  string project_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional google.protobuf.Struct settings = 4;
+}
+
+message UpdateProjectResponse {
+  Project project = 1;
+}
+
+message ArchiveProjectRequest {
+  string project_id = 1;
+}
+
+message ArchiveProjectResponse {
+  Project project = 1;
+}
+
+message UnarchiveProjectRequest {
+  string project_id = 1;
+}
+
+message UnarchiveProjectResponse {
+  Project project = 1;
+}
+
+message DeleteProjectRequest {
+  string project_id = 1;
+}
+
+message DeleteProjectResponse {
+  Project project = 1;
+}
+
+message RestoreProjectRequest {
+  string project_id = 1;
+}
+
+message RestoreProjectResponse {
+  Project project = 1;
+}
+
+message TransferProjectOwnerRequest {
+  string project_id = 1;
+  string new_owner_user_id = 2;
+}
+
+message TransferProjectOwnerResponse {
+  Project project = 1;
+}
+
+message CheckUserOwnsProjectsRequest {
+  string user_id = 1;
+}
+
+message CheckUserOwnsProjectsResponse {
+  bool owns_projects = 1;
+  int32 count = 2;
+}
+
+message PurgeExpiredProjectsRequest {
+  int32 limit = 1;
+}
+
+message PurgeExpiredProjectsResponse {
+  int32 purged_count = 1;
+}
+
+message CreateDiagramRequest {
+  string project_id = 1;
+  string name = 2;
+  string description = 3;
+  smartoati.common.v1.DayMode day_mode = 4;
+}
+
+message CreateDiagramResponse {
+  Diagram diagram = 1;
+}
+
+message GetDiagramRequest {
+  string diagram_id = 1;
+  optional string user_id = 2;
+}
+
+message GetDiagramResponse {
+  Diagram diagram = 1;
+  string project_id = 2;
+  int64 current_revision = 3;
+  bool names_resolved = 4;
+}
+
+message ListDiagramsRequest {
+  string project_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListDiagramsResponse {
+  repeated Diagram items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message UpdateDiagramRequest {
+  string diagram_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional smartoati.common.v1.DayMode day_mode = 4;
+}
+
+message UpdateDiagramResponse {
+  Diagram diagram = 1;
+}
+
+message DeleteDiagramRequest {
+  string diagram_id = 1;
+}
+
+message DeleteDiagramResponse {
+  bool deleted = 1;
+}
+
+message GetDiagramSnapshotRequest {
+  string diagram_id = 1;
+  optional string user_id = 2;
+}
+
+message GetDiagramSnapshotResponse {
+  DiagramSnapshot snapshot = 1;
+}
+
+message ListDiagramChangesRequest {
+  string diagram_id = 1;
+  int64 from_revision = 2;
+  smartoati.common.v1.PageRequest page = 3;
+}
+
+message ListDiagramChangesResponse {
+  repeated DiagramChange items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+  int64 current_revision = 3;
+  bool snapshot_required = 4;
+}
+
+message CreateDirectionRequest {
+  string diagram_id = 1;
+  string name = 2;
+  string description = 3;
+  string result = 4;
+  smartoati.common.v1.Priority priority = 5;
+  google.protobuf.Timestamp start_date = 6;
+  google.protobuf.Timestamp end_date = 7;
+  string jira_number = 8;
+  bool bp_flag = 9;
+  bool sp_flag = 10;
+  int32 sort_order = 11;
+}
+
+message CreateDirectionResponse {
+  Direction direction = 1;
+}
+
+message UpdateDirectionRequest {
+  string direction_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string result = 4;
+  optional smartoati.common.v1.Priority priority = 5;
+  optional google.protobuf.Timestamp start_date = 6;
+  optional google.protobuf.Timestamp end_date = 7;
+  optional string jira_number = 8;
+  optional bool bp_flag = 9;
+  optional bool sp_flag = 10;
+  int32 expected_version = 11;
+  int64 base_revision = 12;
+}
+
+message UpdateDirectionResponse {
+  Direction direction = 1;
+  int64 revision = 2;
+}
+
+message DeleteDirectionRequest {
+  string direction_id = 1;
+  int32 expected_version = 2;
+  int64 base_revision = 3;
+}
+
+message DeleteDirectionResponse {
+  bool deleted = 1;
+  int64 revision = 2;
+}
+
+message ReorderDirectionsRequest {
+  string diagram_id = 1;
+  repeated string direction_ids = 2;
+  int64 base_revision = 3;
+}
+
+message ReorderDirectionsResponse {
+  repeated Direction items = 1;
+  int64 revision = 2;
+}
+
+message SetDirectionResponsibleRequest {
+  string direction_id = 1;
+  AssignmentInput assignment = 2;
+  int64 base_revision = 3;
+}
+
+message SetDirectionResponsibleResponse {
+  Direction direction = 1;
+  int64 revision = 2;
+}
+
+message CreateTaskRequest {
+  string diagram_id = 1;
+  string direction_id = 2;
+  string parent_task_id = 3;
+  string name = 4;
+  string description = 5;
+  string result = 6;
+  smartoati.common.v1.Priority priority = 7;
+  google.protobuf.Timestamp start_date = 8;
+  google.protobuf.Timestamp end_date = 9;
+  string jira_number = 10;
+  bool bp_flag = 11;
+  bool sp_flag = 12;
+  int32 sort_order = 13;
+}
+
+message CreateTaskResponse {
+  Task task = 1;
+}
+
+message GetTaskRequest {
+  string task_id = 1;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
+message UpdateTaskRequest {
+  string task_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string result = 4;
+  optional smartoati.common.v1.Priority priority = 5;
+  optional google.protobuf.Timestamp start_date = 6;
+  optional google.protobuf.Timestamp end_date = 7;
+  optional google.protobuf.Timestamp actual_end_date = 8;
+  optional string jira_number = 9;
+  optional bool bp_flag = 10;
+  optional bool sp_flag = 11;
+  int32 expected_version = 12;
+  int64 base_revision = 13;
+}
+
+message UpdateTaskResponse {
+  Task task = 1;
+  int64 revision = 2;
+}
+
+message DeleteTaskRequest {
+  string task_id = 1;
+  int32 expected_version = 2;
+  int64 base_revision = 3;
+}
+
+message DeleteTaskResponse {
+  bool deleted = 1;
+  int64 revision = 2;
+}
+
+message MoveTaskRequest {
+  string task_id = 1;
+  optional string parent_task_id = 2;
+  optional string direction_id = 3;
+  int32 sort_order = 4;
+  int32 expected_version = 5;
+  int64 base_revision = 6;
+}
+
+message MoveTaskResponse {
+  Task task = 1;
+  int64 revision = 2;
+}
+
+message UpdateTaskProgressRequest {
+  string task_id = 1;
+  smartoati.common.v1.TaskStatus status = 2;
+  int32 progress = 3;
+  int32 expected_version = 4;
+  int64 base_revision = 5;
+}
+
+message UpdateTaskProgressResponse {
+  Task task = 1;
+  int64 revision = 2;
+}
+
+message SetTaskAssignmentsRequest {
+  string task_id = 1;
+  repeated AssignmentInput assignments = 2;
+  int64 base_revision = 3;
+}
+
+message SetTaskAssignmentsResponse {
+  Task task = 1;
+  int64 revision = 2;
+}
+
+message CreateDependencyRequest {
+  string diagram_id = 1;
+  string predecessor_type = 2;
+  string predecessor_id = 3;
+  string successor_type = 4;
+  string successor_id = 5;
+  string color = 6;
+  smartoati.common.v1.DependencyLineStyle line_style = 7;
+  smartoati.common.v1.DependencyArrowShape arrow_shape = 8;
+  int64 base_revision = 9;
+}
+
+message CreateDependencyResponse {
+  Dependency dependency = 1;
+  int64 revision = 2;
+}
+
+message UpdateDependencyRequest {
+  string dependency_id = 1;
+  optional string predecessor_type = 2;
+  optional string predecessor_id = 3;
+  optional string successor_type = 4;
+  optional string successor_id = 5;
+  optional string color = 6;
+  optional smartoati.common.v1.DependencyLineStyle line_style = 7;
+  optional smartoati.common.v1.DependencyArrowShape arrow_shape = 8;
+  int64 base_revision = 9;
+}
+
+message UpdateDependencyResponse {
+  Dependency dependency = 1;
+  int64 revision = 2;
+}
+
+message DeleteDependencyRequest {
+  string dependency_id = 1;
+  int64 base_revision = 2;
+}
+
+message DeleteDependencyResponse {
+  bool deleted = 1;
+  int64 revision = 2;
+}
+
+message ListDependenciesRequest {
+  string diagram_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListDependenciesResponse {
+  repeated Dependency items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message CreateCommentRequest {
+  string entity_type = 1;
+  string entity_id = 2;
+  string body = 3;
+  repeated string mentioned_user_ids = 4;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+message UpdateCommentRequest {
+  string comment_id = 1;
+  string body = 2;
+  repeated string mentioned_user_ids = 3;
+}
+
+message UpdateCommentResponse {
+  Comment comment = 1;
+}
+
+message DeleteCommentRequest {
+  string comment_id = 1;
+}
+
+message DeleteCommentResponse {
+  bool deleted = 1;
+}
+
+message ListCommentsRequest {
+  string entity_type = 1;
+  string entity_id = 2;
+  smartoati.common.v1.PageRequest page = 3;
+}
+
+message ListCommentsResponse {
+  repeated Comment items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message GetHolidaysRequest {
+  string diagram_id = 1;
+}
+
+message GetHolidaysResponse {
+  repeated Holiday items = 1;
+}
+
+message UpdateHolidaysRequest {
+  string diagram_id = 1;
+  repeated Holiday items = 2;
+  int64 base_revision = 3;
+}
+
+message UpdateHolidaysResponse {
+  repeated Holiday items = 1;
+  int64 revision = 2;
+}
+
+message StartImportRequest {
+  string diagram_id = 1;
+  smartoati.common.v1.ImportFormat format = 2;
+  string file_name = 3;
+  bytes data = 4;
+  string idempotency_key = 5;
+}
+
+message StartImportResponse {
+  ImportJob job = 1;
+}
+
+message GetImportStatusRequest {
+  string job_id = 1;
+}
+
+message GetImportStatusResponse {
+  ImportJob job = 1;
+}
+
+message CancelImportRequest {
+  string job_id = 1;
+}
+
+message CancelImportResponse {
+  ImportJob job = 1;
+}
+
+message ExportDiagramRequest {
+  string diagram_id = 1;
+  smartoati.common.v1.ExportFormat format = 2;
+}
+
+message ExportDiagramResponse {
+  bytes data = 1;
+  string content_type = 2;
+  string file_name = 3;
+}

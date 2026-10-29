@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/ws-diagram-changed.json",
+  "title": "WsDiagramChanged",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "version", "diagramId", "revision", "entityType", "entityId", "operation", "payload"],
+  "properties": {
+    "type": { "const": "diagram.changed" },
+    "version": { "type": "integer", "const": 1 },
+    "diagramId": { "type": "string", "format": "uuid" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "entityType": { "type": "string", "enum": ["project", "diagram", "direction", "task", "dependency", "comment", "holiday"] },
+    "entityId": { "type": "string", "format": "uuid" },
+    "operation": { "type": "string", "enum": ["create", "update", "delete"] },
+    "payload": { "type": "object", "additionalProperties": true },
+    "actorUserId": { "type": ["string", "null"], "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

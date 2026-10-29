@@ -1,0 +1,7 @@
+Здравствуйте, {{displayName}}!
+
+Импорт плана в проект «{{projectName}}» не выполнен.
+
+{{errorMessage}}
+
+{{actionUrl}}

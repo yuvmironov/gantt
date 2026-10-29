@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+package smartoati.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ACTIVE = 1;
+  USER_STATUS_BLOCKED = 2;
+}
+
+enum GlobalRole {
+  GLOBAL_ROLE_UNSPECIFIED = 0;
+  GLOBAL_ROLE_APP_ADMIN = 1;
+}
+
+enum ProjectRole {
+  PROJECT_ROLE_UNSPECIFIED = 0;
+  PROJECT_ROLE_OWNER = 1;
+  PROJECT_ROLE_MANAGER = 2;
+  PROJECT_ROLE_EDITOR = 3;
+  PROJECT_ROLE_PARTICIPANT = 4;
+  PROJECT_ROLE_VIEWER = 5;
+}
+
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_ACTIVE = 1;
+  PROJECT_STATUS_ARCHIVED = 2;
+  PROJECT_STATUS_DELETED = 3;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_PLANNED = 1;
+  TASK_STATUS_IN_PROGRESS = 2;
+  TASK_STATUS_DONE = 3;
+  TASK_STATUS_BLOCKED = 4;
+}
+
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_MEDIUM = 2;
+  PRIORITY_HIGH = 3;
+  PRIORITY_CRITICAL = 4;
+}
+
+enum DayMode {
+  DAY_MODE_UNSPECIFIED = 0;
+  DAY_MODE_CALENDAR = 1;
+  DAY_MODE_WORKING = 2;
+}
+
+enum AssignmentRole {
+  ASSIGNMENT_ROLE_UNSPECIFIED = 0;
+  ASSIGNMENT_ROLE_RESPONSIBLE = 1;
+  ASSIGNMENT_ROLE_EXECUTOR = 2;
+  ASSIGNMENT_ROLE_CO_EXECUTOR = 3;
+}
+
+enum AssigneeType {
+  ASSIGNEE_TYPE_UNSPECIFIED = 0;
+  ASSIGNEE_TYPE_USER = 1;
+  ASSIGNEE_TYPE_EXECUTOR = 2;
+}
+
+enum DependencyLinkType {
+  DEPENDENCY_LINK_TYPE_UNSPECIFIED = 0;
+  DEPENDENCY_LINK_TYPE_FINISH_TO_START = 1;
+}
+
+enum DependencyLineStyle {
+  DEPENDENCY_LINE_STYLE_UNSPECIFIED = 0;
+  DEPENDENCY_LINE_STYLE_SOLID = 1;
+  DEPENDENCY_LINE_STYLE_DASHED = 2;
+  DEPENDENCY_LINE_STYLE_DOTTED = 3;
+}
+
+enum DependencyArrowShape {
+  DEPENDENCY_ARROW_SHAPE_UNSPECIFIED = 0;
+  DEPENDENCY_ARROW_SHAPE_ORTHOGONAL = 1;
+  DEPENDENCY_ARROW_SHAPE_STRAIGHT = 2;
+  DEPENDENCY_ARROW_SHAPE_CURVED = 3;
+}
+
+enum ImportStatus {
+  IMPORT_STATUS_UNSPECIFIED = 0;
+  IMPORT_STATUS_QUEUED = 1;
+  IMPORT_STATUS_PROCESSING = 2;
+  IMPORT_STATUS_COMPLETED = 3;
+  IMPORT_STATUS_FAILED = 4;
+  IMPORT_STATUS_CANCELLED = 5;
+}
+
+enum ImportFormat {
+  IMPORT_FORMAT_UNSPECIFIED = 0;
+  IMPORT_FORMAT_JSON = 1;
+  IMPORT_FORMAT_CSV = 2;
+}
+
+enum ExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0;
+  EXPORT_FORMAT_JSON = 1;
+  EXPORT_FORMAT_CSV = 2;
+}
+
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_INTERNAL = 1;
+  NOTIFICATION_CHANNEL_EMAIL = 2;
+  NOTIFICATION_CHANNEL_TELEGRAM = 3;
+}
+
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;
+  DELIVERY_STATUS_SENDING = 2;
+  DELIVERY_STATUS_SENT = 3;
+  DELIVERY_STATUS_FAILED = 4;
+  DELIVERY_STATUS_RETRYING = 5;
+  DELIVERY_STATUS_SKIPPED = 6;
+}
+
+enum DigestFrequency {
+  DIGEST_FREQUENCY_UNSPECIFIED = 0;
+  DIGEST_FREQUENCY_IMMEDIATE = 1;
+  DIGEST_FREQUENCY_DAILY = 2;
+  DIGEST_FREQUENCY_WEEKLY = 3;
+}
+
+enum ReminderKind {
+  REMINDER_KIND_UNSPECIFIED = 0;
+  REMINDER_KIND_DUE_SOON = 1;
+  REMINDER_KIND_OVERDUE = 2;
+}
+
+enum AuditSeverity {
+  AUDIT_SEVERITY_UNSPECIFIED = 0;
+  AUDIT_SEVERITY_INFO = 1;
+  AUDIT_SEVERITY_WARNING = 2;
+  AUDIT_SEVERITY_CRITICAL = 3;
+}
+
+enum AuditActorType {
+  AUDIT_ACTOR_TYPE_UNSPECIFIED = 0;
+  AUDIT_ACTOR_TYPE_USER = 1;
+  AUDIT_ACTOR_TYPE_SERVICE = 2;
+  AUDIT_ACTOR_TYPE_SYSTEM = 3;
+}
+
+message PageRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message PageResponse {
+  int32 total = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ErrorDetail {
+  string field = 1;
+  string code = 2;
+  string message = 3;
+}
+
+message ActorContext {
+  string user_id = 1;
+  repeated string global_roles = 2;
+  string session_id = 3;
+  string request_id = 4;
+  string correlation_id = 5;
+  string client_ip = 6;
+  string user_agent = 7;
+}
+
+message UserRef {
+  string user_id = 1;
+  string display_name = 2;
+  bool resolved = 3;
+}
+
+message ExecutorRef {
+  string executor_id = 1;
+  string full_name = 2;
+  string position = 3;
+  string linked_user_id = 4;
+  bool resolved = 5;
+}
+
+message ProjectAccess {
+  string project_id = 1;
+  ProjectRole role = 2;
+  repeated string permissions = 3;
+  bool is_accessible = 4;
+}
+
+message TimeRange {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}

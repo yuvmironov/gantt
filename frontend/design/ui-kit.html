@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMART OATI — UI kit</title>
+  <link rel="stylesheet" href="prototype.css">
+  <style>
+    .uk-page { max-width: 1280px; margin: 0 auto; padding: 28px 32px 56px; }
+    .uk-section { margin-top: 28px; }
+    .uk-section h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -0.02em; }
+    .uk-section > p { margin: 0 0 14px; color: var(--color-text-muted); font-size: 12px; }
+    .uk-grid { display: grid; gap: 14px; }
+    .uk-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .uk-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .uk-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .uk-card { padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-xs); }
+    .uk-card h3 { margin: 0 0 10px; font-size: 12px; color: var(--color-text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .uk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .uk-swatch { border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; background: #fff; }
+    .uk-swatch-color { height: 52px; }
+    .uk-swatch-meta { padding: 7px 9px; font-size: 10px; color: var(--color-text-muted); display: flex; justify-content: space-between; gap: 6px; }
+    .uk-swatch-meta strong { color: var(--color-text); font-size: 11px; }
+    .uk-type-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef2f7; }
+    .uk-type-row:last-child { border-bottom: 0; }
+    .uk-type-row code { color: var(--color-text-subtle); font-family: var(--font-mono); font-size: 10px; }
+    .uk-modal { position: static; max-width: 520px; }
+    .uk-frame { border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); padding: 18px; background: var(--color-surface-muted); }
+    .field-error { color: var(--color-danger-600); font-size: var(--text-xs); }
+    .uk-card .toast { position: static; max-width: none; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--color-border); border-left: 3px solid var(--color-success-600); border-radius: var(--radius-md); background: var(--color-success-50); }
+    .uk-card .toast-icon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--color-success-100); color: var(--color-success-700); flex: none; }
+    .uk-card .alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #fecaca; border-left: 3px solid var(--color-danger-500); border-radius: var(--radius-md); background: var(--color-danger-50); color: var(--color-danger-700); }
+    .uk-card .alert p { margin: 2px 0 0; font-size: 11px; color: var(--color-text-secondary); }
+    .empty-icon { display: grid; place-items: center; width: 34px; height: 34px; margin: 0 auto 8px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); }
+    .empty-state { text-align: center; }
+    .empty-state p { margin: 4px 0 0; color: var(--color-text-muted); }
+    .uk-modal .modal-head { align-items: center; }
+    .uk-modal .modal-head > button { flex: none; }
+    .uk-modal .modal-body { background: #fff; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <a class="app-brand" href="prototype.html"><span class="brand-mark"><svg class="icon"><use href="#i-logo"/></svg></span><span>SMART OATI</span></a>
+    <span class="badge badge-primary">UI kit · v0.1</span>
+    <div class="app-header-right"><a class="btn btn-secondary btn-sm" href="prototype.html">Открыть прототип</a></div>
+  </header>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M4 17.5h16M6.5 14V7.5M11 14V4.5M15.5 14v-4M20 14V6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.2 4.2L19 6.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 21 20H3L12 4Z"/><path d="M12 9v5M12 17.3v.2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.4l3.5 2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <main class="uk-page">
+    <p class="eyebrow">Дизайн-система</p>
+    <h1 class="page-title">UI kit</h1>
+    <p class="page-subtitle">Базовые токены и состояния интерфейса SMART OATI. Все значения синхронизированы с <code>tokens.css</code>.</p>
+
+    <section class="uk-section">
+      <h2>Палитра</h2>
+      <p>Нейтральная база, синий primary и семантические статусы.</p>
+      <div class="uk-grid cols-4">
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#2563eb"></div><div class="uk-swatch-meta"><strong>Primary 600</strong><span>#2563EB</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#0f172a"></div><div class="uk-swatch-meta"><strong>Text</strong><span>#0F172A</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#f4f7fb"></div><div class="uk-swatch-meta"><strong>Background</strong><span>#F4F7FB</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#22c55e"></div><div class="uk-swatch-meta"><strong>Success</strong><span>#22C55E</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#d97706"></div><div class="uk-swatch-meta"><strong>Warning</strong><span>#D97706</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#ef4444"></div><div class="uk-swatch-meta"><strong>Danger</strong><span>#EF4444</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#3b82f6"></div><div class="uk-swatch-meta"><strong>In progress</strong><span>#3B82F6</span></div></div>
+        <div class="uk-swatch"><div class="uk-swatch-color" style="background:#94a3b8"></div><div class="uk-swatch-meta"><strong>Planned</strong><span>#94A3B8</span></div></div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Типографика</h2>
+      <p>Segoe UI / Inter. Компактная шкала для плотных рабочих экранов.</p>
+      <div class="uk-card">
+        <div class="uk-type-row"><span style="font-size:28px;font-weight:750;letter-spacing:-.03em">Диаграмма Ганта</span><code>28 / 750 / -0.03em</code></div>
+        <div class="uk-type-row"><span style="font-size:22px;font-weight:750;letter-spacing:-.025em">План внедрения</span><code>22 / 750 / -0.025em</code></div>
+        <div class="uk-type-row"><span style="font-size:16px;font-weight:700">Заголовок карточки</span><code>16 / 700</code></div>
+        <div class="uk-type-row"><span style="font-size:13px">Основной текст интерфейса</span><code>13 / 400</code></div>
+        <div class="uk-type-row"><span style="font-size:12px;color:var(--color-text-muted)">Вторичный текст и подписи</span><code>12 / 400</code></div>
+        <div class="uk-type-row"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted)">Надзаголовок</span><code>10 / 700 / uppercase</code></div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Кнопки</h2>
+      <p>Одна primary-кнопка на экран. Остальные действия — secondary/ghost.</p>
+      <div class="uk-card">
+        <div class="uk-row">
+          <button class="btn btn-primary">Создать проект</button>
+          <button class="btn btn-secondary"><svg class="icon"><use href="#i-download"/></svg>Экспорт</button>
+          <button class="btn btn-ghost">Отмена</button>
+          <button class="btn btn-danger">Удалить</button>
+          <button class="btn btn-primary" disabled>Недоступно</button>
+          <button class="btn btn-icon btn-secondary"><svg class="icon"><use href="#i-plus"/></svg></button>
+          <button class="btn btn-primary btn-sm">Small</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Поля и состояния</h2>
+      <div class="uk-grid cols-2">
+        <div class="uk-card">
+          <h3>Input / Select</h3>
+          <div class="form-stack">
+            <div class="field"><label>Название проекта</label><input class="input" placeholder="Введите название"></div>
+            <div class="field"><label>Ответственный</label><select class="select"><option>Алексей Иванов</option></select></div>
+            <div class="field"><label>Описание</label><textarea class="textarea" placeholder="Коротко о проекте"></textarea></div>
+            <label class="checkbox-line"><input type="checkbox" checked> Учитывать рабочие дни</label>
+          </div>
+        </div>
+        <div class="uk-card">
+          <h3>Ошибка и подсказка</h3>
+          <div class="form-stack">
+            <div class="field"><label>Email</label><input class="input" value="not-an-email" style="border-color:var(--color-danger-500);box-shadow:0 0 0 3px rgba(239,68,68,.12)"><span class="field-error">Введите корректный email</span></div>
+            <div class="field"><label>Пароль</label><input class="input" type="password" value="password"><span class="field-hint">Минимум 8 символов, буквы и цифры</span></div>
+            <div class="uk-frame"><div class="empty-state" style="padding:14px 8px"><span class="empty-icon"><svg class="icon"><use href="#i-search"/></svg></span><strong style="font-size:13px">Ничего не найдено</strong><p style="font-size:11px">Попробуйте изменить запрос или сбросить фильтры.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Статусы и приоритеты</h2>
+      <div class="uk-card">
+        <div class="uk-row">
+          <span class="badge badge-success badge-dot">Выполнено</span>
+          <span class="badge badge-primary badge-dot">В работе</span>
+          <span class="badge badge-warning badge-dot">Заблокировано</span>
+          <span class="badge badge-neutral badge-dot">Запланировано</span>
+          <span class="badge badge-danger">Просрочено</span>
+          <span class="badge badge-outline">Черновик</span>
+          <span class="badge badge-danger">Критический</span>
+          <span class="badge badge-warning">Высокий</span>
+          <span class="badge badge-neutral">Средний</span>
+          <span class="badge badge-neutral">Низкий</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Таблица</h2>
+      <div class="card">
+        <div class="toolbar"><div class="toolbar-search"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Найти..."></div><div class="toolbar-spacer"></div><button class="btn btn-secondary btn-sm">Фильтр</button></div>
+        <table class="table"><thead><tr><th>Проект</th><th>Статус</th><th>Обновлен</th><th></th></tr></thead><tbody>
+          <tr><td><div class="name-cell">Внедрение SMART OATI</div><div class="muted">3 диаграммы</div></td><td><span class="badge badge-primary badge-dot">В работе</span></td><td class="muted">Сегодня, 10:42</td><td><button class="btn btn-icon btn-ghost btn-sm"><svg class="icon"><use href="#i-chevron"/></svg></button></td></tr>
+          <tr><td><div class="name-cell">Миграция данных</div><div class="muted">1 диаграмма</div></td><td><span class="badge badge-warning badge-dot">Заблокировано</span></td><td class="muted">26 окт, 14:05</td><td><button class="btn btn-icon btn-ghost btn-sm"><svg class="icon"><use href="#i-chevron"/></svg></button></td></tr>
+        </tbody></table>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Обратная связь</h2>
+      <div class="uk-grid cols-2">
+        <div class="uk-card"><h3>Toast</h3><div class="toast" style="position:static;max-width:none"><span class="toast-icon"><svg class="icon"><use href="#i-check"/></svg></span><div><strong style="font-size:12px">Проект создан</strong><p style="margin:2px 0 0;font-size:11px;color:var(--color-text-muted)">Теперь можно добавить диаграмму.</p></div></div></div>
+        <div class="uk-card"><h3>Alert</h3><div class="alert alert-danger"><svg class="icon"><use href="#i-alert"/></svg><div><strong>Не удалось сохранить</strong><p>Проверьте соединение и повторите попытку.</p></div></div></div>
+      </div>
+    </section>
+
+    <section class="uk-section">
+      <h2>Модальное окно</h2>
+      <div class="card uk-modal">
+        <div class="modal-head"><div><h3 style="font-size:16px;margin:0">Создать проект</h3><p class="muted" style="font-size:11px;margin:3px 0 0">Заполните основные поля. Участников можно добавить позже.</p></div><button class="btn btn-icon btn-ghost" aria-label="Закрыть"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div class="modal-body"><div class="form-stack"><div class="field"><label>Название</label><input class="input" placeholder="Например, Внедрение SMART OATI"></div><div class="field"><label>Описание</label><textarea class="textarea" placeholder="Цель и рамки проекта"></textarea></div></div></div>
+        <div class="modal-footer"><button class="btn btn-secondary">Отмена</button><button class="btn btn-primary">Создать</button></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

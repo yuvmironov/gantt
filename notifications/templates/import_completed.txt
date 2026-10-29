@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+Импорт плана в проект «{{projectName}}» завершен. Задач: {{taskCount}}. Предупреждений: {{issueCount}}.
+
+{{actionUrl}}

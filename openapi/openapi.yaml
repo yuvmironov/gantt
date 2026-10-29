@@ -1,0 +1,4292 @@
+openapi: 3.1.0
+info:
+  title: SMART OATI Gantt API
+  version: 1.2.0
+  description: >-
+    ╨Я╤Г╨▒╨╗╨╕╤З╨╜╤Л╨╣ REST API Gateway ╨┤╨╗╤П ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╤П ┬л╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ ╨У╨░╨╜╤В╨░ тАФ ╨┐╤А╨╛╨╡╨║╤В SMART
+    OATI┬╗.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://{host}/api/v1
+    variables:
+      host:
+        default: api.smart-oati.local
+tags:
+  - name: Auth
+    description: ╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П, ╨▓╤Е╨╛╨┤, ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╕ ╨┐╨░╤А╨╛╨╗╨╕
+  - name: Users
+    description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕ ╨╕ ╨┐╤А╨╛╤Д╨╕╨╗╨╕
+  - name: Access
+    description: ╨а╨╛╨╗╨╕, ╨┐╤А╨░╨▓╨░ ╨╕ ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨╕ ╨┐╤А╨╛╨╡╨║╤В╨╛╨▓
+  - name: Executors
+    description: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+  - name: Projects
+    description: ╨Я╤А╨╛╨╡╨║╤В╤Л ╨╕ ╨╕╤Е ╨╢╨╕╨╖╨╜╨╡╨╜╨╜╤Л╨╣ ╤Ж╨╕╨║╨╗
+  - name: Diagrams
+    description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨╕ ╤А╨╡╨▓╨╕╨╖╨╕╨╕
+  - name: Plan
+    description: ╨Э╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П, ╨╖╨░╨┤╨░╤З╨╕, ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕ ╨╕ ╨┐╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+  - name: Comments
+    description: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕ ╨╕ ╤Г╨┐╨╛╨╝╨╕╨╜╨░╨╜╨╕╤П
+  - name: ImportExport
+    description: ╨Р╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╨╕╨╝╨┐╨╛╤А╤В ╨╕ ╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╤Н╨║╤Б╨┐╨╛╤А╤В
+  - name: Notifications
+    description: ╨г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П ╨╕ ╨╜╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕
+  - name: Audit
+    description: ╨Ю╨▒╤Й╨╕╨╣ ╨╕ ╨┐╤А╨╕╨▓╨╕╨╗╨╡╨│╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨╢╤Г╤А╨╜╨░╨╗ ╨░╤Г╨┤╨╕╤В╨░
+security:
+  - cookieAuth: []
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      operationId: register
+      summary: ╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Б╨╛╨╖╨┤╨░╨╜, ╤В╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╨╡ email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/email/verify:
+    post:
+      tags:
+        - Auth
+      operationId: verifyEmail
+      summary: ╨Я╨╛╨┤╤В╨▓╨╡╤А╨┤╨╕╤В╤М email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyEmailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          $ref: '#/components/responses/Problem'
+  /auth/email/resend:
+    post:
+      tags:
+        - Auth
+      operationId: resendEmailVerification
+      summary: ╨Я╨╛╨▓╤В╨╛╤А╨╜╨╛ ╨╛╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨┐╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╤П
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '202':
+          description: ╨Я╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜╨╛ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      operationId: login
+      summary: ╨Т╤Е╨╛╨┤
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ╨б╨╡╤Б╤Б╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '423':
+          $ref: '#/components/responses/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/restore:
+    post:
+      tags:
+        - Auth
+      operationId: restoreSession
+      summary: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╕╤В╤М ╤Б╨╡╤Б╤Б╨╕╤О ╨┐╨╛ remember-╤В╨╛╨║╨╡╨╜╤Г
+      security:
+        - rememberCookie: []
+      responses:
+        '200':
+          description: ╨б╨╡╤Б╤Б╨╕╤П ╨▓╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜╨░
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/session:
+    get:
+      tags:
+        - Auth
+      operationId: getSession
+      summary: ╨в╨╡╨║╤Г╤Й╨░╤П ╤Б╨╡╤Б╤Б╨╕╤П ╨╕ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+      responses:
+        '200':
+          description: ╨в╨╡╨║╤Г╤Й╨░╤П ╤Б╨╡╤Б╤Б╨╕╤П
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: logout
+      summary: ╨Т╤Л╨╣╤В╨╕ ╨╕╨╖ ╤В╨╡╨║╤Г╤Й╨╡╨╣ ╤Б╨╡╤Б╤Б╨╕╨╕
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: ╨б╨╡╤Б╤Б╨╕╤П ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /auth/logout-all:
+    post:
+      tags:
+        - Auth
+      operationId: logoutAll
+      summary: ╨Т╤Л╨╣╤В╨╕ ╨╕╨╖ ╨▓╤Б╨╡╤Е ╤Б╨╡╤Б╤Б╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: ╨Т╤Б╨╡ ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╤Л
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /auth/sessions:
+    get:
+      tags:
+        - Auth
+      operationId: listMySessions
+      summary: ╨Ь╨╛╨╕ ╤Б╨╡╤Б╤Б╨╕╨╕
+      responses:
+        '200':
+          description: ╨б╨┐╨╕╤Б╨╛╨║ ╤Б╨╡╤Б╤Б╨╕╨╣
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/sessions/{sessionId}:
+    delete:
+      tags:
+        - Auth
+      operationId: revokeMySession
+      summary: ╨Ч╨░╨▓╨╡╤А╤И╨╕╤В╤М ╤Б╨▓╨╛╤О ╤Б╨╡╤Б╤Б╨╕╤О
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204':
+          description: ╨б╨╡╤Б╤Б╨╕╤П ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /auth/password/forgot:
+    post:
+      tags:
+        - Auth
+      operationId: requestPasswordReset
+      summary: ╨Ч╨░╨┐╤А╨╛╤Б╨╕╤В╤М ╤Б╨▒╤А╨╛╤Б ╨┐╨░╤А╨╛╨╗╤П
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '202':
+          description: ╨Ч╨░╨┐╤А╨╛╤Б ╨┐╤А╨╕╨╜╤П╤В
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/password/reset:
+    post:
+      tags:
+        - Auth
+      operationId: resetPassword
+      summary: ╨б╨▒╤А╨╛╤Б╨╕╤В╤М ╨┐╨░╤А╨╛╨╗╤М
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: ╨Я╨░╤А╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          $ref: '#/components/responses/Problem'
+  /auth/password/change:
+    post:
+      tags:
+        - Auth
+      operationId: changePassword
+      summary: ╨б╨╝╨╡╨╜╨╕╤В╤М ╨┐╨░╤А╨╛╨╗╤М
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: ╨Я╨░╤А╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users:
+    get:
+      tags:
+        - Users
+      operationId: listUsers
+      summary: ╨б╨┐╨╕╤Б╨╛╨║ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╣
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserSummary'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Users
+      operationId: adminCreateUser
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateUserRequest'
+      responses:
+        '201':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Б╨╛╨╖╨┤╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /users/me:
+    get:
+      tags:
+        - Users
+      operationId: getCurrentUser
+      summary: ╨в╨╡╨║╤Г╤Й╨╕╨╣ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╤Д╨╕╨╗╤М
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+        - Users
+      operationId: updateMyProfile
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╤Б╨▓╨╛╨╣ ╨┐╤А╨╛╤Д╨╕╨╗╤М
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╤Д╨╕╨╗╤М ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/batch:
+    post:
+      tags:
+        - Users
+      operationId: getUsersByIds
+      summary: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕ ╨┐╨╛ ID
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userIds
+              properties:
+                userIds:
+                  type: array
+                  maxItems: 200
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      operationId: getUser
+      summary: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╨┐╨╛ ID
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Users
+      operationId: deleteUser
+      summary: ╨Я╨╛╨╗╨╜╨╛╨╡ ╤Г╨┤╨░╨╗╨╡╨╜╨╕╨╡ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUserRequest'
+      responses:
+        '204':
+          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Г╨┤╨░╨╗╨╡╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/Problem'
+  /users/{userId}/roles:
+    get:
+      tags:
+        - Users
+      operationId: getUserRoles
+      summary: ╨У╨╗╨╛╨▒╨░╨╗╤М╨╜╤Л╨╡ ╤А╨╛╨╗╨╕ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: ╨а╨╛╨╗╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GlobalRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Users
+      operationId: setUserGlobalRoles
+      summary: ╨Ч╨░╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╨▒╨╛╤А ╨│╨╗╨╛╨▒╨░╨╗╤М╨╜╤Л╤Е ╤А╨╛╨╗╨╡╨╣
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roles
+              properties:
+                roles:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/GlobalRole'
+      responses:
+        '200':
+          description: ╨а╨╛╨╗╨╕ ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/Problem'
+  /users/{userId}/block:
+    post:
+      tags:
+        - Users
+      operationId: blockUser
+      summary: ╨Ч╨░╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockUserRequest'
+      responses:
+        '204':
+          description: ╨Ч╨░╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/{userId}/unblock:
+    post:
+      tags:
+        - Users
+      operationId: unblockUser
+      summary: ╨а╨░╨╖╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨а╨░╨╖╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /roles:
+    get:
+      tags:
+        - Access
+      operationId: getRoles
+      summary: ╨а╨╛╨╗╨╕
+      responses:
+        '200':
+          description: ╨а╨╛╨╗╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /permissions:
+    get:
+      tags:
+        - Access
+      operationId: getPermissions
+      summary: ╨Я╤А╨░╨▓╨░
+      responses:
+        '200':
+          description: ╨Я╤А╨░╨▓╨░
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Permission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /executors:
+    get:
+      tags:
+        - Executors
+      operationId: listExecutors
+      summary: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: ╨Ш╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Executor'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Executors
+      operationId: createExecutor
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lastName
+                - firstName
+              properties:
+                lastName:
+                  type: string
+                  maxLength: 100
+                firstName:
+                  type: string
+                  maxLength: 100
+                middleName:
+                  type: string
+                  maxLength: 100
+                position:
+                  type: string
+                  maxLength: 200
+      responses:
+        '201':
+          description: ╨б╨╛╨╖╨┤╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Executor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /executors/{executorId}:
+    patch:
+      tags:
+        - Executors
+      operationId: updateExecutor
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/ExecutorId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lastName:
+                  type: string
+                  maxLength: 100
+                firstName:
+                  type: string
+                  maxLength: 100
+                middleName:
+                  type: string
+                  maxLength: 100
+                position:
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Executor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Executors
+      operationId: deleteExecutor
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      parameters:
+        - $ref: '#/components/parameters/ExecutorId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /executors/{executorId}/link:
+    post:
+      tags:
+        - Executors
+      operationId: linkExecutorUser
+      summary: ╨б╨▓╤П╨╖╨░╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╤Б ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╝
+      parameters:
+        - $ref: '#/components/parameters/ExecutorId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: ╨б╨▓╤П╨╖╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Executor'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /executors/{executorId}/unlink:
+    post:
+      tags:
+        - Executors
+      operationId: unlinkExecutorUser
+      summary: ╨а╨░╨╖╨╛╤А╨▓╨░╤В╤М ╤Б╨▓╤П╨╖╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╤Б ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╝
+      parameters:
+        - $ref: '#/components/parameters/ExecutorId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨б╨▓╤П╨╖╤М ╤А╨░╨╖╨╛╤А╨▓╨░╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Executor'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects:
+    get:
+      tags:
+        - Projects
+      operationId: listProjects
+      summary: ╨Ф╨╛╤Б╤В╤Г╨┐╨╜╤Л╨╡ ╨┐╤А╨╛╨╡╨║╤В╤Л
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╨╡╨║╤В╤Л
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Projects
+      operationId: createProject
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: ╨Я╤А╨╛╨╡╨║╤В ╤Б╨╛╨╖╨┤╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags:
+        - Projects
+      operationId: getProject
+      summary: ╨Я╤А╨╛╨╡╨║╤В
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╨╡╨║╤В
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Projects
+      operationId: updateProject
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╨╡╨║╤В
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Projects
+      operationId: deleteProject
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨░╤А╤Е╨╕╨▓╨╜╤Л╨╣ ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨Я╤А╨╛╨╡╨║╤В ╤Г╨┤╨░╨╗╨╡╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/Problem'
+  /projects/{projectId}/archive:
+    post:
+      tags:
+        - Projects
+      operationId: archiveProject
+      summary: ╨Р╤А╤Е╨╕╨▓╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨Р╤А╤Е╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/unarchive:
+    post:
+      tags:
+        - Projects
+      operationId: unarchiveProject
+      summary: ╨Т╨╡╤А╨╜╤Г╤В╤М ╨┐╤А╨╛╨╡╨║╤В ╨▓ ╨░╨║╤В╨╕╨▓╨╜╤Л╨╡
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨Р╨║╤В╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/restore:
+    post:
+      tags:
+        - Projects
+      operationId: restoreProject
+      summary: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╕╤В╤М ╤Г╨┤╨░╨╗╨╡╨╜╨╜╤Л╨╣ ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜ ╨▓ ╨░╤А╤Е╨╕╨▓
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Problem'
+  /projects/{projectId}/transfer-owner:
+    post:
+      tags:
+        - Projects
+      operationId: transferProjectOwner
+      summary: ╨Я╨╡╤А╨╡╨┤╨░╤В╤М ╨▓╨╗╨░╨┤╨╡╨╜╨╕╨╡ ╨┐╤А╨╛╨╡╨║╤В╨╛╨╝
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - newOwnerUserId
+              properties:
+                newOwnerUserId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: ╨Т╨╗╨░╨┤╨╡╨╜╨╕╨╡ ╨┐╨╡╤А╨╡╨┤╨░╨╜╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/members:
+    get:
+      tags:
+        - Access
+      operationId: listProjectMembers
+      summary: ╨г╤З╨░╤Б╤В╨╜╨╕╨║╨╕ ╨┐╤А╨╛╨╡╨║╤В╨░
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨г╤З╨░╤Б╤В╨╜╨╕╨║╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectMembership'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /projects/{projectId}/members/{userId}:
+    patch:
+      tags:
+        - Access
+      operationId: updateProjectMemberRole
+      summary: ╨б╨╝╨╡╨╜╨╕╤В╤М ╤А╨╛╨╗╤М ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨░
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  $ref: '#/components/schemas/ProjectRole'
+      responses:
+        '200':
+          description: ╨а╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMembership'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Access
+      operationId: removeProjectMember
+      summary: ╨Ш╤Б╨║╨╗╤О╤З╨╕╤В╤М ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨░
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨г╤З╨░╤Б╤В╨╜╨╕╨║ ╨╕╤Б╨║╨╗╤О╤З╨╡╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/invitations:
+    get:
+      tags:
+        - Access
+      operationId: listProjectInvitations
+      summary: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╤П ╨┐╤А╨╛╨╡╨║╤В╨░
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invitation'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Access
+      operationId: createInvitation
+      summary: ╨Я╤А╨╕╨│╨╗╨░╤Б╨╕╤В╤М ╨▓ ╨┐╤А╨╛╨╡╨║╤В
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - role
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  $ref: '#/components/schemas/ProjectRole'
+      responses:
+        '201':
+          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡ ╤Б╨╛╨╖╨┤╨░╨╜╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /invitations/{invitationId}/resend:
+    post:
+      tags:
+        - Access
+      operationId: resendInvitation
+      summary: ╨Я╨╡╤А╨╡╨╛╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: ╨Я╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜╨╛ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /invitations/{invitationId}:
+    delete:
+      tags:
+        - Access
+      operationId: revokeInvitation
+      summary: ╨Ю╤В╨╛╨╖╨▓╨░╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨Ю╤В╨╛╨╖╨▓╨░╨╜╨╛
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /invitations/accept:
+    post:
+      tags:
+        - Access
+      operationId: acceptInvitation
+      summary: ╨Я╤А╨╕╨╜╤П╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡ ╨┐╤А╨╕╨╜╤П╤В╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMembership'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Problem'
+  /projects/{projectId}/diagrams:
+    get:
+      tags:
+        - Diagrams
+      operationId: listDiagrams
+      summary: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨┐╤А╨╛╨╡╨║╤В╨░
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Diagram'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Diagrams
+      operationId: createDiagram
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagramRequest'
+      responses:
+        '201':
+          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /diagrams/{diagramId}:
+    parameters:
+      - $ref: '#/components/parameters/DiagramId'
+    get:
+      tags:
+        - Diagrams
+      operationId: getDiagram
+      summary: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+      responses:
+        '200':
+          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Diagrams
+      operationId: updateDiagram
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDiagramRequest'
+      responses:
+        '200':
+          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Diagrams
+      operationId: deleteDiagram
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /diagrams/{diagramId}/snapshot:
+    get:
+      tags:
+        - Diagrams
+      operationId: getDiagramSnapshot
+      summary: ╨Я╨╛╨╗╨╜╤Л╨╣ ╤Б╨╜╨╕╨╝╨╛╨║ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+      responses:
+        '200':
+          description: ╨б╨╜╨╕╨╝╨╛╨║
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagramSnapshot'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /diagrams/{diagramId}/changes:
+    get:
+      tags:
+        - Diagrams
+      operationId: listDiagramChanges
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╕╤П ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨┐╨╛╤Б╨╗╨╡ ╤А╨╡╨▓╨╕╨╖╨╕╨╕
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - name: fromRevision
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                  - currentRevision
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DiagramChange'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+                  currentRevision:
+                    type: integer
+                    format: int64
+                  snapshotRequired:
+                    type: boolean
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /diagrams/{diagramId}/directions:
+    post:
+      tags:
+        - Plan
+      operationId: createDirection
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectionRequest'
+      responses:
+        '201':
+          description: ╨б╨╛╨╖╨┤╨░╨╜╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /directions/{directionId}:
+    parameters:
+      - $ref: '#/components/parameters/DirectionId'
+    patch:
+      tags:
+        - Plan
+      operationId: updateDirection
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectionRequest'
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags:
+        - Plan
+      operationId: deleteDirection
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: expectedVersion
+          in: query
+          schema:
+            type: integer
+        - name: baseRevision
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜╨╛
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /directions/{directionId}/responsible:
+    put:
+      tags:
+        - Plan
+      operationId: setDirectionResponsible
+      summary: ╨Э╨░╨╖╨╜╨░╤З╨╕╤В╤М ╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╡╨╜╨╜╨╛╨│╨╛ ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П
+      parameters:
+        - $ref: '#/components/parameters/DirectionId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assignment
+              properties:
+                assignment:
+                  $ref: '#/components/schemas/AssignmentInput'
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Э╨░╨╖╨╜╨░╤З╨╡╨╜╨╛
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /diagrams/{diagramId}/directions/reorder:
+    post:
+      tags:
+        - Plan
+      operationId: reorderDirections
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╨╛╤А╤П╨┤╨╛╨║ ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - directionIds
+              properties:
+                directionIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Я╨╛╤А╤П╨┤╨╛╨║ ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Direction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /diagrams/{diagramId}/tasks:
+    post:
+      tags:
+        - Plan
+      operationId: createTask
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: ╨Ч╨░╨┤╨░╤З╨░ ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags:
+        - Plan
+      operationId: getTask
+      summary: ╨Ч╨░╨┤╨░╤З╨░
+      responses:
+        '200':
+          description: ╨Ч╨░╨┤╨░╤З╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Plan
+      operationId: updateTask
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags:
+        - Plan
+      operationId: deleteTask
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: expectedVersion
+          in: query
+          schema:
+            type: integer
+        - name: baseRevision
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /tasks/{taskId}/move:
+    post:
+      tags:
+        - Plan
+      operationId: moveTask
+      summary: ╨Я╨╡╤А╨╡╨╝╨╡╤Б╤В╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parentTaskId:
+                  type:
+                    - string
+                    - 'null'
+                  format: uuid
+                directionId:
+                  type:
+                    - string
+                    - 'null'
+                  format: uuid
+                sortOrder:
+                  type: integer
+                expectedVersion:
+                  type: integer
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Я╨╡╤А╨╡╨╝╨╡╤Й╨╡╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /tasks/{taskId}/progress:
+    patch:
+      tags:
+        - Plan
+      operationId: updateTaskProgress
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╤Б╤В╨░╤В╤Г╤Б ╨╕ ╨┐╤А╨╛╨│╤А╨╡╤Б╤Б
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+                - progress
+              properties:
+                status:
+                  $ref: '#/components/schemas/TaskStatus'
+                progress:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                expectedVersion:
+                  type: integer
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Я╤А╨╛╨│╤А╨╡╤Б╤Б ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /tasks/{taskId}/assignments:
+    put:
+      tags:
+        - Plan
+      operationId: setTaskAssignments
+      summary: ╨Э╨░╨╖╨╜╨░╤З╨╕╤В╤М ╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╡╨╜╨╜╨╛╨│╨╛, ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╨╕ ╤Б╨╛╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assignments
+              properties:
+                assignments:
+                  type: array
+                  maxItems: 4
+                  items:
+                    $ref: '#/components/schemas/AssignmentInput'
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Э╨░╨╖╨╜╨░╤З╨╡╨╜╨╕╤П ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /diagrams/{diagramId}/dependencies:
+    get:
+      tags:
+        - Plan
+      operationId: listDependencies
+      summary: ╨Ч╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Ч╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dependency'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Plan
+      operationId: createDependency
+      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDependencyRequest'
+      responses:
+        '201':
+          description: ╨б╨╛╨╖╨┤╨░╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dependency'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /dependencies/{dependencyId}:
+    parameters:
+      - $ref: '#/components/parameters/DependencyId'
+    patch:
+      tags:
+        - Plan
+      operationId: updateDependency
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDependencyRequest'
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dependency'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Plan
+      operationId: deleteDependency
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /comments:
+    get:
+      tags:
+        - Comments
+      operationId: listComments
+      summary: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕ ╤Б╤Г╤Й╨╜╨╛╤Б╤В╨╕
+      parameters:
+        - name: entityType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - direction
+              - task
+        - name: entityId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Comments
+      operationId: createComment
+      summary: ╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: ╨б╨╛╨╖╨┤╨░╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /comments/{commentId}:
+    parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags:
+        - Comments
+      operationId: updateComment
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Comments
+      operationId: deleteComment
+      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨г╨┤╨░╨╗╨╡╨╜
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /diagrams/{diagramId}/holidays:
+    get:
+      tags:
+        - Plan
+      operationId: getHolidays
+      summary: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+      responses:
+        '200':
+          description: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Holiday'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags:
+        - Plan
+      operationId: updateHolidays
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/HolidayInput'
+                baseRevision:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕ ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Holiday'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /diagrams/{diagramId}/import:
+    post:
+      tags:
+        - ImportExport
+      operationId: startImport
+      summary: ╨Ч╨░╨┐╤Г╤Б╤В╨╕╤В╤М ╨░╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╨╕╨╝╨┐╨╛╤А╤В
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - format
+              properties:
+                format:
+                  $ref: '#/components/schemas/ImportFormat'
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: ╨Ш╨╝╨┐╨╛╤А╤В ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/Problem'
+  /import-jobs/{jobId}:
+    get:
+      tags:
+        - ImportExport
+      operationId: getImportStatus
+      summary: ╨б╤В╨░╤В╤Г╤Б ╨╕╨╝╨┐╨╛╤А╤В╨░
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: ╨б╤В╨░╤В╤Г╤Б
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /import-jobs/{jobId}/cancel:
+    post:
+      tags:
+        - ImportExport
+      operationId: cancelImport
+      summary: ╨Ю╤В╨╝╨╡╨╜╨╕╤В╤М ╨╕╨╝╨┐╨╛╤А╤В
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨Ш╨╝╨┐╨╛╤А╤В ╨╛╤В╨╝╨╡╨╜╨╡╨╜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /diagrams/{diagramId}/export:
+    get:
+      tags:
+        - ImportExport
+      operationId: exportDiagram
+      summary: ╨н╨║╤Б╨┐╨╛╤А╤В ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      parameters:
+        - $ref: '#/components/parameters/DiagramId'
+        - name: format
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ExportFormat'
+      responses:
+        '200':
+          description: ╨д╨░╨╣╨╗ ╤Н╨║╤Б╨┐╨╛╤А╤В╨░
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/Problem'
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      operationId: listNotifications
+      summary: ╨Ь╨╛╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: eventType
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ╨г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/unread-count:
+    get:
+      tags:
+        - Notifications
+      operationId: getUnreadCount
+      summary: ╨Ъ╨╛╨╗╨╕╤З╨╡╤Б╤В╨▓╨╛ ╨╜╨╡╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╤Е
+      responses:
+        '200':
+          description: ╨Ъ╨╛╨╗╨╕╤З╨╡╤Б╤В╨▓╨╛
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - count
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/{notificationId}/read:
+    post:
+      tags:
+        - Notifications
+      operationId: markNotificationRead
+      summary: ╨Ю╤В╨╝╨╡╤В╨╕╤В╤М ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╡ ╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╨╝
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: ╨Ю╤В╨╝╨╡╤З╨╡╨╜╨╛
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /notifications/read-all:
+    post:
+      tags:
+        - Notifications
+      operationId: markAllNotificationsRead
+      summary: ╨Ю╤В╨╝╨╡╤В╨╕╤В╤М ╨▓╤Б╨╡ ╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╨╝╨╕
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: ╨Ю╨▒╨╜╨╛╨▓╨╗╨╡╨╜╨╛
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - updated
+                properties:
+                  updated:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/preferences:
+    get:
+      tags:
+        - Notifications
+      operationId: getNotificationPreferences
+      summary: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╣
+      responses:
+        '200':
+          description: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationPreference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Notifications
+      operationId: updateNotificationPreferences
+      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╣
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NotificationPreference'
+      responses:
+        '200':
+          description: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationPreference'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /notifications/delivery-log:
+    get:
+      tags:
+        - Notifications
+      operationId: getDeliveryLog
+      summary: ╨Ц╤Г╤А╨╜╨░╨╗ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕ (╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А)
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: channel
+          in: query
+          schema:
+            $ref: '#/components/schemas/NotificationChannel'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DeliveryStatus'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: ╨Ц╤Г╤А╨╜╨░╨╗
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeliveryLogItem'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /notifications/delivery-stats:
+    get:
+      tags:
+        - Notifications
+      operationId: getDeliveryStats
+      summary: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕ (╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А)
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: channel
+          in: query
+          schema:
+            $ref: '#/components/schemas/NotificationChannel'
+      responses:
+        '200':
+          description: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryStats'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /audit/events:
+    get:
+      tags:
+        - Audit
+      operationId: listAuditEvents
+      summary: ╨Ю╨▒╤Й╨╕╨╣ ╨╢╤Г╤А╨╜╨░╨╗ ╨░╤Г╨┤╨╕╤В╨░
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/AuditFilter'
+      responses:
+        '200':
+          description: ╨б╨╛╨▒╤Л╤В╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /audit/events/{eventId}:
+    get:
+      tags:
+        - Audit
+      operationId: getAuditEvent
+      summary: ╨б╨╛╨▒╤Л╤В╨╕╨╡ ╨╛╨▒╤Й╨╡╨│╨╛ ╨╢╤Г╤А╨╜╨░╨╗╨░
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: occurredAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: ╨б╨╛╨▒╤Л╤В╨╕╨╡
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /audit/privileged-events:
+    get:
+      tags:
+        - Audit
+      operationId: listPrivilegedAuditEvents
+      summary: ╨Ц╤Г╤А╨╜╨░╨╗ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╣ ╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А╨╛╨▓
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/AuditFilter'
+      responses:
+        '200':
+          description: ╨б╨╛╨▒╤Л╤В╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - page
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  page:
+                    $ref: '#/components/schemas/PageMeta'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /audit/privileged-events/{eventId}:
+    get:
+      tags:
+        - Audit
+      operationId: getPrivilegedAuditEvent
+      summary: ╨б╨╛╨▒╤Л╤В╨╕╨╡ ╨╢╤Г╤А╨╜╨░╨╗╨░ ╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А╨╛╨▓
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: occurredAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: ╨б╨╛╨▒╤Л╤В╨╕╨╡
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /audit/actions:
+    get:
+      tags:
+        - Audit
+      operationId: getAuditActions
+      summary: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╣
+      responses:
+        '200':
+          description: ╨Ф╨╡╨╣╤Б╤В╨▓╨╕╤П
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditAction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /audit/stats:
+    get:
+      tags:
+        - Audit
+      operationId: getAuditStats
+      summary: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░ ╨░╤Г╨┤╨╕╤В╨░
+      parameters:
+        - $ref: '#/components/parameters/AuditFilter'
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+        - name: privilegedOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditStats'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-session
+    rememberCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-remember
+  headers:
+    SetCookie:
+      description: HTTP-only cookie ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╕ remember-╤В╨╛╨║╨╡╨╜╨░
+      schema:
+        type: array
+        items:
+          type: string
+  parameters:
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema:
+        type: string
+      description: CSRF-╤В╨╛╨║╨╡╨╜ ╨╕╨╖ cookie __Host-csrf
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ExecutorId:
+      name: executorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DiagramId:
+      name: diagramId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DirectionId:
+      name: directionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DependencyId:
+      name: dependencyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AuditFilter:
+      name: filter
+      in: query
+      schema:
+        type: string
+      description: JSON-╤Д╨╕╨╗╤М╤В╤А ╨░╤Г╨┤╨╕╤В╨░
+  responses:
+    BadRequest:
+      description: ╨Ю╤И╨╕╨▒╨║╨░ ╨▓╨░╨╗╨╕╨┤╨░╤Ж╨╕╨╕
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: ╨Э╨╡ ╨░╤Г╤В╨╡╨╜╤В╨╕╤Д╨╕╤Ж╨╕╤А╨╛╨▓╨░╨╜
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: ╨Э╨╡╤В ╨┐╤А╨░╨▓
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: ╨Э╨╡ ╨╜╨░╨╣╨┤╨╡╨╜╨╛
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: ╨Ъ╨╛╨╜╤Д╨╗╨╕╨║╤В
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: ╨Я╤А╨╡╨▓╤Л╤И╨╡╨╜ ╨╗╨╕╨╝╨╕╤В
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Problem:
+      description: ╨Ю╤И╨╕╨▒╨║╨░
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    PageMeta:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+        traceId:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              code:
+                type: string
+              message:
+                type: string
+    UserStatus:
+      type: string
+      enum:
+        - active
+        - blocked
+    GlobalRole:
+      type: string
+      enum:
+        - app_admin
+    ProjectRole:
+      type: string
+      enum:
+        - project_owner
+        - project_manager
+        - project_editor
+        - project_participant
+        - project_viewer
+    ProjectStatus:
+      type: string
+      enum:
+        - active
+        - archived
+        - deleted
+    TaskStatus:
+      type: string
+      enum:
+        - planned
+        - in_progress
+        - done
+        - blocked
+    Priority:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+        - critical
+    DayMode:
+      type: string
+      enum:
+        - calendar
+        - working
+    AssignmentRole:
+      type: string
+      enum:
+        - responsible
+        - executor
+        - co_executor
+    AssigneeType:
+      type: string
+      enum:
+        - user
+        - executor
+    ImportFormat:
+      type: string
+      enum:
+        - json
+        - csv
+    ExportFormat:
+      type: string
+      enum:
+        - json
+        - csv
+    NotificationChannel:
+      type: string
+      enum:
+        - internal
+        - email
+        - telegram
+    DeliveryStatus:
+      type: string
+      enum:
+        - pending
+        - sending
+        - sent
+        - failed
+        - retrying
+        - skipped
+    DigestFrequency:
+      type: string
+      enum:
+        - immediate
+        - daily
+        - weekly
+    AuditSeverity:
+      type: string
+      enum:
+        - info
+        - warning
+        - critical
+    UserRef:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        resolved:
+          type: boolean
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        lastName:
+          type: string
+        firstName:
+          type: string
+        middleName:
+          type: string
+        position:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        emailVerified:
+          type: boolean
+        emailVerifiedAt:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        locale:
+          type: string
+        globalRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/GlobalRole'
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        position:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        emailVerified:
+          type: boolean
+        globalRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/GlobalRole'
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        absoluteExpiresAt:
+          type: string
+          format: date-time
+        idleExpiresAt:
+          type: string
+          format: date-time
+        rememberExpiresAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        userAgent:
+          type: string
+        ip:
+          type: string
+        remember:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    AuthResponse:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        sessionId:
+          type: string
+          format: uuid
+    Role:
+      type: object
+      properties:
+        code:
+          type: string
+        scope:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    Permission:
+      type: object
+      properties:
+        code:
+          type: string
+        scope:
+          type: string
+        description:
+          type: string
+    Executor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lastName:
+          type: string
+          maxLength: 100
+        firstName:
+          type: string
+          maxLength: 100
+        middleName:
+          type: string
+          maxLength: 100
+        fullName:
+          type: string
+        position:
+          type: string
+        linkedUserId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        linkedUser:
+          $ref: '#/components/schemas/UserSummary'
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - lastName
+        - firstName
+    ProjectMembership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/ProjectRole'
+        status:
+          type: string
+        invitedAt:
+          type: string
+          format: date-time
+        joinedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+        revokedReason:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummary'
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/ProjectRole'
+        status:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        ownerUserId:
+          type: string
+          format: uuid
+        owner:
+          $ref: '#/components/schemas/UserRef'
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        myRole:
+          $ref: '#/components/schemas/ProjectRole'
+        settings:
+          type: object
+          additionalProperties: true
+        createdByUserId:
+          type: string
+          format: uuid
+        updatedByUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+        purgeAfter:
+          type: string
+          format: date-time
+        namesResolved:
+          type: boolean
+    Diagram:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        dayMode:
+          $ref: '#/components/schemas/DayMode'
+        currentRevision:
+          type: integer
+          format: int64
+        createdByUserId:
+          type: string
+          format: uuid
+        updatedByUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+    Assignment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/AssignmentRole'
+        assigneeType:
+          $ref: '#/components/schemas/AssigneeType'
+        assigneeId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        linkedUserId:
+          type: string
+          format: uuid
+        resolved:
+          type: boolean
+    AssignmentInput:
+      type: object
+      required:
+        - role
+        - assigneeType
+        - assigneeId
+      properties:
+        role:
+          $ref: '#/components/schemas/AssignmentRole'
+        assigneeType:
+          $ref: '#/components/schemas/AssigneeType'
+        assigneeId:
+          type: string
+          format: uuid
+    Direction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        wbsCode:
+          type: string
+        sortOrder:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        result:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        version:
+          type: integer
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assignment'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        directionId:
+          type: string
+          format: uuid
+        parentTaskId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        level:
+          type: integer
+          minimum: 2
+          maximum: 3
+        wbsCode:
+          type: string
+        sortOrder:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        result:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        actualEndDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        version:
+          type: integer
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assignment'
+        commentsCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Dependency:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        predecessorType:
+          type: string
+        predecessorId:
+          type: string
+          format: uuid
+        successorType:
+          type: string
+        successorId:
+          type: string
+          format: uuid
+        linkType:
+          type: string
+          enum:
+            - finish_to_start
+        color:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        lineStyle:
+          type: string
+          enum:
+            - solid
+            - dashed
+            - dotted
+        arrowShape:
+          type: string
+          enum:
+            - orthogonal
+            - straight
+            - curved
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+          enum:
+            - direction
+            - task
+        entityId:
+          type: string
+          format: uuid
+        authorUserId:
+          type: string
+          format: uuid
+        author:
+          $ref: '#/components/schemas/UserRef'
+        mentionedUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        mentionedUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRef'
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Holiday:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        holidayDate:
+          type: string
+          format: date
+        name:
+          type: string
+    HolidayInput:
+      type: object
+      required:
+        - holidayDate
+      properties:
+        holidayDate:
+          type: string
+          format: date
+        name:
+          type: string
+    DiagramChange:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        diagramId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        operation:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        payload:
+          type: object
+          additionalProperties: true
+        actorUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    DiagramSnapshot:
+      type: object
+      required:
+        - diagram
+        - directions
+        - tasks
+        - dependencies
+        - comments
+        - holidays
+        - currentRevision
+      properties:
+        diagram:
+          $ref: '#/components/schemas/Diagram'
+        directions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Direction'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dependency'
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        holidays:
+          type: array
+          items:
+            $ref: '#/components/schemas/Holiday'
+        currentRevision:
+          type: integer
+          format: int64
+        namesResolved:
+          type: boolean
+    ImportIssue:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        wbsCode:
+          type: string
+        taskName:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+    ImportReport:
+      type: object
+      properties:
+        directionsCount:
+          type: integer
+        tasksCount:
+          type: integer
+        assignmentsCount:
+          type: integer
+        withoutResponsibleCount:
+          type: integer
+        withoutExecutorCount:
+          type: integer
+        withoutCoexecutorCount:
+          type: integer
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportIssue'
+    ImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        initiatorUserId:
+          type: string
+          format: uuid
+        format:
+          $ref: '#/components/schemas/ImportFormat'
+        status:
+          type: string
+          enum:
+            - queued
+            - processing
+            - completed
+            - failed
+            - cancelled
+        fileName:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        report:
+          $ref: '#/components/schemas/ImportReport'
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+    NotificationPreference:
+      type: object
+      required:
+        - eventType
+        - channel
+        - enabled
+      properties:
+        eventType:
+          type: string
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        enabled:
+          type: boolean
+        quietHoursStart:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        quietHoursEnd:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        timezone:
+          type: string
+        digestFrequency:
+          $ref: '#/components/schemas/DigestFrequency'
+        updatedAt:
+          type: string
+          format: date-time
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        recipientUserId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+        isRead:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+    DeliveryLogItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        notificationId:
+          type: string
+          format: uuid
+        recipientUserId:
+          type: string
+          format: uuid
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        status:
+          $ref: '#/components/schemas/DeliveryStatus'
+        attemptCount:
+          type: integer
+        providerMessageId:
+          type: string
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+    DeliveryStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        sent:
+          type: integer
+        failed:
+          type: integer
+        retrying:
+          type: integer
+    AuditAction:
+      type: object
+      properties:
+        code:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        severity:
+          $ref: '#/components/schemas/AuditSeverity'
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        actorUserId:
+          type: string
+          format: uuid
+        actorType:
+          type: string
+          enum:
+            - user
+            - service
+            - system
+        actorRoles:
+          type: array
+          items:
+            type: string
+        actionCode:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        diagramId:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        ip:
+          type: string
+        userAgent:
+          type: string
+        beforeData:
+          type: object
+          additionalProperties: true
+        afterData:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+        sourceEventId:
+          type: string
+          format: uuid
+        sourceService:
+          type: string
+        severity:
+          $ref: '#/components/schemas/AuditSeverity'
+        createdAt:
+          type: string
+          format: date-time
+    AuditStats:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              count:
+                type: integer
+                format: int64
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - lastName
+        - firstName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        lastName:
+          type: string
+          maxLength: 100
+        firstName:
+          type: string
+          maxLength: 100
+        middleName:
+          type: string
+          maxLength: 100
+        displayName:
+          type: string
+          maxLength: 200
+        timezone:
+          type: string
+        locale:
+          type: string
+    RegisterResponse:
+      type: object
+      required:
+        - userId
+        - requiresEmailVerification
+      properties:
+        userId:
+          type: string
+          format: uuid
+        requiresEmailVerification:
+          type: boolean
+    VerifyEmailRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+    VerifyEmailResponse:
+      type: object
+      required:
+        - userId
+        - verified
+      properties:
+        userId:
+          type: string
+          format: uuid
+        verified:
+          type: boolean
+    EmailRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        rememberMe:
+          type: boolean
+          default: false
+    ResetPasswordRequest:
+      type: object
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          writeOnly: true
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+    AdminCreateUserRequest:
+      type: object
+      required:
+        - email
+        - lastName
+        - firstName
+      properties:
+        email:
+          type: string
+          format: email
+        lastName:
+          type: string
+          maxLength: 100
+        firstName:
+          type: string
+          maxLength: 100
+        middleName:
+          type: string
+          maxLength: 100
+        displayName:
+          type: string
+          maxLength: 200
+        position:
+          type: string
+          maxLength: 200
+        timezone:
+          type: string
+        locale:
+          type: string
+        globalRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/GlobalRole'
+    UpdateProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          maxLength: 200
+        lastName:
+          type: string
+          maxLength: 100
+        firstName:
+          type: string
+          maxLength: 100
+        middleName:
+          type: string
+          maxLength: 100
+        position:
+          type: string
+          maxLength: 200
+        timezone:
+          type: string
+        locale:
+          type: string
+    BlockUserRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    DeleteUserRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        settings:
+          type: object
+          additionalProperties: true
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        settings:
+          type: object
+          additionalProperties: true
+    CreateDiagramRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        dayMode:
+          $ref: '#/components/schemas/DayMode'
+    UpdateDiagramRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        dayMode:
+          $ref: '#/components/schemas/DayMode'
+    CreateDirectionRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        result:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+          maxLength: 40
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        sortOrder:
+          type: integer
+    UpdateDirectionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        result:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+          maxLength: 40
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        expectedVersion:
+          type: integer
+        baseRevision:
+          type: integer
+          format: int64
+    CreateTaskRequest:
+      type: object
+      required:
+        - directionId
+        - name
+      properties:
+        directionId:
+          type: string
+          format: uuid
+        parentTaskId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        result:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+          maxLength: 40
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        sortOrder:
+          type: integer
+    UpdateTaskRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        result:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        actualEndDate:
+          type: string
+          format: date-time
+        jiraNumber:
+          type: string
+          maxLength: 40
+        bpFlag:
+          type: boolean
+        spFlag:
+          type: boolean
+        expectedVersion:
+          type: integer
+        baseRevision:
+          type: integer
+          format: int64
+    CreateDependencyRequest:
+      type: object
+      required:
+        - predecessorType
+        - predecessorId
+        - successorType
+        - successorId
+      properties:
+        predecessorType:
+          type: string
+          enum:
+            - direction
+            - task
+        predecessorId:
+          type: string
+          format: uuid
+        successorType:
+          type: string
+          enum:
+            - direction
+            - task
+        successorId:
+          type: string
+          format: uuid
+        color:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        lineStyle:
+          type: string
+          enum:
+            - solid
+            - dashed
+            - dotted
+        arrowShape:
+          type: string
+          enum:
+            - orthogonal
+            - straight
+            - curved
+        baseRevision:
+          type: integer
+          format: int64
+    UpdateDependencyRequest:
+      type: object
+      properties:
+        predecessorType:
+          type: string
+          enum:
+            - direction
+            - task
+        predecessorId:
+          type: string
+          format: uuid
+        successorType:
+          type: string
+          enum:
+            - direction
+            - task
+        successorId:
+          type: string
+          format: uuid
+        color:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        lineStyle:
+          type: string
+          enum:
+            - solid
+            - dashed
+            - dotted
+        arrowShape:
+          type: string
+          enum:
+            - orthogonal
+            - straight
+            - curved
+        baseRevision:
+          type: integer
+          format: int64
+    CreateCommentRequest:
+      type: object
+      required:
+        - entityType
+        - entityId
+        - body
+      properties:
+        entityType:
+          type: string
+          enum:
+            - direction
+            - task
+        entityId:
+          type: string
+          format: uuid
+        body:
+          type: string
+          minLength: 1
+        mentionedUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateCommentRequest:
+      type: object
+      required:
+        - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+        mentionedUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+

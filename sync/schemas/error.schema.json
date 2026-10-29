@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/ws-error.json",
+  "title": "WsError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "code", "message", "recoverable"],
+  "properties": {
+    "type": { "const": "error" },
+    "requestId": { "type": ["string", "null"], "format": "uuid" },
+    "code": { "type": "string" },
+    "message": { "type": "string" },
+    "recoverable": { "type": "boolean" }
+  }
+}

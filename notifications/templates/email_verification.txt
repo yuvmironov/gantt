@@ -1,0 +1,7 @@
+Здравствуйте, {{displayName}}!
+
+Подтвердите email для доступа к SMART OATI.
+
+{{actionUrl}}
+
+Ссылка действует до {{expiresAt}}.

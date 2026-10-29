@@ -1,0 +1,548 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/project-export.v2.schema.json",
+  "title": "SMART OATI Project Export v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatVersion",
+    "exportedAt",
+    "projectId",
+    "diagramId",
+    "baseRevision",
+    "project",
+    "diagram",
+    "workdays",
+    "executors",
+    "directions",
+    "tasks",
+    "dependencies",
+    "comments"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": 2
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "projectId": {
+      "$ref": "#/$defs/uuid"
+    },
+    "diagramId": {
+      "$ref": "#/$defs/uuid"
+    },
+    "baseRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "diagram": {
+      "$ref": "#/$defs/diagram"
+    },
+    "workdays": {
+      "$ref": "#/$defs/workdays"
+    },
+    "executors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/executor"
+      }
+    },
+    "directions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/direction"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/comment"
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "assigneeType",
+        "assigneeId"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "responsible",
+            "executor",
+            "co_executor"
+          ]
+        },
+        "assigneeType": {
+          "type": "string",
+          "enum": [
+            "user",
+            "executor"
+          ]
+        },
+        "assigneeId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "diagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "dayMode",
+        "currentRevision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string"
+        },
+        "dayMode": {
+          "type": "string",
+          "enum": [
+            "calendar",
+            "working"
+          ]
+        },
+        "currentRevision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "holiday": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date"
+      ],
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    },
+    "workdays": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "holidays"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "calendar",
+            "working"
+          ]
+        },
+        "holidays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/holiday"
+          }
+        }
+      }
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lastName",
+        "firstName",
+        "fullName"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "lastName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "firstName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "middleName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "fullName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "position": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "linkedUserId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "wbsCode",
+        "name",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "wbsCode": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "sortOrder": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "startDate": {
+          "$ref": "#/$defs/date"
+        },
+        "endDate": {
+          "$ref": "#/$defs/date"
+        },
+        "jiraNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "bpFlag": {
+          "type": "boolean"
+        },
+        "spFlag": {
+          "type": "boolean"
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assignment"
+          }
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "wbsCode",
+        "level",
+        "name",
+        "status",
+        "progress",
+        "priority",
+        "directionId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "directionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "parentTaskId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "level": {
+          "type": "integer",
+          "enum": [
+            2,
+            3
+          ]
+        },
+        "wbsCode": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "sortOrder": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "in_progress",
+            "done",
+            "blocked"
+          ]
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "startDate": {
+          "$ref": "#/$defs/date"
+        },
+        "endDate": {
+          "$ref": "#/$defs/date"
+        },
+        "actualEndDate": {
+          "$ref": "#/$defs/date"
+        },
+        "jiraNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "bpFlag": {
+          "type": "boolean"
+        },
+        "spFlag": {
+          "type": "boolean"
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assignment"
+          }
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "predecessorType",
+        "predecessorId",
+        "successorType",
+        "successorId",
+        "linkType"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "predecessorType": {
+          "type": "string",
+          "enum": [
+            "direction",
+            "task"
+          ]
+        },
+        "predecessorId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "predecessorWbs": {
+          "type": "string"
+        },
+        "successorType": {
+          "type": "string",
+          "enum": [
+            "direction",
+            "task"
+          ]
+        },
+        "successorId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "successorWbs": {
+          "type": "string"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": [
+            "finish_to_start"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "lineStyle": {
+          "type": "string",
+          "enum": [
+            "solid",
+            "dashed",
+            "dotted"
+          ]
+        },
+        "arrowShape": {
+          "type": "string",
+          "enum": [
+            "orthogonal",
+            "straight",
+            "curved"
+          ]
+        }
+      }
+    },
+    "comment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entityType",
+        "entityId",
+        "body",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "entityType": {
+          "type": "string",
+          "enum": [
+            "direction",
+            "task"
+          ]
+        },
+        "entityId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "authorUserId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "authorDisplayName": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "mentionedUserIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "createdAt": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+Вы добавлены в проект «{{projectName}}» с ролью «{{roleName}}».
+
+{{actionUrl}}

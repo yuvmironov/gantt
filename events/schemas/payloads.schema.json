@@ -1,0 +1,725 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/payloads.schema.json",
+  "title": "SMART OATI Event Payloads",
+  "$defs": {
+    "Uuid": { "type": "string", "format": "uuid" },
+    "DateTime": { "type": "string", "format": "date-time" },
+    "Date": { "type": "string", "format": "date" },
+    "UserRef": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "displayName": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Project": {
+      "type": "object",
+      "required": ["projectId", "name", "ownerUserId", "status"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerUserId": { "$ref": "#/$defs/Uuid" },
+        "status": { "type": "string", "enum": ["active", "archived", "deleted"] },
+        "archivedAt": { "$ref": "#/$defs/DateTime" },
+        "deletedAt": { "$ref": "#/$defs/DateTime" },
+        "purgeAfter": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "Diagram": {
+      "type": "object",
+      "required": ["diagramId", "projectId", "name", "dayMode", "currentRevision"],
+      "properties": {
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "name": { "type": "string" },
+        "dayMode": { "type": "string", "enum": ["calendar", "working"] },
+        "currentRevision": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "Assignment": {
+      "type": "object",
+      "required": ["role", "assigneeType", "assigneeId"],
+      "properties": {
+        "role": { "type": "string", "enum": ["responsible", "executor", "co_executor"] },
+        "assigneeType": { "type": "string", "enum": ["user", "executor"] },
+        "assigneeId": { "$ref": "#/$defs/Uuid" },
+        "displayName": { "type": "string" },
+        "linkedUserId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "Direction": {
+      "type": "object",
+      "required": ["directionId", "diagramId", "wbsCode", "name", "priority"],
+      "properties": {
+        "directionId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "wbsCode": { "type": "string" },
+        "name": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "startDate": { "$ref": "#/$defs/Date" },
+        "endDate": { "$ref": "#/$defs/Date" },
+        "assignments": { "type": "array", "items": { "$ref": "#/$defs/Assignment" } }
+      },
+      "additionalProperties": false
+    },
+    "Task": {
+      "type": "object",
+      "required": ["taskId", "diagramId", "directionId", "level", "wbsCode", "name", "status", "progress", "priority"],
+      "properties": {
+        "taskId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "directionId": { "$ref": "#/$defs/Uuid" },
+        "parentTaskId": { "$ref": "#/$defs/Uuid" },
+        "level": { "type": "integer", "enum": [2, 3] },
+        "wbsCode": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["planned", "in_progress", "done", "blocked"] },
+        "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "startDate": { "$ref": "#/$defs/Date" },
+        "endDate": { "$ref": "#/$defs/Date" },
+        "actualEndDate": { "$ref": "#/$defs/Date" },
+        "assignments": { "type": "array", "items": { "$ref": "#/$defs/Assignment" } }
+      },
+      "additionalProperties": false
+    },
+    "Dependency": {
+      "type": "object",
+      "required": ["dependencyId", "diagramId", "predecessorType", "predecessorId", "successorType", "successorId", "linkType"],
+      "properties": {
+        "dependencyId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "predecessorType": { "type": "string", "enum": ["direction", "task"] },
+        "predecessorId": { "$ref": "#/$defs/Uuid" },
+        "successorType": { "type": "string", "enum": ["direction", "task"] },
+        "successorId": { "$ref": "#/$defs/Uuid" },
+        "linkType": { "type": "string", "enum": ["finish_to_start"] },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "lineStyle": { "type": "string", "enum": ["solid", "dashed", "dotted"] },
+        "arrowShape": { "type": "string", "enum": ["orthogonal", "straight", "curved"] }
+      },
+      "additionalProperties": false
+    },
+    "ImportIssue": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "taskId": { "$ref": "#/$defs/Uuid" },
+        "wbsCode": { "type": "string" },
+        "taskName": { "type": "string" },
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ImportReport": {
+      "type": "object",
+      "required": ["directionsCount", "tasksCount", "assignmentsCount", "issues"],
+      "properties": {
+        "directionsCount": { "type": "integer", "minimum": 0 },
+        "tasksCount": { "type": "integer", "minimum": 0 },
+        "assignmentsCount": { "type": "integer", "minimum": 0 },
+        "withoutResponsibleCount": { "type": "integer", "minimum": 0 },
+        "withoutExecutorCount": { "type": "integer", "minimum": 0 },
+        "withoutCoexecutorCount": { "type": "integer", "minimum": 0 },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/ImportIssue" } }
+      },
+      "additionalProperties": false
+    },
+    "UserCreatedPayload": {
+      "type": "object",
+      "required": ["userId", "displayName", "globalRoles"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "displayName": { "type": "string" },
+        "globalRoles": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "UserUpdatedPayload": {
+      "type": "object",
+      "required": ["userId", "changedFields"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "UserEmailVerifiedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "UserPasswordChangedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "UserBlockedPayload": {
+      "type": "object",
+      "required": ["userId", "reasonCode"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "reasonCode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "UserUnblockedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "UserDeletedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "UserRolesUpdatedPayload": {
+      "type": "object",
+      "required": ["userId", "previousRoles", "newRoles", "actorUserId"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "previousRoles": { "type": "array", "items": { "type": "string" } },
+        "newRoles": { "type": "array", "items": { "type": "string" } },
+        "actorUserId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "AuthLoginSucceededPayload": {
+      "type": "object",
+      "required": ["userId", "sessionId"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "sessionId": { "$ref": "#/$defs/Uuid" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "AuthLoginFailedPayload": {
+      "type": "object",
+      "required": ["reasonCode"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "reasonCode": { "type": "string" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "AuthLogoutPayload": {
+      "type": "object",
+      "required": ["userId", "sessionId"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "sessionId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "AuthSessionRestoredPayload": {
+      "type": "object",
+      "required": ["userId", "sessionId"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "sessionId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectCreatedPayload": {
+      "type": "object",
+      "required": ["project"],
+      "properties": { "project": { "$ref": "#/$defs/Project" } },
+      "additionalProperties": false
+    },
+    "ProjectUpdatedPayload": {
+      "type": "object",
+      "required": ["project", "changedFields"],
+      "properties": {
+        "project": { "$ref": "#/$defs/Project" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "ProjectArchivedPayload": {
+      "type": "object",
+      "required": ["projectId", "archivedAt"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "archivedAt": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectUnarchivedPayload": {
+      "type": "object",
+      "required": ["projectId"],
+      "properties": { "projectId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "ProjectDeletedPayload": {
+      "type": "object",
+      "required": ["projectId", "deletedAt", "purgeAfter"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "deletedAt": { "$ref": "#/$defs/DateTime" },
+        "purgeAfter": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectRestoredPayload": {
+      "type": "object",
+      "required": ["projectId", "restoredAt", "status"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "restoredAt": { "$ref": "#/$defs/DateTime" },
+        "status": { "type": "string", "enum": ["archived"] }
+      },
+      "additionalProperties": false
+    },
+    "ProjectPurgedPayload": {
+      "type": "object",
+      "required": ["projectId", "purgedAt"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "purgedAt": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectOwnerTransferredPayload": {
+      "type": "object",
+      "required": ["projectId", "previousOwnerUserId", "newOwnerUserId"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "previousOwnerUserId": { "$ref": "#/$defs/Uuid" },
+        "newOwnerUserId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectMemberAddedPayload": {
+      "type": "object",
+      "required": ["projectId", "userId", "role", "status"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "role": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectMemberRoleChangedPayload": {
+      "type": "object",
+      "required": ["projectId", "userId", "previousRole", "newRole"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "previousRole": { "type": "string" },
+        "newRole": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ProjectMemberRemovedPayload": {
+      "type": "object",
+      "required": ["projectId", "userId", "reason"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "InvitationCreatedPayload": {
+      "type": "object",
+      "required": ["invitationId", "projectId", "role", "expiresAt"],
+      "properties": {
+        "invitationId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "role": { "type": "string" },
+        "expiresAt": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "InvitationResentPayload": {
+      "type": "object",
+      "required": ["invitationId", "projectId", "expiresAt"],
+      "properties": {
+        "invitationId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "expiresAt": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "InvitationAcceptedPayload": {
+      "type": "object",
+      "required": ["invitationId", "projectId", "userId", "role"],
+      "properties": {
+        "invitationId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "role": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "InvitationRevokedPayload": {
+      "type": "object",
+      "required": ["invitationId", "projectId"],
+      "properties": {
+        "invitationId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutorCreatedPayload": {
+      "type": "object",
+      "required": ["executorId", "isActive"],
+      "properties": {
+        "executorId": { "$ref": "#/$defs/Uuid" },
+        "isActive": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutorUpdatedPayload": {
+      "type": "object",
+      "required": ["executorId", "isActive"],
+      "properties": {
+        "executorId": { "$ref": "#/$defs/Uuid" },
+        "linkedUserId": { "$ref": "#/$defs/Uuid" },
+        "isActive": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutorDeletedPayload": {
+      "type": "object",
+      "required": ["executorId"],
+      "properties": { "executorId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "ExecutorLinkedPayload": {
+      "type": "object",
+      "required": ["executorId", "userId"],
+      "properties": {
+        "executorId": { "$ref": "#/$defs/Uuid" },
+        "userId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "ExecutorUnlinkedPayload": {
+      "type": "object",
+      "required": ["executorId"],
+      "properties": { "executorId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "DiagramCreatedPayload": {
+      "type": "object",
+      "required": ["diagram"],
+      "properties": { "diagram": { "$ref": "#/$defs/Diagram" } },
+      "additionalProperties": false
+    },
+    "DiagramUpdatedPayload": {
+      "type": "object",
+      "required": ["diagram", "changedFields"],
+      "properties": {
+        "diagram": { "$ref": "#/$defs/Diagram" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "DiagramDeletedPayload": {
+      "type": "object",
+      "required": ["diagramId", "projectId"],
+      "properties": {
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "DiagramChangedPayload": {
+      "$ref": "diagram-changed.schema.json"
+    },
+    "DirectionCreatedPayload": {
+      "type": "object",
+      "required": ["direction"],
+      "properties": { "direction": { "$ref": "#/$defs/Direction" } },
+      "additionalProperties": false
+    },
+    "DirectionUpdatedPayload": {
+      "type": "object",
+      "required": ["direction", "changedFields"],
+      "properties": {
+        "direction": { "$ref": "#/$defs/Direction" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "DirectionDeletedPayload": {
+      "type": "object",
+      "required": ["directionId", "diagramId"],
+      "properties": {
+        "directionId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "TaskCreatedPayload": {
+      "type": "object",
+      "required": ["task"],
+      "properties": { "task": { "$ref": "#/$defs/Task" } },
+      "additionalProperties": false
+    },
+    "TaskUpdatedPayload": {
+      "type": "object",
+      "required": ["task", "changedFields"],
+      "properties": {
+        "task": { "$ref": "#/$defs/Task" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "TaskDeletedPayload": {
+      "type": "object",
+      "required": ["taskId", "diagramId"],
+      "properties": {
+        "taskId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "TaskAssignmentsChangedPayload": {
+      "type": "object",
+      "required": ["task", "assignments"],
+      "properties": {
+        "task": { "$ref": "#/$defs/Task" },
+        "assignments": { "type": "array", "items": { "$ref": "#/$defs/Assignment" } }
+      },
+      "additionalProperties": false
+    },
+    "DependencyCreatedPayload": {
+      "type": "object",
+      "required": ["dependency"],
+      "properties": { "dependency": { "$ref": "#/$defs/Dependency" } },
+      "additionalProperties": false
+    },
+    "DependencyUpdatedPayload": {
+      "type": "object",
+      "required": ["dependency", "changedFields"],
+      "properties": {
+        "dependency": { "$ref": "#/$defs/Dependency" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "DependencyDeletedPayload": {
+      "type": "object",
+      "required": ["dependencyId", "diagramId"],
+      "properties": {
+        "dependencyId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "DependencyViolatedPayload": {
+      "type": "object",
+      "required": ["dependencyId", "diagramId", "predecessorType", "predecessorId", "successorType", "successorId", "revision"],
+      "properties": {
+        "dependencyId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "predecessorType": { "type": "string", "enum": ["direction", "task"] },
+        "predecessorId": { "$ref": "#/$defs/Uuid" },
+        "successorType": { "type": "string", "enum": ["direction", "task"] },
+        "successorId": { "$ref": "#/$defs/Uuid" },
+        "revision": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "DiagramCriticalPathChangedPayload": {
+      "type": "object",
+      "required": ["diagramId", "revision", "criticalTaskIds", "previousCriticalTaskIds"],
+      "properties": {
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "criticalTaskIds": { "type": "array", "items": { "$ref": "#/$defs/Uuid" } },
+        "previousCriticalTaskIds": { "type": "array", "items": { "$ref": "#/$defs/Uuid" } }
+      },
+      "additionalProperties": false
+    },
+    "CommentCreatedPayload": {
+      "type": "object",
+      "required": ["commentId", "entityType", "entityId", "projectId", "diagramId", "authorUserId", "mentionedUserIds", "bodyPreview"],
+      "properties": {
+        "commentId": { "$ref": "#/$defs/Uuid" },
+        "entityType": { "type": "string", "enum": ["direction", "task"] },
+        "entityId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "authorUserId": { "$ref": "#/$defs/Uuid" },
+        "mentionedUserIds": { "type": "array", "items": { "$ref": "#/$defs/Uuid" } },
+        "bodyPreview": { "type": "string", "maxLength": 200 }
+      },
+      "additionalProperties": false
+    },
+    "CommentUpdatedPayload": {
+      "type": "object",
+      "required": ["commentId", "entityType", "entityId", "changedFields"],
+      "properties": {
+        "commentId": { "$ref": "#/$defs/Uuid" },
+        "entityType": { "type": "string", "enum": ["direction", "task"] },
+        "entityId": { "$ref": "#/$defs/Uuid" },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "CommentDeletedPayload": {
+      "type": "object",
+      "required": ["commentId", "entityType", "entityId"],
+      "properties": {
+        "commentId": { "$ref": "#/$defs/Uuid" },
+        "entityType": { "type": "string", "enum": ["direction", "task"] },
+        "entityId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    },
+    "HolidaysUpdatedPayload": {
+      "type": "object",
+      "required": ["diagramId", "holidayDates"],
+      "properties": {
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "holidayDates": { "type": "array", "items": { "$ref": "#/$defs/Date" } }
+      },
+      "additionalProperties": false
+    },
+    "DiagramImportStartedPayload": {
+      "type": "object",
+      "required": ["jobId", "projectId", "diagramId", "status"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "format": { "type": "string", "enum": ["json", "csv"] },
+        "status": { "type": "string", "enum": ["queued", "processing"] }
+      },
+      "additionalProperties": false
+    },
+    "DiagramImportCompletedPayload": {
+      "type": "object",
+      "required": ["jobId", "projectId", "diagramId", "status", "report"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "status": { "type": "string", "enum": ["completed"] },
+        "report": { "$ref": "#/$defs/ImportReport" }
+      },
+      "additionalProperties": false
+    },
+    "DiagramImportFailedPayload": {
+      "type": "object",
+      "required": ["jobId", "projectId", "diagramId", "status", "errorCode"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "status": { "type": "string", "enum": ["failed"] },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "NotificationCreatedPayload": {
+      "type": "object",
+      "required": ["notificationId", "recipientUserId", "eventType", "title"],
+      "properties": {
+        "notificationId": { "$ref": "#/$defs/Uuid" },
+        "recipientUserId": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "diagramId": { "$ref": "#/$defs/Uuid" },
+        "eventType": { "type": "string" },
+        "channel": { "type": "string", "enum": ["internal", "email", "telegram"] },
+        "title": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "NotificationDeliverySentPayload": {
+      "type": "object",
+      "required": ["notificationId", "channel", "sentAt"],
+      "properties": {
+        "notificationId": { "$ref": "#/$defs/Uuid" },
+        "channel": { "type": "string", "enum": ["internal", "email", "telegram"] },
+        "providerMessageId": { "type": "string" },
+        "sentAt": { "$ref": "#/$defs/DateTime" }
+      },
+      "additionalProperties": false
+    },
+    "NotificationDeliveryFailedPayload": {
+      "type": "object",
+      "required": ["notificationId", "channel", "attemptCount", "errorCode"],
+      "properties": {
+        "notificationId": { "$ref": "#/$defs/Uuid" },
+        "channel": { "type": "string", "enum": ["internal", "email", "telegram"] },
+        "attemptCount": { "type": "integer", "minimum": 0 },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "NotificationPreferencesUpdatedPayload": {
+      "type": "object",
+      "required": ["userId", "changedKeys"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/Uuid" },
+        "changedKeys": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "AuthEmailSentPayload": {
+      "type": "object",
+      "required": ["jobId", "templateCode", "status"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/Uuid" },
+        "templateCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["sent"] }
+      },
+      "additionalProperties": false
+    },
+    "AuthEmailFailedPayload": {
+      "type": "object",
+      "required": ["jobId", "templateCode", "status", "errorCode"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/Uuid" },
+        "templateCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["failed"] },
+        "errorCode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "TelegramLinkedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "TelegramUnlinkedPayload": {
+      "type": "object",
+      "required": ["userId"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" } },
+      "additionalProperties": false
+    },
+    "SettingsUpdatedPayload": {
+      "type": "object",
+      "required": ["keys", "actorUserId"],
+      "properties": {
+        "keys": { "type": "array", "items": { "type": "string" } },
+        "actorUserId": { "$ref": "#/$defs/Uuid" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

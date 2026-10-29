@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "code": "email_verification",
+      "subject": "Подтвердите email в SMART OATI",
+      "variables": [
+        "displayName",
+        "actionUrl",
+        "expiresAt"
+      ],
+      "text": "email_verification.txt",
+      "html": "email_verification.html",
+      "channels": [
+        "email"
+      ]
+    },
+    {
+      "code": "password_reset",
+      "subject": "Сброс пароля в SMART OATI",
+      "variables": [
+        "displayName",
+        "actionUrl",
+        "expiresAt"
+      ],
+      "text": "password_reset.txt",
+      "html": "password_reset.html",
+      "channels": [
+        "email"
+      ]
+    },
+    {
+      "code": "project_invitation",
+      "subject": "Приглашение в проект {{projectName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "inviterName",
+        "roleName",
+        "actionUrl",
+        "expiresAt"
+      ],
+      "text": "project_invitation.txt",
+      "html": "project_invitation.html",
+      "channels": [
+        "email"
+      ]
+    },
+    {
+      "code": "account_activation",
+      "subject": "Активация учетной записи SMART OATI",
+      "variables": [
+        "displayName",
+        "actionUrl",
+        "expiresAt"
+      ],
+      "text": "account_activation.txt",
+      "html": "account_activation.html",
+      "channels": [
+        "email"
+      ]
+    },
+    {
+      "code": "task_assigned",
+      "subject": "Вам назначена задача {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "roleName",
+        "actionUrl"
+      ],
+      "text": "task_assigned.txt",
+      "html": "task_assigned.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "due_soon",
+      "subject": "Скоро срок задачи {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "dueDate",
+        "actionUrl"
+      ],
+      "text": "due_soon.txt",
+      "html": "due_soon.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "overdue",
+      "subject": "Просрочена задача {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "dueDate",
+        "actionUrl"
+      ],
+      "text": "overdue.txt",
+      "html": "overdue.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "task_blocked",
+      "subject": "Задача заблокирована: {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "actionUrl"
+      ],
+      "text": "task_blocked.txt",
+      "html": "task_blocked.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "task_completed",
+      "subject": "Задача завершена: {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "actionUrl"
+      ],
+      "text": "task_completed.txt",
+      "html": "task_completed.html",
+      "channels": [
+        "internal",
+        "email"
+      ]
+    },
+    {
+      "code": "comment_mention",
+      "subject": "Вас упомянули в задаче {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "authorName",
+        "actionUrl"
+      ],
+      "text": "comment_mention.txt",
+      "html": "comment_mention.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "project_member_added",
+      "subject": "Вы добавлены в проект {{projectName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "roleName",
+        "actionUrl"
+      ],
+      "text": "project_member_added.txt",
+      "html": "project_member_added.html",
+      "channels": [
+        "internal",
+        "email"
+      ]
+    },
+    {
+      "code": "import_completed",
+      "subject": "Импорт плана завершен",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskCount",
+        "issueCount",
+        "actionUrl"
+      ],
+      "text": "import_completed.txt",
+      "html": "import_completed.html",
+      "channels": [
+        "internal",
+        "email"
+      ]
+    },
+    {
+      "code": "import_failed",
+      "subject": "Ошибка импорта плана",
+      "variables": [
+        "displayName",
+        "projectName",
+        "errorMessage",
+        "actionUrl"
+      ],
+      "text": "import_failed.txt",
+      "html": "import_failed.html",
+      "channels": [
+        "internal",
+        "email"
+      ]
+    },
+    {
+      "code": "comment_added",
+      "subject": "Новый комментарий к задаче {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "authorName",
+        "actionUrl"
+      ],
+      "text": "comment_added.txt",
+      "html": "comment_added.html",
+      "channels": [
+        "internal",
+        "email"
+      ]
+    },
+    {
+      "code": "dependency_violated",
+      "subject": "Нарушение зависимости в проекте {{projectName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "predecessorName",
+        "successorName",
+        "actionUrl"
+      ],
+      "text": "dependency_violated.txt",
+      "html": "dependency_violated.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "critical_path_changed",
+      "subject": "Изменение критического пути в проекте {{projectName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "criticalTaskCount",
+        "actionUrl"
+      ],
+      "text": "critical_path_changed.txt",
+      "html": "critical_path_changed.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    },
+    {
+      "code": "task_reassigned",
+      "subject": "Изменены назначения задачи {{taskName}}",
+      "variables": [
+        "displayName",
+        "projectName",
+        "taskName",
+        "roleName",
+        "actionUrl"
+      ],
+      "text": "task_reassigned.txt",
+      "html": "task_reassigned.html",
+      "channels": [
+        "internal",
+        "email",
+        "telegram"
+      ]
+    }
+  ]
+}

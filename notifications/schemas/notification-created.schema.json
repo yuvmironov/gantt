@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/ws-notification-created.json",
+  "title": "WsNotificationCreated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "notification"],
+  "properties": {
+    "type": { "const": "notification.created" },
+    "notification": {
+      "type": "object",
+      "required": ["id", "recipientUserId", "eventType", "title", "body", "isRead", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "recipientUserId": { "type": "string", "format": "uuid" },
+        "projectId": { "type": ["string", "null"], "format": "uuid" },
+        "diagramId": { "type": ["string", "null"], "format": "uuid" },
+        "eventType": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "entityType": { "type": ["string", "null"] },
+        "entityId": { "type": ["string", "null"], "format": "uuid" },
+        "payload": { "type": ["object", "null"], "additionalProperties": true },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

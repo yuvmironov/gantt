@@ -1,0 +1,27 @@
+asyncapi: 3.0.0
+info:
+  title: SMART OATI Event Bus
+  version: 1.0.0
+  description: Контракт событий между backend-сервисами SMART OATI. Брокер не фиксируется.
+channels:
+  events:
+    address: smartoati.events
+    messages:
+      event:
+        $ref: '#/components/messages/EventEnvelope'
+operations:
+  publishEvent:
+    action: send
+    channel:
+      $ref: '#/channels/events'
+  consumeEvent:
+    action: receive
+    channel:
+      $ref: '#/channels/events'
+components:
+  messages:
+    EventEnvelope:
+      name: EventEnvelope
+      contentType: application/json
+      payload:
+        $ref: './schemas/event-envelope.schema.json'

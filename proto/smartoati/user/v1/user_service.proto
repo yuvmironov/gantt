@@ -1,0 +1,690 @@
+syntax = "proto3";
+
+package smartoati.user.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "smartoati/common/v1/common.proto";
+
+service UserService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse);
+  rpc ResendEmailVerification(ResendEmailVerificationRequest) returns (ResendEmailVerificationResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RestoreSession(RestoreSessionRequest) returns (RestoreSessionResponse);
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc LogoutAll(LogoutAllRequest) returns (LogoutAllResponse);
+  rpc ListMySessions(ListMySessionsRequest) returns (ListMySessionsResponse);
+  rpc RevokeMySession(RevokeMySessionRequest) returns (RevokeMySessionResponse);
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetUsersByIds(GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
+  rpc GetUserRoles(GetUserRolesRequest) returns (GetUserRolesResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc AdminCreateUser(AdminCreateUserRequest) returns (AdminCreateUserResponse);
+  rpc SetUserGlobalRoles(SetUserGlobalRolesRequest) returns (SetUserGlobalRolesResponse);
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UpdateUserProfileResponse);
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc GetRoles(GetRolesRequest) returns (GetRolesResponse);
+  rpc GetPermissions(GetPermissionsRequest) returns (GetPermissionsResponse);
+  rpc ListAccessibleProjectIds(ListAccessibleProjectIdsRequest) returns (ListAccessibleProjectIdsResponse);
+  rpc GetProjectAccess(GetProjectAccessRequest) returns (GetProjectAccessResponse);
+  rpc CheckProjectPermission(CheckProjectPermissionRequest) returns (CheckProjectPermissionResponse);
+  rpc EnsureProjectOwner(EnsureProjectOwnerRequest) returns (EnsureProjectOwnerResponse);
+  rpc SetProjectOwnerMembership(SetProjectOwnerMembershipRequest) returns (SetProjectOwnerMembershipResponse);
+  rpc ListProjectMembers(ListProjectMembersRequest) returns (ListProjectMembersResponse);
+  rpc UpdateProjectMemberRole(UpdateProjectMemberRoleRequest) returns (UpdateProjectMemberRoleResponse);
+  rpc RemoveProjectMember(RemoveProjectMemberRequest) returns (RemoveProjectMemberResponse);
+  rpc CreateInvitation(CreateInvitationRequest) returns (CreateInvitationResponse);
+  rpc ResendInvitation(ResendInvitationRequest) returns (ResendInvitationResponse);
+  rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse);
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  rpc ListProjectInvitations(ListProjectInvitationsRequest) returns (ListProjectInvitationsResponse);
+  rpc ListExecutors(ListExecutorsRequest) returns (ListExecutorsResponse);
+  rpc GetExecutorsByIds(GetExecutorsByIdsRequest) returns (GetExecutorsByIdsResponse);
+  rpc CreateExecutor(CreateExecutorRequest) returns (CreateExecutorResponse);
+  rpc UpdateExecutor(UpdateExecutorRequest) returns (UpdateExecutorResponse);
+  rpc DeleteExecutor(DeleteExecutorRequest) returns (DeleteExecutorResponse);
+  rpc LinkExecutorUser(LinkExecutorUserRequest) returns (LinkExecutorUserResponse);
+  rpc UnlinkExecutorUser(UnlinkExecutorUserRequest) returns (UnlinkExecutorUserResponse);
+  rpc GetNotificationContacts(GetNotificationContactsRequest) returns (GetNotificationContactsResponse);
+  rpc CreateTelegramLinkCode(CreateTelegramLinkCodeRequest) returns (CreateTelegramLinkCodeResponse);
+  rpc LinkTelegram(LinkTelegramRequest) returns (LinkTelegramResponse);
+  rpc UnlinkTelegram(UnlinkTelegramRequest) returns (UnlinkTelegramResponse);
+  rpc GetSystemSettings(GetSystemSettingsRequest) returns (GetSystemSettingsResponse);
+  rpc UpdateSystemSettings(UpdateSystemSettingsRequest) returns (UpdateSystemSettingsResponse);
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  string last_name = 4;
+  string first_name = 5;
+  string middle_name = 6;
+  string position = 7;
+  smartoati.common.v1.UserStatus status = 8;
+  bool email_verified = 9;
+  google.protobuf.Timestamp email_verified_at = 10;
+  string timezone = 11;
+  string locale = 12;
+  repeated smartoati.common.v1.GlobalRole global_roles = 13;
+  google.protobuf.Timestamp last_login_at = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+message UserSummary {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  string position = 4;
+  smartoati.common.v1.UserStatus status = 5;
+  bool email_verified = 6;
+  repeated smartoati.common.v1.GlobalRole global_roles = 7;
+}
+
+message Session {
+  string id = 1;
+  google.protobuf.Timestamp absolute_expires_at = 2;
+  google.protobuf.Timestamp idle_expires_at = 3;
+  google.protobuf.Timestamp remember_expires_at = 4;
+  google.protobuf.Timestamp last_seen_at = 5;
+  string user_agent = 6;
+  string ip = 7;
+  bool remember = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message ProjectMembership {
+  string id = 1;
+  string project_id = 2;
+  string user_id = 3;
+  smartoati.common.v1.ProjectRole role = 4;
+  string status = 5;
+  google.protobuf.Timestamp invited_at = 6;
+  google.protobuf.Timestamp joined_at = 7;
+  google.protobuf.Timestamp revoked_at = 8;
+  string revoked_reason = 9;
+  UserSummary user = 10;
+}
+
+message Invitation {
+  string id = 1;
+  string project_id = 2;
+  string email = 3;
+  smartoati.common.v1.ProjectRole role = 4;
+  string status = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp accepted_at = 7;
+  google.protobuf.Timestamp revoked_at = 8;
+  string invited_by_user_id = 9;
+}
+
+message Executor {
+  string id = 1;
+  string last_name = 2;
+  string first_name = 3;
+  string middle_name = 4;
+  string full_name = 5;
+  string position = 6;
+  string linked_user_id = 7;
+  UserSummary linked_user = 8;
+  bool is_active = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message Role {
+  string code = 1;
+  string scope = 2;
+  string name = 3;
+  string description = 4;
+}
+
+message Permission {
+  string code = 1;
+  string scope = 2;
+  string description = 3;
+}
+
+message NotificationContact {
+  string user_id = 1;
+  string email = 2;
+  bool email_verified = 3;
+  int64 telegram_user_id = 4;
+  string telegram_username = 5;
+  bool telegram_linked = 6;
+}
+
+message SystemSetting {
+  string key = 1;
+  google.protobuf.Struct value = 2;
+  string description = 3;
+  string updated_by_user_id = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string last_name = 3;
+  string first_name = 4;
+  string middle_name = 5;
+  string display_name = 6;
+  string timezone = 7;
+  string locale = 8;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  bool requires_email_verification = 2;
+}
+
+message VerifyEmailRequest {
+  string token = 1;
+}
+
+message VerifyEmailResponse {
+  string user_id = 1;
+  bool verified = 2;
+}
+
+message ResendEmailVerificationRequest {
+  string email = 1;
+}
+
+message ResendEmailVerificationResponse {
+  bool accepted = 1;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  bool remember_me = 3;
+  string user_agent = 4;
+  string client_ip = 5;
+}
+
+message LoginResponse {
+  User user = 1;
+  string session_id = 2;
+  repeated string set_cookie = 3;
+  google.protobuf.Timestamp absolute_expires_at = 4;
+  google.protobuf.Timestamp idle_expires_at = 5;
+  google.protobuf.Timestamp remember_expires_at = 6;
+}
+
+message RestoreSessionRequest {
+  string remember_token = 1;
+  string user_agent = 2;
+  string client_ip = 3;
+}
+
+message RestoreSessionResponse {
+  User user = 1;
+  string session_id = 2;
+  repeated string set_cookie = 3;
+  google.protobuf.Timestamp absolute_expires_at = 4;
+  google.protobuf.Timestamp idle_expires_at = 5;
+  google.protobuf.Timestamp remember_expires_at = 6;
+}
+
+message ValidateSessionRequest {
+  string session_token = 1;
+  optional bool extend_idle = 2;
+}
+
+message ValidateSessionResponse {
+  string user_id = 1;
+  string session_id = 2;
+  repeated smartoati.common.v1.GlobalRole global_roles = 3;
+  google.protobuf.Timestamp absolute_expires_at = 4;
+  google.protobuf.Timestamp idle_expires_at = 5;
+}
+
+message LogoutRequest {
+  string session_token = 1;
+}
+
+message LogoutResponse {
+  repeated string set_cookie = 1;
+}
+
+message LogoutAllRequest {
+  string user_id = 1;
+}
+
+message LogoutAllResponse {
+  repeated string set_cookie = 1;
+}
+
+message ListMySessionsRequest {
+  string user_id = 1;
+}
+
+message ListMySessionsResponse {
+  repeated Session items = 1;
+}
+
+message RevokeMySessionRequest {
+  string user_id = 1;
+  string session_id = 2;
+}
+
+message RevokeMySessionResponse {
+  bool revoked = 1;
+}
+
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {
+  bool accepted = 1;
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {
+  bool reset = 1;
+  repeated string set_cookie = 2;
+}
+
+message ChangePasswordRequest {
+  string user_id = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordResponse {
+  bool changed = 1;
+}
+
+message GetCurrentUserRequest {
+  string user_id = 1;
+}
+
+message GetCurrentUserResponse {
+  User user = 1;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message GetUsersByIdsRequest {
+  repeated string user_ids = 1;
+}
+
+message GetUsersByIdsResponse {
+  repeated UserSummary items = 1;
+}
+
+message GetUserRolesRequest {
+  string user_id = 1;
+}
+
+message GetUserRolesResponse {
+  repeated smartoati.common.v1.GlobalRole global_roles = 1;
+}
+
+message ListUsersRequest {
+  smartoati.common.v1.PageRequest page = 1;
+  string query = 2;
+  smartoati.common.v1.UserStatus status = 3;
+}
+
+message ListUsersResponse {
+  repeated UserSummary items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message AdminCreateUserRequest {
+  string email = 1;
+  string last_name = 2;
+  string first_name = 3;
+  string middle_name = 4;
+  string display_name = 5;
+  string position = 6;
+  string timezone = 7;
+  string locale = 8;
+  repeated smartoati.common.v1.GlobalRole global_roles = 9;
+}
+
+message AdminCreateUserResponse {
+  User user = 1;
+}
+
+message SetUserGlobalRolesRequest {
+  string user_id = 1;
+  repeated smartoati.common.v1.GlobalRole roles = 2;
+  string actor_user_id = 3;
+}
+
+message SetUserGlobalRolesResponse {
+  User user = 1;
+  repeated smartoati.common.v1.GlobalRole roles = 2;
+}
+
+message UpdateUserProfileRequest {
+  string user_id = 1;
+  optional string display_name = 2;
+  optional string last_name = 3;
+  optional string first_name = 4;
+  optional string middle_name = 5;
+  optional string position = 6;
+  optional string timezone = 7;
+  optional string locale = 8;
+}
+
+message UpdateUserProfileResponse {
+  User user = 1;
+}
+
+message BlockUserRequest {
+  string user_id = 1;
+  string reason = 2;
+  string actor_user_id = 3;
+}
+
+message BlockUserResponse {
+  bool blocked = 1;
+}
+
+message UnblockUserRequest {
+  string user_id = 1;
+  string actor_user_id = 2;
+}
+
+message UnblockUserResponse {
+  bool unblocked = 1;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+  string actor_user_id = 2;
+  string reason = 3;
+}
+
+message DeleteUserResponse {
+  bool deleted = 1;
+}
+
+message GetRolesRequest {}
+
+message GetRolesResponse {
+  repeated Role items = 1;
+}
+
+message GetPermissionsRequest {}
+
+message GetPermissionsResponse {
+  repeated Permission items = 1;
+}
+
+message ListAccessibleProjectIdsRequest {
+  string user_id = 1;
+}
+
+message ListAccessibleProjectIdsResponse {
+  repeated smartoati.common.v1.ProjectAccess items = 1;
+}
+
+message GetProjectAccessRequest {
+  string user_id = 1;
+  string project_id = 2;
+}
+
+message GetProjectAccessResponse {
+  smartoati.common.v1.ProjectAccess access = 1;
+}
+
+message CheckProjectPermissionRequest {
+  string user_id = 1;
+  string project_id = 2;
+  string permission = 3;
+}
+
+message CheckProjectPermissionResponse {
+  bool allowed = 1;
+  smartoati.common.v1.ProjectRole role = 2;
+}
+
+message EnsureProjectOwnerRequest {
+  string project_id = 1;
+  string owner_user_id = 2;
+}
+
+message EnsureProjectOwnerResponse {
+  ProjectMembership membership = 1;
+}
+
+message SetProjectOwnerMembershipRequest {
+  string project_id = 1;
+  string new_owner_user_id = 2;
+  string actor_user_id = 3;
+}
+
+message SetProjectOwnerMembershipResponse {
+  repeated ProjectMembership memberships = 1;
+}
+
+message ListProjectMembersRequest {
+  string project_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListProjectMembersResponse {
+  repeated ProjectMembership items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message UpdateProjectMemberRoleRequest {
+  string project_id = 1;
+  string user_id = 2;
+  smartoati.common.v1.ProjectRole role = 3;
+  string actor_user_id = 4;
+}
+
+message UpdateProjectMemberRoleResponse {
+  ProjectMembership membership = 1;
+}
+
+message RemoveProjectMemberRequest {
+  string project_id = 1;
+  string user_id = 2;
+  string actor_user_id = 3;
+  string reason = 4;
+}
+
+message RemoveProjectMemberResponse {
+  bool removed = 1;
+}
+
+message CreateInvitationRequest {
+  string project_id = 1;
+  string email = 2;
+  smartoati.common.v1.ProjectRole role = 3;
+  string actor_user_id = 4;
+}
+
+message CreateInvitationResponse {
+  Invitation invitation = 1;
+}
+
+message ResendInvitationRequest {
+  string invitation_id = 1;
+  string actor_user_id = 2;
+}
+
+message ResendInvitationResponse {
+  Invitation invitation = 1;
+}
+
+message RevokeInvitationRequest {
+  string invitation_id = 1;
+  string actor_user_id = 2;
+}
+
+message RevokeInvitationResponse {
+  bool revoked = 1;
+}
+
+message AcceptInvitationRequest {
+  string token = 1;
+  string user_id = 2;
+}
+
+message AcceptInvitationResponse {
+  ProjectMembership membership = 1;
+}
+
+message ListProjectInvitationsRequest {
+  string project_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListProjectInvitationsResponse {
+  repeated Invitation items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message ListExecutorsRequest {
+  smartoati.common.v1.PageRequest page = 1;
+  string query = 2;
+  bool include_inactive = 3;
+}
+
+message ListExecutorsResponse {
+  repeated Executor items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message GetExecutorsByIdsRequest {
+  repeated string executor_ids = 1;
+}
+
+message GetExecutorsByIdsResponse {
+  repeated Executor items = 1;
+}
+
+message CreateExecutorRequest {
+  string last_name = 1;
+  string first_name = 2;
+  string middle_name = 3;
+  string position = 4;
+  string actor_user_id = 5;
+}
+
+message CreateExecutorResponse {
+  Executor executor = 1;
+}
+
+message UpdateExecutorRequest {
+  string executor_id = 1;
+  optional string last_name = 2;
+  optional string first_name = 3;
+  optional string middle_name = 4;
+  optional string position = 5;
+  string actor_user_id = 6;
+}
+
+message UpdateExecutorResponse {
+  Executor executor = 1;
+}
+
+message DeleteExecutorRequest {
+  string executor_id = 1;
+  string actor_user_id = 2;
+}
+
+message DeleteExecutorResponse {
+  bool deleted = 1;
+}
+
+message LinkExecutorUserRequest {
+  string executor_id = 1;
+  string user_id = 2;
+  string actor_user_id = 3;
+}
+
+message LinkExecutorUserResponse {
+  Executor executor = 1;
+}
+
+message UnlinkExecutorUserRequest {
+  string executor_id = 1;
+  string actor_user_id = 2;
+}
+
+message UnlinkExecutorUserResponse {
+  Executor executor = 1;
+}
+
+message GetNotificationContactsRequest {
+  repeated string user_ids = 1;
+}
+
+message GetNotificationContactsResponse {
+  repeated NotificationContact items = 1;
+}
+
+message CreateTelegramLinkCodeRequest {
+  string user_id = 1;
+}
+
+message CreateTelegramLinkCodeResponse {
+  string code = 1;
+  string deep_link = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message LinkTelegramRequest {
+  string code = 1;
+  int64 telegram_user_id = 2;
+  string telegram_username = 3;
+}
+
+message LinkTelegramResponse {
+  bool linked = 1;
+  string user_id = 2;
+}
+
+message UnlinkTelegramRequest {
+  int64 telegram_user_id = 1;
+  string user_id = 2;
+}
+
+message UnlinkTelegramResponse {
+  bool unlinked = 1;
+}
+
+message GetSystemSettingsRequest {}
+
+message GetSystemSettingsResponse {
+  repeated SystemSetting items = 1;
+}
+
+message UpdateSystemSettingsRequest {
+  repeated SystemSetting items = 1;
+  string actor_user_id = 2;
+}
+
+message UpdateSystemSettingsResponse {
+  repeated SystemSetting items = 1;
+}
+

@@ -1,0 +1,51 @@
+name: Contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf lint
+        run: buf lint proto
+
+      - name: Buf breaking
+        run: buf breaking proto --against ".git#branch=main"
+
+      - name: OpenAPI lint
+        run: npx --yes @redocly/cli@latest lint openapi/openapi.yaml
+
+      - name: Contract structure checks
+        run: node tools/check-contracts.mjs
+
+  contracts-required:
+    if: always()
+    needs: [contracts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check contracts
+        run: |
+          if [ "${{ needs.contracts.result }}" != "success" ]; then
+            echo "contracts failed"
+            exit 1
+          fi
+          echo "contracts ok"

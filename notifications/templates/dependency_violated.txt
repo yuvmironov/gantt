@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+В проекте «{{projectName}}» нарушена зависимость: «{{predecessorName}}» → «{{successorName}}».
+
+{{actionUrl}}

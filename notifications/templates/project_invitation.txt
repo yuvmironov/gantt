@@ -1,0 +1,7 @@
+Здравствуйте, {{displayName}}!
+
+{{inviterName}} приглашает вас в проект «{{projectName}}» с ролью «{{roleName}}».
+
+{{actionUrl}}
+
+Приглашение действует до {{expiresAt}}.

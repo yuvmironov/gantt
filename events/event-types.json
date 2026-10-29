@@ -1,0 +1,556 @@
+{
+  "version": 1,
+  "envelope": "event-envelope.schema.json",
+  "rules": {
+    "actorRolesRequired": true,
+    "atLeastOnce": true,
+    "idempotentConsumers": true
+  },
+  "events": [
+    {
+      "type": "user.created",
+      "producer": "user",
+      "consumers": [
+        "audit",
+        "notification"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserCreatedPayload"
+    },
+    {
+      "type": "user.updated",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserUpdatedPayload"
+    },
+    {
+      "type": "user.email_verified",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserEmailVerifiedPayload"
+    },
+    {
+      "type": "user.password_changed",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserPasswordChangedPayload"
+    },
+    {
+      "type": "user.blocked",
+      "producer": "user",
+      "consumers": [
+        "audit",
+        "notification",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserBlockedPayload"
+    },
+    {
+      "type": "user.unblocked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserUnblockedPayload"
+    },
+    {
+      "type": "user.deleted",
+      "producer": "user",
+      "consumers": [
+        "project",
+        "notification",
+        "audit",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserDeletedPayload"
+    },
+    {
+      "type": "auth.login.succeeded",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginSucceededPayload"
+    },
+    {
+      "type": "auth.login.failed",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginFailedPayload"
+    },
+    {
+      "type": "auth.logout",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLogoutPayload"
+    },
+    {
+      "type": "project.created",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectCreatedPayload"
+    },
+    {
+      "type": "project.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectUpdatedPayload"
+    },
+    {
+      "type": "project.archived",
+      "producer": "project",
+      "consumers": [
+        "user",
+        "notification",
+        "audit",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectArchivedPayload"
+    },
+    {
+      "type": "project.unarchived",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectUnarchivedPayload"
+    },
+    {
+      "type": "project.deleted",
+      "producer": "project",
+      "consumers": [
+        "user",
+        "notification",
+        "audit",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectDeletedPayload"
+    },
+    {
+      "type": "project.restored",
+      "producer": "project",
+      "consumers": [
+        "user",
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectRestoredPayload"
+    },
+    {
+      "type": "project.purged",
+      "producer": "project",
+      "consumers": [
+        "user",
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectPurgedPayload"
+    },
+    {
+      "type": "project.owner.transferred",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectOwnerTransferredPayload"
+    },
+    {
+      "type": "project.member.added",
+      "producer": "user",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberAddedPayload"
+    },
+    {
+      "type": "project.member.role_changed",
+      "producer": "user",
+      "consumers": [
+        "notification",
+        "audit",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRoleChangedPayload"
+    },
+    {
+      "type": "project.member.removed",
+      "producer": "user",
+      "consumers": [
+        "notification",
+        "audit",
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRemovedPayload"
+    },
+    {
+      "type": "invitation.created",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationCreatedPayload"
+    },
+    {
+      "type": "invitation.resent",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationResentPayload"
+    },
+    {
+      "type": "invitation.accepted",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationAcceptedPayload"
+    },
+    {
+      "type": "invitation.revoked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationRevokedPayload"
+    },
+    {
+      "type": "executor.created",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorCreatedPayload"
+    },
+    {
+      "type": "executor.updated",
+      "producer": "user",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUpdatedPayload"
+    },
+    {
+      "type": "executor.deleted",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorDeletedPayload"
+    },
+    {
+      "type": "executor.linked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorLinkedPayload"
+    },
+    {
+      "type": "executor.unlinked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUnlinkedPayload"
+    },
+    {
+      "type": "diagram.created",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramCreatedPayload"
+    },
+    {
+      "type": "diagram.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramUpdatedPayload"
+    },
+    {
+      "type": "diagram.deleted",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramDeletedPayload"
+    },
+    {
+      "type": "diagram.changed",
+      "producer": "project",
+      "consumers": [
+        "sync",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramChangedPayload"
+    },
+    {
+      "type": "direction.created",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionCreatedPayload"
+    },
+    {
+      "type": "direction.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionUpdatedPayload"
+    },
+    {
+      "type": "direction.deleted",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionDeletedPayload"
+    },
+    {
+      "type": "task.created",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskCreatedPayload"
+    },
+    {
+      "type": "task.updated",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskUpdatedPayload"
+    },
+    {
+      "type": "task.deleted",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskDeletedPayload"
+    },
+    {
+      "type": "task.assignments.changed",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskAssignmentsChangedPayload"
+    },
+    {
+      "type": "dependency.created",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyCreatedPayload"
+    },
+    {
+      "type": "dependency.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyUpdatedPayload"
+    },
+    {
+      "type": "dependency.deleted",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyDeletedPayload"
+    },
+    {
+      "type": "dependency.violated",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyViolatedPayload"
+    },
+    {
+      "type": "diagram.critical_path.changed",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramCriticalPathChangedPayload"
+    },
+    {
+      "type": "comment.created",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/CommentCreatedPayload"
+    },
+    {
+      "type": "comment.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/CommentUpdatedPayload"
+    },
+    {
+      "type": "comment.deleted",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/CommentDeletedPayload"
+    },
+    {
+      "type": "holidays.updated",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/HolidaysUpdatedPayload"
+    },
+    {
+      "type": "diagram.import.started",
+      "producer": "project",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportStartedPayload"
+    },
+    {
+      "type": "diagram.import.completed",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportCompletedPayload"
+    },
+    {
+      "type": "diagram.import.failed",
+      "producer": "project",
+      "consumers": [
+        "notification",
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportFailedPayload"
+    },
+    {
+      "type": "notification.created",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationCreatedPayload"
+    },
+    {
+      "type": "notification.delivery.sent",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliverySentPayload"
+    },
+    {
+      "type": "notification.delivery.failed",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliveryFailedPayload"
+    },
+    {
+      "type": "notification.preferences.updated",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationPreferencesUpdatedPayload"
+    },
+    {
+      "type": "auth_email.sent",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailSentPayload"
+    },
+    {
+      "type": "auth_email.failed",
+      "producer": "notification",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailFailedPayload"
+    },
+    {
+      "type": "telegram.linked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TelegramLinkedPayload"
+    },
+    {
+      "type": "telegram.unlinked",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TelegramUnlinkedPayload"
+    },
+    {
+      "type": "settings.updated",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/SettingsUpdatedPayload"
+    },
+    {
+      "type": "user.roles.updated",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/UserRolesUpdatedPayload"
+    },
+    {
+      "type": "auth.session.restored",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthSessionRestoredPayload"
+    }
+  ]
+}

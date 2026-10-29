@@ -1,0 +1,60 @@
+asyncapi: 3.0.0
+info:
+  title: SMART OATI Notification WebSocket
+  version: 1.0.0
+  description: WebSocket-контракт Notification Service.
+servers:
+  production:
+    host: api.smart-oati.local
+    pathname: /ws/notifications
+    protocol: wss
+channels:
+  notifications:
+    address: /ws/notifications
+    messages:
+      notificationCreated:
+        $ref: '#/components/messages/NotificationCreated'
+      unreadCount:
+        $ref: '#/components/messages/UnreadCount'
+      error:
+        $ref: '#/components/messages/Error'
+      ping:
+        $ref: '#/components/messages/Ping'
+      pong:
+        $ref: '#/components/messages/Pong'
+operations:
+  clientMessages:
+    action: send
+    channel:
+      $ref: '#/channels/notifications'
+  serverMessages:
+    action: receive
+    channel:
+      $ref: '#/channels/notifications'
+components:
+  messages:
+    NotificationCreated:
+      name: NotificationCreated
+      contentType: application/json
+      payload:
+        $ref: './schemas/notification-created.schema.json'
+    UnreadCount:
+      name: UnreadCount
+      contentType: application/json
+      payload:
+        $ref: './schemas/unread-count.schema.json'
+    Error:
+      name: Error
+      contentType: application/json
+      payload:
+        $ref: './schemas/error.schema.json'
+    Ping:
+      name: Ping
+      contentType: application/json
+      payload:
+        $ref: './schemas/ping.schema.json'
+    Pong:
+      name: Pong
+      contentType: application/json
+      payload:
+        $ref: './schemas/pong.schema.json'

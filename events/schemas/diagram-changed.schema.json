@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/diagram-changed.json",
+  "title": "DiagramChangedPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["diagramId", "revision", "entityType", "entityId", "operation", "data"],
+  "properties": {
+    "diagramId": { "type": "string", "format": "uuid" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "entityType": { "type": "string", "enum": ["project", "diagram", "direction", "task", "dependency", "comment", "holiday"] },
+    "entityId": { "type": "string", "format": "uuid" },
+    "operation": { "type": "string", "enum": ["create", "update", "delete"] },
+    "data": { "type": "object", "additionalProperties": true }
+  }
+}

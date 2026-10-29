@@ -1,0 +1,6 @@
+apiVersion: v2
+name: smart-oati-service
+description: Reusable Helm chart for SMART OATI services
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

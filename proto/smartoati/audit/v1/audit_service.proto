@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package smartoati.audit.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "smartoati/common/v1/common.proto";
+
+service AuditService {
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+  rpc GetAuditEvent(GetAuditEventRequest) returns (GetAuditEventResponse);
+  rpc ListPrivilegedAuditEvents(ListPrivilegedAuditEventsRequest) returns (ListPrivilegedAuditEventsResponse);
+  rpc GetPrivilegedAuditEvent(GetPrivilegedAuditEventRequest) returns (GetPrivilegedAuditEventResponse);
+  rpc GetAuditActions(GetAuditActionsRequest) returns (GetAuditActionsResponse);
+  rpc GetAuditStats(GetAuditStatsRequest) returns (GetAuditStatsResponse);
+}
+
+message AuditAction {
+  string code = 1;
+  string category = 2;
+  string description = 3;
+  smartoati.common.v1.AuditSeverity severity = 4;
+}
+
+message AuditEvent {
+  string id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  string actor_user_id = 3;
+  smartoati.common.v1.AuditActorType actor_type = 4;
+  repeated string actor_roles = 5;
+  string action_code = 6;
+  string entity_type = 7;
+  string entity_id = 8;
+  string project_id = 9;
+  string diagram_id = 10;
+  string request_id = 11;
+  string correlation_id = 12;
+  string ip = 13;
+  string user_agent = 14;
+  google.protobuf.Struct before_data = 15;
+  google.protobuf.Struct after_data = 16;
+  google.protobuf.Struct metadata = 17;
+  string source_event_id = 18;
+  string source_service = 19;
+  smartoati.common.v1.AuditSeverity severity = 20;
+  google.protobuf.Timestamp created_at = 21;
+}
+
+message AuditEventFilter {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+  string actor_user_id = 3;
+  string action_code = 4;
+  string entity_type = 5;
+  string entity_id = 6;
+  string project_id = 7;
+  string diagram_id = 8;
+  smartoati.common.v1.AuditSeverity severity = 9;
+  string request_id = 10;
+  string correlation_id = 11;
+}
+
+message ListAuditEventsRequest {
+  AuditEventFilter filter = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message GetAuditEventRequest {
+  string id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+}
+
+message GetAuditEventResponse {
+  AuditEvent event = 1;
+}
+
+message ListPrivilegedAuditEventsRequest {
+  AuditEventFilter filter = 1;
+  smartoati.common.v1.PageRequest page = 2;
+}
+
+message ListPrivilegedAuditEventsResponse {
+  repeated AuditEvent items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message GetPrivilegedAuditEventRequest {
+  string id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+}
+
+message GetPrivilegedAuditEventResponse {
+  AuditEvent event = 1;
+}
+
+message GetAuditActionsRequest {}
+
+message GetAuditActionsResponse {
+  repeated AuditAction items = 1;
+}
+
+message AuditCount {
+  string key = 1;
+  int64 count = 2;
+}
+
+message GetAuditStatsRequest {
+  AuditEventFilter filter = 1;
+  string group_by = 2;
+  bool privileged_only = 3;
+}
+
+message GetAuditStatsResponse {
+  int64 total = 1;
+  repeated AuditCount items = 2;
+}

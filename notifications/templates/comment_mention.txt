@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+{{authorName}} упомянул вас в комментарии к задаче «{{taskName}}» проекта «{{projectName}}».
+
+{{actionUrl}}

@@ -1,0 +1,55 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+
+  security-required:
+    if: always()
+    needs: [codeql, dependency-review]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check security jobs
+        run: |
+          if [ "${{ needs.codeql.result }}" != "success" ]; then
+            echo "codeql failed"
+            exit 1
+          fi
+          if [ "${{ needs.dependency-review.result }}" != "success" ] && [ "${{ needs.dependency-review.result }}" != "skipped" ]; then
+            echo "dependency review failed"
+            exit 1
+          fi
+          echo "security ok"

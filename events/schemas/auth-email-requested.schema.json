@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/auth-email-requested.json",
+  "title": "AuthEmailRequestedPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "recipientEmail", "templateCode", "variables"],
+  "properties": {
+    "jobId": { "type": "string", "format": "uuid" },
+    "userId": { "type": ["string", "null"], "format": "uuid" },
+    "invitationId": { "type": ["string", "null"], "format": "uuid" },
+    "recipientEmail": { "type": "string", "format": "email" },
+    "templateCode": { "type": "string", "enum": ["email_verification", "password_reset", "project_invitation", "account_activation"] },
+    "variables": { "type": "object", "additionalProperties": true },
+    "locale": { "type": "string", "default": "ru-RU" }
+  }
+}

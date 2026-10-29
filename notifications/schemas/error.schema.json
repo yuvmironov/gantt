@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smart-oati.local/schemas/ws-notification-error.json",
+  "title": "WsNotificationError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "code", "message", "recoverable"],
+  "properties": {
+    "type": { "const": "error" },
+    "code": { "type": "string" },
+    "message": { "type": "string" },
+    "recoverable": { "type": "boolean" }
+  }
+}

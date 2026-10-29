@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package smartoati.notification.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "smartoati/common/v1/common.proto";
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+  rpc SendAuthEmail(SendAuthEmailRequest) returns (SendAuthEmailResponse);
+  rpc GetAuthEmailStatus(GetAuthEmailStatusRequest) returns (GetAuthEmailStatusResponse);
+  rpc GetDeliveryLog(GetDeliveryLogRequest) returns (GetDeliveryLogResponse);
+  rpc GetDeliveryStats(GetDeliveryStatsRequest) returns (GetDeliveryStatsResponse);
+}
+
+message NotificationPreference {
+  string event_type = 1;
+  smartoati.common.v1.NotificationChannel channel = 2;
+  bool enabled = 3;
+  string quiet_hours_start = 4;
+  string quiet_hours_end = 5;
+  string timezone = 6;
+  smartoati.common.v1.DigestFrequency digest_frequency = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message Notification {
+  string id = 1;
+  string recipient_user_id = 2;
+  string project_id = 3;
+  string diagram_id = 4;
+  string event_type = 5;
+  string title = 6;
+  string body = 7;
+  string entity_type = 8;
+  string entity_id = 9;
+  google.protobuf.Struct payload = 10;
+  bool is_read = 11;
+  google.protobuf.Timestamp read_at = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp expires_at = 14;
+}
+
+message NotificationDelivery {
+  string id = 1;
+  string notification_id = 2;
+  smartoati.common.v1.NotificationChannel channel = 3;
+  smartoati.common.v1.DeliveryStatus status = 4;
+  int32 attempt_count = 5;
+  google.protobuf.Timestamp next_attempt_at = 6;
+  google.protobuf.Timestamp sent_at = 7;
+  string provider_message_id = 8;
+  string last_error = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message DeliveryLogItem {
+  string id = 1;
+  string notification_id = 2;
+  string recipient_user_id = 3;
+  smartoati.common.v1.NotificationChannel channel = 4;
+  smartoati.common.v1.DeliveryStatus status = 5;
+  int32 attempt_count = 6;
+  string provider_message_id = 7;
+  string error_code = 8;
+  string error_message = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp sent_at = 11;
+}
+
+message AuthEmailDelivery {
+  string id = 1;
+  string job_id = 2;
+  string user_id = 3;
+  string invitation_id = 4;
+  string recipient_email = 5;
+  string template_code = 6;
+  smartoati.common.v1.DeliveryStatus status = 7;
+  int32 attempt_count = 8;
+  string provider_message_id = 9;
+  string error_code = 10;
+  string error_message = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp sent_at = 13;
+  google.protobuf.Timestamp expires_at = 14;
+}
+
+message ListNotificationsRequest {
+  string user_id = 1;
+  smartoati.common.v1.PageRequest page = 2;
+  bool unread_only = 3;
+  string event_type = 4;
+}
+
+message ListNotificationsResponse {
+  repeated Notification items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 count = 1;
+}
+
+message MarkReadRequest {
+  string user_id = 1;
+  repeated string notification_ids = 2;
+}
+
+message MarkReadResponse {
+  int32 updated = 1;
+}
+
+message MarkAllReadRequest {
+  string user_id = 1;
+}
+
+message MarkAllReadResponse {
+  int32 updated = 1;
+}
+
+message GetPreferencesRequest {
+  string user_id = 1;
+}
+
+message GetPreferencesResponse {
+  repeated NotificationPreference items = 1;
+}
+
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  repeated NotificationPreference items = 2;
+}
+
+message UpdatePreferencesResponse {
+  repeated NotificationPreference items = 1;
+}
+
+message SendAuthEmailRequest {
+  string job_id = 1;
+  string user_id = 2;
+  string invitation_id = 3;
+  string recipient_email = 4;
+  string template_code = 5;
+  google.protobuf.Struct variables = 6;
+  string locale = 7;
+}
+
+message SendAuthEmailResponse {
+  string delivery_id = 1;
+  smartoati.common.v1.DeliveryStatus status = 2;
+}
+
+message GetAuthEmailStatusRequest {
+  string job_id = 1;
+}
+
+message GetAuthEmailStatusResponse {
+  AuthEmailDelivery delivery = 1;
+}
+
+message GetDeliveryLogRequest {
+  smartoati.common.v1.PageRequest page = 1;
+  smartoati.common.v1.NotificationChannel channel = 2;
+  smartoati.common.v1.DeliveryStatus status = 3;
+  google.protobuf.Timestamp from = 4;
+  google.protobuf.Timestamp to = 5;
+}
+
+message GetDeliveryLogResponse {
+  repeated DeliveryLogItem items = 1;
+  smartoati.common.v1.PageResponse page = 2;
+}
+
+message DeliveryStats {
+  int32 total = 1;
+  int32 sent = 2;
+  int32 failed = 3;
+  int32 retrying = 4;
+}
+
+message GetDeliveryStatsRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+  smartoati.common.v1.NotificationChannel channel = 3;
+}
+
+message GetDeliveryStatsResponse {
+  DeliveryStats stats = 1;
+}

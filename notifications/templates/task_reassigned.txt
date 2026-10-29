@@ -1,0 +1,5 @@
+Здравствуйте, {{displayName}}!
+
+В задаче «{{taskName}}» проекта «{{projectName}}» изменены назначения. Ваша роль: {{roleName}}.
+
+{{actionUrl}}
