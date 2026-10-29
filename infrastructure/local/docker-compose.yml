@@ -137,6 +137,18 @@ services:
       - "--log.level=INFO"
     networks: [smart-oati]
 
+  api-gateway:
+    profiles: ["apps"]
+    build:
+      context: ../..
+      dockerfile: apps/api-gateway/Dockerfile
+    image: smart-oati/api-gateway:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: 
+    networks: [smart-oati]
 volumes:
   postgres_data:
   redis_data:
