@@ -27,4 +27,23 @@ describe('user-service gRPC contract', () => {
     expect(error.code).toBe(12);
     client.close();
   });
+
+  it('serves the standard gRPC health check', async () => {
+    const server = await startUserGrpcServer({ host: '127.0.0.1', port: 0 });
+    servers.push(server);
+
+    const client = new server.healthService(
+      `127.0.0.1:${server.port}`,
+      credentials.createInsecure(),
+    );
+    const response = await new Promise((resolve, reject) => {
+      client.Check({ service: '' }, (error, health) => {
+        if (error) reject(error);
+        else resolve(health);
+      });
+    });
+
+    expect(response.status).toBe('SERVING');
+    client.close();
+  });
 });

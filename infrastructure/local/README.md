@@ -69,7 +69,7 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - Telegram WireMock: `sendMessage` возвращает `ok: true`.
 - Traefik: HTTP→HTTPS, `mail.localhost` и `kafka.localhost` отдают 200.
 - API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
-- User & Access: HTTP health healthy, gRPC `50051` отвечает `UNIMPLEMENTED` для stub-методов.
+- User & Access: HTTP health healthy, gRPC `50051` отвечает `SERVING`, stub-методы возвращают `UNIMPLEMENTED`.
 - `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
 - Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
 - TLS: если `mkcert` не установлен, можно использовать self-signed сертификаты; браузер будет предупреждать.

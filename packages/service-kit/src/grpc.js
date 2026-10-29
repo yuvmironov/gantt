@@ -1,5 +1,10 @@
+import { fileURLToPath } from 'node:url';
 import { loadPackageDefinition, Server, ServerCredentials, status } from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
+
+const healthProtoPath = fileURLToPath(
+  new URL('../proto/grpc/health/v1/health.proto', import.meta.url),
+);
 
 function getNested(root, path) {
   return path.split('.').reduce((value, key) => value?.[key], root);
@@ -53,7 +58,16 @@ export async function startGrpcServer({
     packageName,
     serviceName,
   });
+  const healthService = loadGrpcService({
+    protoPath: healthProtoPath,
+    packageName: 'grpc.health.v1',
+    serviceName: 'Health',
+  });
   const server = new Server();
+
+  server.addService(healthService.service, {
+    Check: (_call, callback) => callback(null, { status: 'SERVING' }),
+  });
 
   server.addService(
     service.service,
@@ -80,5 +94,5 @@ export async function startGrpcServer({
     });
   };
 
-  return { server, service, port: boundPort, close };
+  return { server, service, healthService, port: boundPort, close };
 }
