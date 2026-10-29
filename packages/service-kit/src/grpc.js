@@ -16,7 +16,7 @@ export function loadGrpcService({ protoPath, includeDirs = [], packageName, serv
     keepCase: true,
     longs: String,
     enums: String,
-    defaults: true,
+    defaults: false,
     oneofs: true,
   });
   const packageDefinition = loadPackageDefinition(definition);
