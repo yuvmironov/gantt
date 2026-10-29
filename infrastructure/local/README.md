@@ -72,7 +72,8 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
 - REST auth proxy: register/login/session/logout проверены через API Gateway.
 - User & Access: HTTP health healthy, gRPC `50051` отвечает `SERVING`, Register/Login/ValidateSession/Logout работают, остальные методы — `UNIMPLEMENTED`.
-- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, методы — `UNIMPLEMENTED`.
+- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, `CreateProject`/`ListProjects` работают, остальные методы — `UNIMPLEMENTED`.
+- REST projects: `POST /api/v1/projects` создает проект с owner membership, `GET /api/v1/projects` возвращает доступные проекты.
 - `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
 - Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
 - TLS: если `mkcert` не установлен, можно использовать self-signed сертификаты; браузер будет предупреждать.

@@ -1,20 +1,27 @@
 import cookie from '@fastify/cookie';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { authRoutes } from './auth-routes.js';
+import { createProjectClient } from './project-client.js';
+import { projectRoutes } from './projects-routes.js';
 import { createUserClient } from './user-client.js';
 
 const serviceName = 'api-gateway';
 const serviceVersion = '0.1.0';
 
-export function buildApp({ env = process.env, logger = true, userClient } = {}) {
+export function buildApp({ env = process.env, logger = true, userClient, projectClient } = {}) {
   const config = loadConfig(env, {
     logLevel: env.LOG_LEVEL ?? 'info',
     port: 8080,
   });
-  const client =
+  const users =
     userClient ??
     createUserClient({
       address: env.USER_SERVICE_GRPC ?? 'localhost:50051',
+    });
+  const projects =
+    projectClient ??
+    createProjectClient({
+      address: env.PROJECT_SERVICE_GRPC ?? 'localhost:50051',
     });
 
   const app = createService({
@@ -24,7 +31,11 @@ export function buildApp({ env = process.env, logger = true, userClient } = {}) 
     logger,
     routes: async (instance) => {
       await instance.register(cookie);
-      await instance.register(authRoutes, { userClient: client });
+      await instance.register(authRoutes, { userClient: users });
+      await instance.register(projectRoutes, {
+        userClient: users,
+        projectClient: projects,
+      });
 
       instance.get('/api/v1/health', async () => ({
         status: 'ok',
@@ -35,7 +46,8 @@ export function buildApp({ env = process.env, logger = true, userClient } = {}) 
   });
 
   app.addHook('onClose', async () => {
-    client.close?.();
+    users.close?.();
+    projects.close?.();
   });
 
   return app;

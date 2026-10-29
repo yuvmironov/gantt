@@ -13,9 +13,12 @@
   - `POST /api/v1/auth/login`;
   - `GET /api/v1/auth/session`;
   - `POST /api/v1/auth/logout`;
-- gRPC-клиент к User Service;
+- REST projects:
+  - `GET /api/v1/projects`;
+  - `POST /api/v1/projects`;
+- gRPC-клиенты к User Service и Project Service;
 - передача `Set-Cookie` от User Service клиенту;
-- CSRF-проверка logout;
+- CSRF-проверка logout и создания проекта;
 - request id;
 - RFC 7807 errors;
 - graceful shutdown;

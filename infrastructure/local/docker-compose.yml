@@ -149,6 +149,7 @@ services:
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       USER_SERVICE_GRPC: user-service:50051
+      PROJECT_SERVICE_GRPC: project-service:50051
     networks: [smart-oati]
 
   user-service:
@@ -182,6 +183,7 @@ services:
       GRPC_PORT: "50051"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_PROJECT}
+      USER_SERVICE_GRPC: user-service:50051
     ports:
       - "50052:50051"
     networks: [smart-oati]
