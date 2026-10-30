@@ -32,7 +32,7 @@ const sessionUser = {
 
 const project = {
   id: 'project-1',
-  name: 'РџСЂРѕРµРєС‚',
+  name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
   description: '',
   owner_user_id: 'user-1',
   status: 'PROJECT_STATUS_ACTIVE',
@@ -92,7 +92,7 @@ describe('api-gateway project routes', () => {
     const diagram = {
       id: 'diagram-1',
       project_id: 'project-1',
-      name: 'План',
+      name: 'РџР»Р°РЅ',
       description: '',
       day_mode: 'DAY_MODE_WORKING',
       current_revision: '0',
@@ -115,7 +115,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/projects/project-1/diagrams',
       cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'План' },
+      payload: { name: 'РџР»Р°РЅ' },
     });
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({ id: 'diagram-1', dayMode: 'working' });
@@ -133,7 +133,7 @@ describe('api-gateway project routes', () => {
     const diagram = {
       id: 'diagram-1',
       project_id: 'project-1',
-      name: 'План',
+      name: 'РџР»Р°РЅ',
       description: '',
       day_mode: 'DAY_MODE_WORKING',
       current_revision: '0',
@@ -144,7 +144,7 @@ describe('api-gateway project routes', () => {
         callback(null, { diagram, project_id: 'project-1' });
       },
       UpdateDiagram(_request, _metadata, callback) {
-        callback(null, { diagram: { ...diagram, name: 'Новый план' } });
+        callback(null, { diagram: { ...diagram, name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' } });
       },
       DeleteDiagram(_request, _metadata, callback) {
         callback(null, { deleted: true });
@@ -164,10 +164,10 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1',
       cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'Новый план' },
+      payload: { name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' },
     });
     expect(updated.statusCode).toBe(200);
-    expect(updated.json()).toMatchObject({ name: 'Новый план' });
+    expect(updated.json()).toMatchObject({ name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' });
 
     const deleted = await app.inject({
       method: 'DELETE',
@@ -184,7 +184,7 @@ describe('api-gateway project routes', () => {
       diagram_id: 'diagram-1',
       wbs_code: '1',
       sort_order: 1,
-      name: 'Направление',
+      name: 'РќР°РїСЂР°РІР»РµРЅРёРµ',
       priority: 'PRIORITY_MEDIUM',
       version: 1,
       created_by_user_id: 'user-1',
@@ -196,7 +196,7 @@ describe('api-gateway project routes', () => {
       level: 2,
       wbs_code: '1.1',
       sort_order: 1,
-      name: 'Задача',
+      name: 'Р—Р°РґР°С‡Р°',
       status: 'TASK_STATUS_PLANNED',
       progress: 0,
       priority: 'PRIORITY_MEDIUM',
@@ -216,7 +216,7 @@ describe('api-gateway project routes', () => {
             diagram: {
               id: 'diagram-1',
               project_id: 'project-1',
-              name: 'План',
+              name: 'РџР»Р°РЅ',
               day_mode: 'DAY_MODE_WORKING',
               current_revision: '0',
             },
@@ -238,7 +238,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1/directions',
       cookies,
       headers,
-      payload: { name: 'Направление' },
+      payload: { name: 'РќР°РїСЂР°РІР»РµРЅРёРµ' },
     });
     expect(createdDirection.statusCode).toBe(201);
     expect(createdDirection.json()).toMatchObject({ wbsCode: '1' });
@@ -248,7 +248,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1/tasks',
       cookies,
       headers,
-      payload: { directionId: 'direction-1', name: 'Задача' },
+      payload: { directionId: 'direction-1', name: 'Р—Р°РґР°С‡Р°' },
     });
     expect(createdTask.statusCode).toBe(201);
     expect(createdTask.json()).toMatchObject({ status: 'planned', progress: 0 });
@@ -315,6 +315,16 @@ describe('api-gateway project routes', () => {
       },
       CreateDependency(_request, _metadata, callback) {
         callback(null, { dependency, revision: '0' });
+      },
+      UpdateDependency(_request, _metadata, callback) {
+        callback(null, {
+          dependency: {
+            ...dependency,
+            color: '#ff0000',
+            line_style: 'DEPENDENCY_LINE_STYLE_DOTTED',
+          },
+          revision: '0',
+        });
       },
       ListDependencies(_request, _metadata, callback) {
         callback(null, {
@@ -393,6 +403,16 @@ describe('api-gateway project routes', () => {
       lineStyle: 'dashed',
       arrowShape: 'straight',
     });
+
+    const dependencyUpdated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/dependencies/dependency-1',
+      cookies,
+      headers,
+      payload: { color: '#ff0000', lineStyle: 'dotted' },
+    });
+    expect(dependencyUpdated.statusCode).toBe(200);
+    expect(dependencyUpdated.json()).toMatchObject({ color: '#ff0000', lineStyle: 'dotted' });
 
     const listed = await app.inject({
       method: 'GET',
@@ -683,12 +703,15 @@ describe('api-gateway project routes', () => {
         '__Host-csrf': 'csrf',
       },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'РџСЂРѕРµРєС‚', description: 'РћРїРёСЃР°РЅРёРµ' },
+      payload: {
+        name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
+        description: 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ',
+      },
     });
 
     expect(response.statusCode).toBe(201);
     expect(received).toMatchObject({
-      name: 'РџСЂРѕРµРєС‚',
+      name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
       owner_user_id: 'user-1',
     });
     expect(response.json()).toMatchObject({
@@ -705,7 +728,7 @@ describe('api-gateway project routes', () => {
       method: 'POST',
       url: '/api/v1/projects',
       cookies: { '__Host-session': 'token' },
-      payload: { name: 'РџСЂРѕРµРєС‚' },
+      payload: { name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ' },
     });
 
     expect(response.statusCode).toBe(403);

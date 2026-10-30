@@ -885,6 +885,34 @@ export async function projectRoutes(app, { userClient, projectClient }) {
     }
   });
 
+  app.patch('/api/v1/dependencies/:dependencyId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const body = request.body ?? {};
+      const update = {
+        dependency_id: request.params.dependencyId,
+        base_revision: Number(body.baseRevision ?? 0),
+      };
+      if ('predecessorType' in body) update.predecessor_type = body.predecessorType;
+      if ('predecessorId' in body) update.predecessor_id = body.predecessorId;
+      if ('successorType' in body) update.successor_type = body.successorType;
+      if ('successorId' in body) update.successor_id = body.successorId;
+      if ('color' in body) update.color = body.color;
+      if ('lineStyle' in body) update.line_style = dependencyLineStyleEnum(body.lineStyle);
+      if ('arrowShape' in body) update.arrow_shape = dependencyArrowEnum(body.arrowShape);
+      const response = await call(
+        projectClient,
+        'UpdateDependency',
+        update,
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapDependency(response.dependency));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.delete('/api/v1/dependencies/:dependencyId', async (request, reply) => {
     if (requireCsrf(request, reply)) return reply;
     try {
