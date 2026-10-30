@@ -80,6 +80,16 @@ describe('service-kit', () => {
     expect(response.body).not.toContain('password');
   });
 
+  it('exposes Prometheus metrics', async () => {
+    const app = buildApp();
+    const response = await app.inject({ method: 'GET', url: '/metrics' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/plain');
+    expect(response.body).toContain('http_requests_total');
+    expect(response.body).toContain('smart_oati_process_cpu_user_seconds_total');
+  });
+
   it('rejects invalid port configuration', () => {
     expect(() => loadConfig({ PORT: '70000' })).toThrow('invalid_port');
   });
