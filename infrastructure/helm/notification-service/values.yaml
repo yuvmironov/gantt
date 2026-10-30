@@ -1,0 +1,117 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/yuvmironov/smart-oati/notification-service
+  tag: main
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+containerPort: 8080
+
+grpc:
+  enabled: false
+  port: 50051
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+env:
+  - name: PORT
+    value: "8080"
+  - name: NODE_ENV
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: KAFKA_BROKERS
+    value: "kafka:9092"
+  - name: KAFKA_TOPIC
+    value: "smartoati.events"
+  - name: KAFKA_CONSUMER_GROUP_NOTIFICATION
+    value: "notification"
+
+envFrom:
+  - secretRef:
+      name: notification-service
+externalSecret:
+  enabled: true
+  secretStoreName: vault-backend
+  secretStoreKind: ClusterSecretStore
+  refreshInterval: 1h
+  targetSecretName: notification-service
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: smart-oati/notification-service
+        property: database_url
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+  className: yandex-alb
+  annotations: {}
+  hosts: []
+  tls: []
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []

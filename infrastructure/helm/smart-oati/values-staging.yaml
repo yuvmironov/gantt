@@ -1,0 +1,20 @@
+﻿global:
+  imageTag: staging
+frontend:
+  ingress:
+    hosts:
+      - host: app.staging.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+api-gateway:
+  ingress:
+    hosts:
+      - host: api.staging.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+platform:
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"

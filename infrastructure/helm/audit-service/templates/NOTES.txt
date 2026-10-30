@@ -1,0 +1,10 @@
+SMART OATI service chart installed.
+
+Service: {{ include "smart-oati-service.fullname" . }}
+Image: {{ include "smart-oati-service.image" . }}
+Namespace: {{ .Release.Namespace }}
+
+Проверить:
+
+  kubectl -n {{ .Release.Namespace }} get deploy,pods,svc
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "smart-oati-service.fullname" . }}

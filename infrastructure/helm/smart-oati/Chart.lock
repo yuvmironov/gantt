@@ -1,0 +1,27 @@
+dependencies:
+- name: api-gateway
+  repository: file://../api-gateway
+  version: 0.1.0
+- name: user-service
+  repository: file://../user-service
+  version: 0.1.0
+- name: project-service
+  repository: file://../project-service
+  version: 0.1.0
+- name: notification-service
+  repository: file://../notification-service
+  version: 0.1.0
+- name: audit-service
+  repository: file://../audit-service
+  version: 0.1.0
+- name: sync-service
+  repository: file://../sync-service
+  version: 0.1.0
+- name: frontend
+  repository: file://../frontend
+  version: 0.1.0
+- name: platform
+  repository: file://../platform
+  version: 0.1.0
+digest: sha256:b7e52e6fe72a012c3c42abfa5700cb453039d69d093b8141aa1a523f0184d3dc
+generated: "2026-10-30T18:17:54.8873902+03:00"

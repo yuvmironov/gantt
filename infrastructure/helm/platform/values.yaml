@@ -1,0 +1,22 @@
+﻿migrations:
+  enabled: true
+  image:
+    repository: ghcr.io/yuvmironov/smart-oati/db-migrate
+    tag: main
+    pullPolicy: IfNotPresent
+  secretName: platform-database
+  userDb: smart_oati_user
+  projectDb: smart_oati_project
+  notificationDb: smart_oati_notification
+  auditDb: smart_oati_audit
+  backoffLimit: 3
+
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  image: postgres:17-alpine
+  secretName: platform-database
+  database: smart_oati_user
+  pvc:
+    size: 20Gi
+    storageClassName: ""

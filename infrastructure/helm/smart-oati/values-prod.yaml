@@ -1,0 +1,32 @@
+﻿global:
+  imageTag: stable
+frontend:
+  replicaCount: 3
+  ingress:
+    hosts:
+      - host: app.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+api-gateway:
+  replicaCount: 3
+  ingress:
+    hosts:
+      - host: api.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+user-service:
+  replicaCount: 3
+project-service:
+  replicaCount: 3
+notification-service:
+  replicaCount: 2
+audit-service:
+  replicaCount: 2
+sync-service:
+  replicaCount: 2
+platform:
+  backup:
+    enabled: true
+    schedule: "0 1 * * *"

@@ -40,6 +40,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Values.image.digest }}
 {{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
 {{- else }}
-{{- printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
+{{- printf "%s:%s" .Values.image.repository (default .Chart.AppVersion (default .Values.image.tag .Values.global.imageTag)) }}
 {{- end }}
 {{- end }}
