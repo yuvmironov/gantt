@@ -129,6 +129,55 @@ describe('api-gateway project routes', () => {
     expect(listed.json()).toMatchObject({ items: [{ id: 'diagram-1' }] });
   });
 
+  it('loads, updates and deletes a diagram', async () => {
+    const diagram = {
+      id: 'diagram-1',
+      project_id: 'project-1',
+      name: 'План',
+      description: '',
+      day_mode: 'DAY_MODE_WORKING',
+      current_revision: '0',
+      created_by_user_id: 'user-1',
+    };
+    const app = build(sessionUser, {
+      GetDiagram(_request, _metadata, callback) {
+        callback(null, { diagram, project_id: 'project-1' });
+      },
+      UpdateDiagram(_request, _metadata, callback) {
+        callback(null, { diagram: { ...diagram, name: 'Новый план' } });
+      },
+      DeleteDiagram(_request, _metadata, callback) {
+        callback(null, { deleted: true });
+      },
+    });
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: '/api/v1/diagrams/diagram-1',
+      cookies: { '__Host-session': 'token' },
+    });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json()).toMatchObject({ id: 'diagram-1', projectId: 'project-1' });
+
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/diagrams/diagram-1',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+      payload: { name: 'Новый план' },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({ name: 'Новый план' });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/diagrams/diagram-1',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+    });
+    expect(deleted.statusCode).toBe(204);
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {

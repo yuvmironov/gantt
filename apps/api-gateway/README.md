@@ -25,6 +25,9 @@
 - REST diagrams:
   - `GET /api/v1/projects/{projectId}/diagrams`;
   - `POST /api/v1/projects/{projectId}/diagrams`;
+  - `GET /api/v1/diagrams/{diagramId}`;
+  - `PATCH /api/v1/diagrams/{diagramId}`;
+  - `DELETE /api/v1/diagrams/{diagramId}`;
 - gRPC-клиенты к User Service и Project Service;
 - передача `Set-Cookie` от User Service клиенту;
 - CSRF-проверка logout и создания проекта;
