@@ -1,6 +1,8 @@
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import { createService, loadConfig } from '@smart-oati/service-kit';
+import { auditRoutes } from './audit-routes.js';
+import { createAuditClient } from './audit-client.js';
 import { authRoutes } from './auth-routes.js';
 import { createNotificationClient } from './notification-client.js';
 import { notificationRoutes } from './notification-routes.js';
@@ -17,6 +19,7 @@ export function buildApp({
   userClient,
   projectClient,
   notificationClient,
+  auditClient,
 } = {}) {
   const config = loadConfig(env, {
     logLevel: env.LOG_LEVEL ?? 'info',
@@ -26,6 +29,11 @@ export function buildApp({
     userClient ??
     createUserClient({
       address: env.USER_SERVICE_GRPC ?? 'localhost:50051',
+    });
+  const audit =
+    auditClient ??
+    createAuditClient({
+      baseUrl: env.AUDIT_SERVICE_URL ?? 'http://localhost:8080',
     });
   const notifications =
     notificationClient ??
@@ -54,6 +62,10 @@ export function buildApp({
       await instance.register(notificationRoutes, {
         userClient: users,
         notificationClient: notifications,
+      });
+      await instance.register(auditRoutes, {
+        userClient: users,
+        auditClient: audit,
       });
 
       instance.get('/api/v1/health', async () => ({

@@ -33,6 +33,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/service-kit
 
+  apps/audit-service:
+    dependencies:
+      '@fastify/rate-limit':
+        specifier: ^10.2.0
+        version: 10.2.0
+      '@smart-oati/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+
   apps/notification-service:
     dependencies:
       '@fastify/rate-limit':
