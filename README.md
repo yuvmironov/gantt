@@ -105,7 +105,7 @@ events/                # события
 notifications/         # шаблоны и схемы
 db/                    # миграции и seed
 infrastructure/local/  # Docker Compose, db-init
-infrastructure/helm/   # Helm-каркас
+infrastructure/helm/   # Helm charts + staging/prod values
 tools/                 # проверки контрактов
 ```
 
@@ -128,6 +128,6 @@ tools/                 # проверки контрактов
 - [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
 - [x] Nuxt frontend shell with the existing Gantt SPA.
 - [x] Notification, Audit, Sync services.
-- [ ] Staging/prod Helm values.
+- [x] Helm charts for services and staging/prod umbrella values.
 - [x] Playwright smoke E2E.
 - [ ] Load tests.

@@ -24,6 +24,10 @@ service:
 
 containerPort: 8080
 
+grpc:
+  enabled: false
+  port: 50051
+
 strategy:
   type: RollingUpdate
   rollingUpdate:
@@ -84,3 +88,11 @@ networkPolicy:
   enabled: false
   ingress: []
   egress: []
+
+externalSecret:
+  enabled: false
+  secretStoreName: vault-backend
+  secretStoreKind: ClusterSecretStore
+  refreshInterval: 1h
+  targetSecretName: ""
+  data: []

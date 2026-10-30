@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         app:
+          - db-migrate
           - api-gateway
           - user-service
           - project-service

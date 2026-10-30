@@ -1,0 +1,119 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/yuvmironov/smart-oati/project-service
+  tag: main
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+containerPort: 8080
+
+grpc:
+  enabled: true
+  port: 50051
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+env:
+  - name: PORT
+    value: "8080"
+  - name: GRPC_PORT
+    value: "50051"
+  - name: NODE_ENV
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: USER_SERVICE_GRPC
+    value: "user-service:50051"
+  - name: KAFKA_BROKERS
+    value: "kafka:9092"
+  - name: KAFKA_TOPIC
+    value: "smartoati.events"
+
+envFrom:
+  - secretRef:
+      name: project-service
+externalSecret:
+  enabled: true
+  secretStoreName: vault-backend
+  secretStoreKind: ClusterSecretStore
+  refreshInterval: 1h
+  targetSecretName: project-service
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: smart-oati/project-service
+        property: database_url
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+  className: yandex-alb
+  annotations: {}
+  hosts: []
+  tls: []
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []

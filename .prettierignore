@@ -14,3 +14,4 @@ frontend/design/
 notifications/templates/
 
 apps/frontend/
+infrastructure/helm/

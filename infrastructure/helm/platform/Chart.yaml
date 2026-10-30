@@ -1,0 +1,6 @@
+﻿apiVersion: v2
+name: platform
+description: SMART OATI database migrations and backups
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

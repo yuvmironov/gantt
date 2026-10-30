@@ -1,0 +1,22 @@
+﻿global:
+  imageTag: main
+
+api-gateway:
+  replicaCount: 2
+user-service:
+  replicaCount: 2
+project-service:
+  replicaCount: 2
+notification-service:
+  replicaCount: 1
+audit-service:
+  replicaCount: 1
+sync-service:
+  replicaCount: 1
+frontend:
+  replicaCount: 2
+platform:
+  migrations:
+    enabled: true
+  backup:
+    enabled: false
