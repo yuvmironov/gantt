@@ -2,6 +2,8 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { authRoutes } from './auth-routes.js';
+import { createNotificationClient } from './notification-client.js';
+import { notificationRoutes } from './notification-routes.js';
 import { createProjectClient } from './project-client.js';
 import { projectRoutes } from './projects-routes.js';
 import { createUserClient } from './user-client.js';
@@ -9,7 +11,13 @@ import { createUserClient } from './user-client.js';
 const serviceName = 'api-gateway';
 const serviceVersion = '0.1.0';
 
-export function buildApp({ env = process.env, logger = true, userClient, projectClient } = {}) {
+export function buildApp({
+  env = process.env,
+  logger = true,
+  userClient,
+  projectClient,
+  notificationClient,
+} = {}) {
   const config = loadConfig(env, {
     logLevel: env.LOG_LEVEL ?? 'info',
     port: 8080,
@@ -18,6 +26,11 @@ export function buildApp({ env = process.env, logger = true, userClient, project
     userClient ??
     createUserClient({
       address: env.USER_SERVICE_GRPC ?? 'localhost:50051',
+    });
+  const notifications =
+    notificationClient ??
+    createNotificationClient({
+      baseUrl: env.NOTIFICATION_SERVICE_URL ?? 'http://localhost:8080',
     });
   const projects =
     projectClient ??
@@ -37,6 +50,10 @@ export function buildApp({ env = process.env, logger = true, userClient, project
       await instance.register(projectRoutes, {
         userClient: users,
         projectClient: projects,
+      });
+      await instance.register(notificationRoutes, {
+        userClient: users,
+        notificationClient: notifications,
       });
 
       instance.get('/api/v1/health', async () => ({
