@@ -32,7 +32,7 @@ const sessionUser = {
 
 const project = {
   id: 'project-1',
-  name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
+  name: 'Р В РЎСџР РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™',
   description: '',
   owner_user_id: 'user-1',
   status: 'PROJECT_STATUS_ACTIVE',
@@ -92,7 +92,7 @@ describe('api-gateway project routes', () => {
     const diagram = {
       id: 'diagram-1',
       project_id: 'project-1',
-      name: 'РџР»Р°РЅ',
+      name: 'Р СџР В»Р В°Р Р…',
       description: '',
       day_mode: 'DAY_MODE_WORKING',
       current_revision: '0',
@@ -115,7 +115,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/projects/project-1/diagrams',
       cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'РџР»Р°РЅ' },
+      payload: { name: 'Р СџР В»Р В°Р Р…' },
     });
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({ id: 'diagram-1', dayMode: 'working' });
@@ -133,7 +133,7 @@ describe('api-gateway project routes', () => {
     const diagram = {
       id: 'diagram-1',
       project_id: 'project-1',
-      name: 'РџР»Р°РЅ',
+      name: 'Р СџР В»Р В°Р Р…',
       description: '',
       day_mode: 'DAY_MODE_WORKING',
       current_revision: '0',
@@ -144,7 +144,9 @@ describe('api-gateway project routes', () => {
         callback(null, { diagram, project_id: 'project-1' });
       },
       UpdateDiagram(_request, _metadata, callback) {
-        callback(null, { diagram: { ...diagram, name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' } });
+        callback(null, {
+          diagram: { ...diagram, name: 'Р СњР С•Р Р†РЎвЂ№Р в„– Р С—Р В»Р В°Р Р…' },
+        });
       },
       DeleteDiagram(_request, _metadata, callback) {
         callback(null, { deleted: true });
@@ -164,10 +166,10 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1',
       cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
       headers: { 'x-csrf-token': 'csrf' },
-      payload: { name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' },
+      payload: { name: 'Р СњР С•Р Р†РЎвЂ№Р в„– Р С—Р В»Р В°Р Р…' },
     });
     expect(updated.statusCode).toBe(200);
-    expect(updated.json()).toMatchObject({ name: 'РќРѕРІС‹Р№ РїР»Р°РЅ' });
+    expect(updated.json()).toMatchObject({ name: 'Р СњР С•Р Р†РЎвЂ№Р в„– Р С—Р В»Р В°Р Р…' });
 
     const deleted = await app.inject({
       method: 'DELETE',
@@ -184,7 +186,7 @@ describe('api-gateway project routes', () => {
       diagram_id: 'diagram-1',
       wbs_code: '1',
       sort_order: 1,
-      name: 'РќР°РїСЂР°РІР»РµРЅРёРµ',
+      name: 'Р СњР В°Р С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…Р С‘Р Вµ',
       priority: 'PRIORITY_MEDIUM',
       version: 1,
       created_by_user_id: 'user-1',
@@ -196,7 +198,7 @@ describe('api-gateway project routes', () => {
       level: 2,
       wbs_code: '1.1',
       sort_order: 1,
-      name: 'Р—Р°РґР°С‡Р°',
+      name: 'Р вЂ”Р В°Р Т‘Р В°РЎвЂЎР В°',
       status: 'TASK_STATUS_PLANNED',
       progress: 0,
       priority: 'PRIORITY_MEDIUM',
@@ -216,7 +218,7 @@ describe('api-gateway project routes', () => {
             diagram: {
               id: 'diagram-1',
               project_id: 'project-1',
-              name: 'РџР»Р°РЅ',
+              name: 'Р СџР В»Р В°Р Р…',
               day_mode: 'DAY_MODE_WORKING',
               current_revision: '0',
             },
@@ -238,7 +240,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1/directions',
       cookies,
       headers,
-      payload: { name: 'РќР°РїСЂР°РІР»РµРЅРёРµ' },
+      payload: { name: 'Р СњР В°Р С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…Р С‘Р Вµ' },
     });
     expect(createdDirection.statusCode).toBe(201);
     expect(createdDirection.json()).toMatchObject({ wbsCode: '1' });
@@ -248,7 +250,7 @@ describe('api-gateway project routes', () => {
       url: '/api/v1/diagrams/diagram-1/tasks',
       cookies,
       headers,
-      payload: { directionId: 'direction-1', name: 'Р—Р°РґР°С‡Р°' },
+      payload: { directionId: 'direction-1', name: 'Р вЂ”Р В°Р Т‘Р В°РЎвЂЎР В°' },
     });
     expect(createdTask.statusCode).toBe(201);
     expect(createdTask.json()).toMatchObject({ status: 'planned', progress: 0 });
@@ -304,6 +306,12 @@ describe('api-gateway project routes', () => {
         updateRequest = request;
         callback(null, {
           task: { ...task, name: 'Updated task', priority: 'PRIORITY_HIGH' },
+          revision: '0',
+        });
+      },
+      MoveTask(_request, _metadata, callback) {
+        callback(null, {
+          task: { ...task, direction_id: 'direction-2', wbs_code: '2.1' },
           revision: '0',
         });
       },
@@ -373,6 +381,16 @@ describe('api-gateway project routes', () => {
     });
     expect(progress.statusCode).toBe(200);
     expect(progress.json()).toMatchObject({ status: 'in_progress', progress: 40 });
+
+    const moved = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tasks/task-1/move',
+      cookies,
+      headers,
+      payload: { directionId: 'direction-2', sortOrder: 1 },
+    });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.json()).toMatchObject({ directionId: 'direction-2', wbsCode: '2.1' });
 
     const deletedTask = await app.inject({
       method: 'DELETE',
@@ -704,14 +722,14 @@ describe('api-gateway project routes', () => {
       },
       headers: { 'x-csrf-token': 'csrf' },
       payload: {
-        name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
-        description: 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ',
+        name: 'Р В РЎСџР РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™',
+        description: 'Р В РЎвЂєР В РЎвЂ”Р В РЎвЂР РЋР С“Р В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’Вµ',
       },
     });
 
     expect(response.statusCode).toBe(201);
     expect(received).toMatchObject({
-      name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ',
+      name: 'Р В РЎСџР РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™',
       owner_user_id: 'user-1',
     });
     expect(response.json()).toMatchObject({
@@ -728,7 +746,7 @@ describe('api-gateway project routes', () => {
       method: 'POST',
       url: '/api/v1/projects',
       cookies: { '__Host-session': 'token' },
-      payload: { name: 'Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ' },
+      payload: { name: 'Р В РЎСџР РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™' },
     });
 
     expect(response.statusCode).toBe(403);
