@@ -179,6 +179,19 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8080
     networks: [smart-oati]
 
+  sync-service:
+    profiles: ["apps"]
+    build:
+      context: ../..
+      dockerfile: apps/sync-service/Dockerfile
+    image: smart-oati/sync-service:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks: [smart-oati]
+
   audit-service:
     profiles: ["apps"]
     build:
