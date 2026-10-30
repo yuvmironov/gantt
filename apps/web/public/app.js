@@ -5,6 +5,12 @@ const state = {
   diagrams: [],
   diagram: null,
   snapshot: null,
+  task: null,
+  comments: [],
+  users: null,
+  executors: null,
+  sessions: [],
+  filters: { query: '', status: '' },
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -69,6 +75,25 @@ async function api(path, { method = 'GET', body } = {}) {
   return response.json();
 }
 
+function dateInput(value) {
+  return value ? String(value).slice(0, 10) : '';
+}
+
+function setTableMessage(message) {
+  const body = $('#gantt-table tbody');
+  body.innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(message)}</td></tr>`;
+}
+
+async function loadDirectory() {
+  if (state.users && state.executors) return;
+  const [users, executors] = await Promise.all([
+    api('/users?limit=200'),
+    api('/executors?limit=200'),
+  ]);
+  state.users = users.items ?? [];
+  state.executors = executors.items ?? [];
+}
+
 function showAuth() {
   state.user = null;
   authView.classList.remove('hidden');
@@ -84,11 +109,12 @@ function showApp() {
 async function boot() {
   try {
     state.user = await api('/auth/session');
-    showApp();
-    await loadProjects();
   } catch {
     showAuth();
+    return;
   }
+  showApp();
+  await loadProjects().catch((error) => showToast(error.message));
 }
 
 function setTab(registering) {
@@ -182,7 +208,11 @@ $('#project-list').addEventListener('click', async (event) => {
   $('#gantt-table').classList.add('hidden');
   $('#gantt-forms').classList.add('hidden');
   $('#export-json').classList.add('hidden');
-  await loadDiagrams();
+  try {
+    await loadDiagrams();
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 $('#new-project-toggle').addEventListener('click', () => {
@@ -270,14 +300,29 @@ $('#diagram-list').addEventListener('click', async (event) => {
 
 async function loadSnapshot() {
   if (!state.diagram) return;
-  state.snapshot = await api(`/diagrams/${state.diagram.id}/snapshot`);
-  $('#diagram-title').textContent = state.snapshot.diagram.name;
-  $('#diagram-hint').textContent = `Ревизия ${state.snapshot.currentRevision}`;
-  $('#export-json').href = `/api/v1/diagrams/${state.diagram.id}/export?format=json`;
-  $('#export-json').classList.remove('hidden');
-  $('#gantt-forms').classList.remove('hidden');
   $('#gantt-table').classList.remove('hidden');
-  renderGantt();
+  $('#gantt-filters').classList.remove('hidden');
+  setTableMessage('Загрузка...');
+  try {
+    state.snapshot = await api(`/diagrams/${state.diagram.id}/snapshot`);
+    $('#diagram-title').textContent = state.snapshot.diagram.name;
+    $('#diagram-hint').textContent = `Ревизия ${state.snapshot.currentRevision}`;
+    $('#export-json').href = `/api/v1/diagrams/${state.diagram.id}/export?format=json`;
+    $('#export-json').classList.remove('hidden');
+    $('#gantt-forms').classList.remove('hidden');
+    $('#diagram-extras').classList.remove('hidden');
+    renderGantt();
+    renderDependencies();
+    renderHolidays();
+    if (state.task) {
+      const fresh = (state.snapshot.tasks ?? []).find((item) => item.id === state.task.id);
+      if (fresh) openTask(fresh.id);
+      else closeTask();
+    }
+  } catch (error) {
+    setTableMessage('Не удалось загрузить диаграмму');
+    showToast(error.message);
+  }
 }
 
 function statusLabel(status) {
@@ -301,17 +346,27 @@ function formatDate(value) {
 function renderGantt() {
   const snapshot = state.snapshot;
   if (!snapshot) return;
-  const tasks = [...(snapshot.tasks ?? [])].sort((a, b) => a.wbsCode.localeCompare(b.wbsCode));
+  const query = state.filters.query.trim().toLowerCase();
+  const status = state.filters.status;
+  const tasks = [...(snapshot.tasks ?? [])]
+    .filter(
+      (task) =>
+        (!query || `${task.wbsCode} ${task.name}`.toLowerCase().includes(query)) &&
+        (!status || task.status === status),
+    )
+    .sort((a, b) => a.wbsCode.localeCompare(b.wbsCode));
   const directions = [...(snapshot.directions ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
   const rows = [];
 
   for (const direction of directions) {
+    const directionTasks = tasks.filter((item) => item.directionId === direction.id);
+    if (directionTasks.length === 0 && (query || status)) continue;
     rows.push(`
       <tr class="direction-row">
         <td>${escapeHtml(direction.wbsCode)}</td>
         <td colspan="6"><strong>${escapeHtml(direction.name)}</strong></td>
       </tr>`);
-    for (const task of tasks.filter((item) => item.directionId === direction.id)) {
+    for (const task of directionTasks) {
       const responsible = (task.assignments ?? []).find((item) => item.role === 'responsible');
       const dates = [formatDate(task.startDate), formatDate(task.endDate)]
         .filter(Boolean)
@@ -319,7 +374,7 @@ function renderGantt() {
       rows.push(`
         <tr class="${task.level === 3 ? 'child-row' : ''}">
           <td>${escapeHtml(task.wbsCode)}</td>
-          <td>${escapeHtml(task.name)}</td>
+          <td><button class="task-link" data-task-open="${escapeHtml(task.id)}" type="button">${escapeHtml(task.name)}</button></td>
           <td><span class="status ${escapeHtml(task.status)}">${escapeHtml(statusLabel(task.status))}</span></td>
           <td>
             <div class="progress">
@@ -329,7 +384,10 @@ function renderGantt() {
           </td>
           <td>${escapeHtml(dates)}</td>
           <td>${escapeHtml(responsible?.displayName ?? '')}</td>
-          <td><button class="ghost small" data-progress="${escapeHtml(task.id)}" type="button">+25%</button></td>
+          <td class="row-actions">
+            <button class="ghost small" data-task-open="${escapeHtml(task.id)}" type="button">Открыть</button>
+            <button class="ghost small" data-progress="${escapeHtml(task.id)}" type="button">+25%</button>
+          </td>
         </tr>`);
     }
   }
@@ -347,6 +405,11 @@ function renderGantt() {
 }
 
 $('#gantt-table').addEventListener('click', async (event) => {
+  const open = event.target.closest('[data-task-open]');
+  if (open) {
+    openTask(open.dataset.taskOpen);
+    return;
+  }
   const button = event.target.closest('[data-progress]');
   if (!button) return;
   const task = (state.snapshot?.tasks ?? []).find((item) => item.id === button.dataset.progress);
@@ -400,6 +463,488 @@ $('#task-form').addEventListener('submit', async (event) => {
 
 $('#refresh-diagram').addEventListener('click', () => {
   loadSnapshot().catch((error) => showToast(error.message));
+});
+
+$('#task-search').addEventListener('input', (event) => {
+  state.filters.query = event.target.value;
+  renderGantt();
+});
+
+$('#task-status-filter').addEventListener('change', (event) => {
+  state.filters.status = event.target.value;
+  renderGantt();
+});
+
+$('#clear-filters').addEventListener('click', () => {
+  state.filters = { query: '', status: '' };
+  $('#task-search').value = '';
+  $('#task-status-filter').value = '';
+  renderGantt();
+});
+
+function findTask(taskId) {
+  return (state.snapshot?.tasks ?? []).find((task) => task.id === taskId);
+}
+
+function updateTaskInSnapshot(task) {
+  const tasks = state.snapshot?.tasks ?? [];
+  const index = tasks.findIndex((item) => item.id === task.id);
+  if (index >= 0) tasks[index] = task;
+}
+
+async function openTask(taskId) {
+  const task = findTask(taskId);
+  if (!task) return;
+  state.task = task;
+  const drawer = $('#task-drawer');
+  drawer.classList.remove('hidden');
+  $('#task-drawer-title').textContent = `${task.wbsCode} ${task.name}`;
+  const form = $('#task-edit-form');
+  form.elements.name.value = task.name ?? '';
+  form.elements.description.value = task.description ?? '';
+  form.elements.priority.value = task.priority ?? 'medium';
+  form.elements.jiraNumber.value = task.jiraNumber ?? '';
+  form.elements.startDate.value = dateInput(task.startDate);
+  form.elements.endDate.value = dateInput(task.endDate);
+  $('#task-status').value = task.status ?? 'planned';
+  $('#task-progress').value = Number(task.progress) || 0;
+  const moveSelect = $('#task-move-direction');
+  moveSelect.innerHTML = (state.snapshot?.directions ?? [])
+    .map(
+      (direction) =>
+        `<option value="${escapeHtml(direction.id)}">${escapeHtml(direction.wbsCode)} ${escapeHtml(direction.name)}</option>`,
+    )
+    .join('');
+  moveSelect.value = task.directionId;
+  $('#task-move-sort').value = task.sortOrder ?? 1;
+  renderAssignments();
+  try {
+    await loadDirectory();
+    renderAssignmentPeople();
+  } catch (error) {
+    showToast(error.message);
+  }
+  await loadComments(task.id);
+}
+
+function closeTask() {
+  state.task = null;
+  state.comments = [];
+  $('#task-drawer').classList.add('hidden');
+}
+
+$('#task-drawer-close').addEventListener('click', closeTask);
+
+function assignmentRoleLabel(role) {
+  return (
+    {
+      responsible: 'Ответственный',
+      executor: 'Исполнитель',
+      co_executor: 'Соисполнитель',
+    }[role] ?? role
+  );
+}
+
+function renderAssignments() {
+  const container = $('#assignment-list');
+  const assignments = state.task?.assignments ?? [];
+  if (assignments.length === 0) {
+    container.innerHTML = '<p class="empty">Назначений пока нет.</p>';
+    return;
+  }
+  container.innerHTML = assignments
+    .map(
+      (assignment) => `
+        <div class="list-item assignment-item">
+          <span class="item-title">${escapeHtml(assignment.displayName || assignment.assigneeId)}</span>
+          <span class="item-meta">${escapeHtml(assignmentRoleLabel(assignment.role))} · ${escapeHtml(assignment.assigneeType === 'executor' ? 'Исполнитель' : 'Пользователь')}</span>
+          <button class="ghost small" data-assignment-remove="${escapeHtml(assignment.id)}" type="button">Убрать</button>
+        </div>`,
+    )
+    .join('');
+}
+
+function renderAssignmentPeople() {
+  const type = $('#assignment-type').value;
+  const select = $('#assignment-person');
+  const items = type === 'executor' ? (state.executors ?? []) : (state.users ?? []);
+  select.innerHTML = items
+    .map(
+      (item) =>
+        `<option value="${escapeHtml(item.id)}">${escapeHtml(item.fullName ?? item.displayName ?? item.email ?? item.id)}</option>`,
+    )
+    .join('');
+}
+
+$('#assignment-type').addEventListener('change', renderAssignmentPeople);
+
+$('#assignment-add').addEventListener('click', async () => {
+  if (!state.task) return;
+  const role = $('#assignment-role').value;
+  const assigneeType = $('#assignment-type').value;
+  const assigneeId = $('#assignment-person').value;
+  if (!assigneeId) {
+    showToast('Нет доступных исполнителей');
+    return;
+  }
+  const current = state.task.assignments ?? [];
+  if (role === 'co_executor' && current.filter((item) => item.role === role).length >= 2) {
+    showToast('Можно назначить не более двух соисполнителей');
+    return;
+  }
+  const next = current.filter((item) => item.role !== role || role === 'co_executor');
+  next.push({ role, assigneeType, assigneeId });
+  await saveAssignments(next);
+});
+
+$('#assignment-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-assignment-remove]');
+  if (!button || !state.task) return;
+  const next = (state.task.assignments ?? []).filter(
+    (item) => item.id !== button.dataset.assignmentRemove,
+  );
+  await saveAssignments(next);
+});
+
+async function saveAssignments(assignments) {
+  try {
+    const task = await api(`/tasks/${state.task.id}/assignments`, {
+      method: 'PUT',
+      body: {
+        assignments: assignments.map((item) => ({
+          role: item.role,
+          assigneeType: item.assigneeType,
+          assigneeId: item.assigneeId,
+        })),
+      },
+    });
+    state.task = task;
+    updateTaskInSnapshot(task);
+    renderAssignments();
+    renderGantt();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+$('#task-edit-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.task) return;
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    const task = await api(`/tasks/${state.task.id}`, {
+      method: 'PATCH',
+      body: {
+        name: data.get('name'),
+        description: data.get('description'),
+        priority: data.get('priority'),
+        jiraNumber: data.get('jiraNumber'),
+        startDate: data.get('startDate') || null,
+        endDate: data.get('endDate') || null,
+        expectedVersion: state.task.version,
+      },
+    });
+    state.task = task;
+    updateTaskInSnapshot(task);
+    $('#task-drawer-title').textContent = `${task.wbsCode} ${task.name}`;
+    renderGantt();
+    showToast('Задача сохранена');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#task-delete').addEventListener('click', async () => {
+  if (!state.task) return;
+  if (!window.confirm('Удалить задачу?')) return;
+  try {
+    await api(`/tasks/${state.task.id}?expectedVersion=${state.task.version}`, {
+      method: 'DELETE',
+    });
+    closeTask();
+    await loadSnapshot();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#task-progress-save').addEventListener('click', async () => {
+  if (!state.task) return;
+  try {
+    const task = await api(`/tasks/${state.task.id}/progress`, {
+      method: 'PATCH',
+      body: {
+        status: $('#task-status').value,
+        progress: Number($('#task-progress').value),
+        expectedVersion: state.task.version,
+      },
+    });
+    state.task = task;
+    updateTaskInSnapshot(task);
+    renderGantt();
+    showToast('Прогресс обновлён');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#task-move').addEventListener('click', async () => {
+  if (!state.task) return;
+  try {
+    const task = await api(`/tasks/${state.task.id}/move`, {
+      method: 'POST',
+      body: {
+        directionId: $('#task-move-direction').value,
+        sortOrder: Number($('#task-move-sort').value) || 0,
+        expectedVersion: state.task.version,
+      },
+    });
+    state.task = task;
+    updateTaskInSnapshot(task);
+    await loadSnapshot();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+async function loadComments(taskId) {
+  try {
+    const response = await api(`/comments?entityType=task&entityId=${taskId}`);
+    state.comments = response.items ?? [];
+    renderComments();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function renderComments() {
+  const container = $('#comment-list');
+  if (state.comments.length === 0) {
+    container.innerHTML = '<p class="empty">Комментариев пока нет.</p>';
+    return;
+  }
+  container.innerHTML = state.comments
+    .map(
+      (comment) => `
+        <div class="list-item comment-item">
+          <span class="item-title">${escapeHtml(comment.body)}</span>
+          <span class="item-meta">${escapeHtml(comment.authorUserId)} · ${formatDate(comment.createdAt)}</span>
+          <button class="ghost small" data-comment-delete="${escapeHtml(comment.id)}" type="button">Удалить</button>
+        </div>`,
+    )
+    .join('');
+}
+
+$('#comment-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.task) return;
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api('/comments', {
+      method: 'POST',
+      body: {
+        entityType: 'task',
+        entityId: state.task.id,
+        body: data.get('body'),
+      },
+    });
+    form.reset();
+    await loadComments(state.task.id);
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#comment-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-comment-delete]');
+  if (!button) return;
+  try {
+    await api(`/comments/${button.dataset.commentDelete}`, { method: 'DELETE' });
+    await loadComments(state.task.id);
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+function wbsFor(entityType, entityId) {
+  if (entityType === 'task') {
+    return (state.snapshot?.tasks ?? []).find((task) => task.id === entityId)?.wbsCode ?? entityId;
+  }
+  return (
+    (state.snapshot?.directions ?? []).find((direction) => direction.id === entityId)?.wbsCode ??
+    entityId
+  );
+}
+
+function renderDependencies() {
+  const container = $('#dependency-list');
+  const dependencies = state.snapshot?.dependencies ?? [];
+  container.innerHTML =
+    dependencies
+      .map(
+        (dependency) => `
+          <div class="list-item dependency-item">
+            <span class="item-title">${escapeHtml(wbsFor(dependency.predecessorType, dependency.predecessorId))} → ${escapeHtml(wbsFor(dependency.successorType, dependency.successorId))}</span>
+            <span class="item-meta">${escapeHtml(dependency.lineStyle)} · ${escapeHtml(dependency.arrowShape)}</span>
+            <button class="ghost small" data-dependency-delete="${escapeHtml(dependency.id)}" type="button">Удалить</button>
+          </div>`,
+      )
+      .join('') || '<p class="empty">Зависимостей пока нет.</p>';
+
+  const tasks = state.snapshot?.tasks ?? [];
+  const options = tasks
+    .map(
+      (task) =>
+        `<option value="${escapeHtml(task.id)}">${escapeHtml(task.wbsCode)} ${escapeHtml(task.name)}</option>`,
+    )
+    .join('');
+  $('#dependency-predecessor').innerHTML = options;
+  $('#dependency-successor').innerHTML = options;
+}
+
+$('#dependency-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-dependency-delete]');
+  if (!button) return;
+  try {
+    await api(`/dependencies/${button.dataset.dependencyDelete}`, { method: 'DELETE' });
+    await loadSnapshot();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#dependency-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.diagram) return;
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  if (data.get('predecessorId') === data.get('successorId')) {
+    showToast('Выберите разные задачи');
+    return;
+  }
+  try {
+    await api(`/diagrams/${state.diagram.id}/dependencies`, {
+      method: 'POST',
+      body: {
+        predecessorType: 'task',
+        predecessorId: data.get('predecessorId'),
+        successorType: 'task',
+        successorId: data.get('successorId'),
+        lineStyle: data.get('lineStyle'),
+        arrowShape: data.get('arrowShape'),
+      },
+    });
+    form.reset();
+    await loadSnapshot();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+function renderHolidays() {
+  const container = $('#holiday-list');
+  const holidays = state.snapshot?.holidays ?? [];
+  container.innerHTML =
+    holidays
+      .map(
+        (holiday) => `
+          <div class="list-item">
+            <span class="item-title">${escapeHtml(holiday.holidayDate)}</span>
+            <span class="item-meta">${escapeHtml(holiday.name || 'Праздник')}</span>
+            <button class="ghost small" data-holiday-delete="${escapeHtml(holiday.holidayDate)}" type="button">Удалить</button>
+          </div>`,
+      )
+      .join('') || '<p class="empty">Праздников пока нет.</p>';
+}
+
+async function saveHolidays(holidays) {
+  try {
+    await api(`/diagrams/${state.diagram.id}/holidays`, {
+      method: 'PUT',
+      body: {
+        items: holidays.map((holiday) => ({
+          holidayDate: holiday.holidayDate,
+          name: holiday.name ?? '',
+        })),
+      },
+    });
+    await loadSnapshot();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+$('#holiday-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const holidays = [...(state.snapshot?.holidays ?? [])];
+  if (holidays.some((holiday) => holiday.holidayDate === data.get('date'))) {
+    showToast('Такой праздник уже есть');
+    return;
+  }
+  holidays.push({ holidayDate: data.get('date'), name: data.get('name') });
+  form.reset();
+  await saveHolidays(holidays);
+});
+
+$('#holiday-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-holiday-delete]');
+  if (!button) return;
+  const holidays = (state.snapshot?.holidays ?? []).filter(
+    (holiday) => holiday.holidayDate !== button.dataset.holidayDelete,
+  );
+  await saveHolidays(holidays);
+});
+
+async function openSessions() {
+  $('#sessions-modal').classList.remove('hidden');
+  const container = $('#session-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  try {
+    const response = await api('/auth/sessions');
+    state.sessions = response.items ?? [];
+    container.innerHTML =
+      state.sessions
+        .map(
+          (session) => `
+            <div class="list-item">
+              <span class="item-title">${escapeHtml(session.userAgent || 'Неизвестное устройство')}</span>
+              <span class="item-meta">${escapeHtml(session.ip || '')} · ${formatDate(session.lastSeenAt)}</span>
+              <button class="ghost small" data-session-revoke="${escapeHtml(session.id)}" type="button">Завершить</button>
+            </div>`,
+        )
+        .join('') || '<p class="empty">Активных сессий нет.</p>';
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить сессии.</p>';
+    showToast(error.message);
+  }
+}
+
+$('#sessions-toggle').addEventListener('click', openSessions);
+$('#sessions-close').addEventListener('click', () => $('#sessions-modal').classList.add('hidden'));
+
+$('#session-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-session-revoke]');
+  if (!button) return;
+  try {
+    await api(`/auth/sessions/${button.dataset.sessionRevoke}`, { method: 'DELETE' });
+    await openSessions();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#logout-all').addEventListener('click', async () => {
+  try {
+    await api('/auth/logout-all', { method: 'POST' });
+    $('#sessions-modal').classList.add('hidden');
+    showAuth();
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 boot();

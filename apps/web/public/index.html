@@ -49,6 +49,7 @@
         <div class="brand">SMART OATI</div>
         <div class="topbar-user">
           <span id="current-user"></span>
+          <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
           <button id="logout" class="ghost" type="button">Выйти</button>
         </div>
       </header>
@@ -105,6 +106,18 @@
             </form>
           </div>
 
+          <div id="gantt-filters" class="filters hidden">
+            <input id="task-search" type="search" placeholder="Поиск по задачам и WBS" />
+            <select id="task-status-filter">
+              <option value="">Все статусы</option>
+              <option value="planned">План</option>
+              <option value="in_progress">В работе</option>
+              <option value="done">Готово</option>
+              <option value="blocked">Блок</option>
+            </select>
+            <button id="clear-filters" class="ghost" type="button">Сбросить</button>
+          </div>
+
           <div class="table-wrap">
             <table id="gantt-table" class="gantt hidden">
               <thead>
@@ -115,14 +128,183 @@
                   <th>Готовность</th>
                   <th>Даты</th>
                   <th>Ответственный</th>
-                  <th></th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
+
+          <div id="diagram-extras" class="extras hidden">
+            <section class="panel inner-panel">
+              <div class="panel-head">
+                <h3>Зависимости</h3>
+              </div>
+              <div id="dependency-list" class="list compact-list"></div>
+              <form id="dependency-form" class="form compact">
+                <label
+                  >Предшественник
+                  <select name="predecessorId" id="dependency-predecessor"></select
+                ></label>
+                <label
+                  >Последователь
+                  <select name="successorId" id="dependency-successor"></select
+                ></label>
+                <div class="inline-fields">
+                  <label
+                    >Линия
+                    <select name="lineStyle">
+                      <option value="solid">Сплошная</option>
+                      <option value="dashed">Пунктир</option>
+                      <option value="dotted">Точки</option>
+                    </select>
+                  </label>
+                  <label
+                    >Стрелка
+                    <select name="arrowShape">
+                      <option value="orthogonal">Ортогональная</option>
+                      <option value="straight">Прямая</option>
+                      <option value="curved">Изогнутая</option>
+                    </select>
+                  </label>
+                </div>
+                <button class="ghost" type="submit">Добавить зависимость</button>
+              </form>
+            </section>
+
+            <section class="panel inner-panel">
+              <div class="panel-head">
+                <h3>Праздники</h3>
+              </div>
+              <div id="holiday-list" class="list compact-list"></div>
+              <form id="holiday-form" class="form compact">
+                <div class="inline-fields">
+                  <label>Дата <input name="date" type="date" required /></label>
+                  <label>Название <input name="name" maxlength="200" /></label>
+                </div>
+                <button class="ghost" type="submit">Добавить праздник</button>
+              </form>
+            </section>
+          </div>
         </section>
       </main>
+    </div>
+
+    <aside id="task-drawer" class="drawer hidden" aria-label="Карточка задачи">
+      <div class="drawer-head">
+        <div>
+          <p class="eyebrow">Задача</p>
+          <h2 id="task-drawer-title">Задача</h2>
+        </div>
+        <button id="task-drawer-close" class="ghost" type="button">Закрыть</button>
+      </div>
+      <div class="drawer-body">
+        <section class="drawer-section">
+          <h3>Основное</h3>
+          <form id="task-edit-form" class="form compact">
+            <label>Название <input name="name" required maxlength="200" /></label>
+            <label>Описание <textarea name="description" rows="3"></textarea></label>
+            <div class="inline-fields">
+              <label
+                >Приоритет
+                <select name="priority">
+                  <option value="low">Низкий</option>
+                  <option value="medium">Средний</option>
+                  <option value="high">Высокий</option>
+                  <option value="critical">Критический</option>
+                </select>
+              </label>
+              <label>Jira <input name="jiraNumber" maxlength="40" /></label>
+            </div>
+            <div class="inline-fields">
+              <label>Начало <input name="startDate" type="date" /></label>
+              <label>Окончание <input name="endDate" type="date" /></label>
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit">Сохранить</button>
+              <button id="task-delete" class="danger" type="button">Удалить</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="drawer-section">
+          <h3>Прогресс</h3>
+          <div class="inline-fields">
+            <label
+              >Статус
+              <select id="task-status">
+                <option value="planned">План</option>
+                <option value="in_progress">В работе</option>
+                <option value="done">Готово</option>
+                <option value="blocked">Блок</option>
+              </select>
+            </label>
+            <label
+              >Готовность
+              <input id="task-progress" type="number" min="0" max="100" step="5" />
+            </label>
+            <button id="task-progress-save" class="ghost" type="button">Применить</button>
+          </div>
+          <div class="inline-fields">
+            <label
+              >Направление
+              <select id="task-move-direction"></select>
+            </label>
+            <label
+              >Порядок
+              <input id="task-move-sort" type="number" min="1" value="1" />
+            </label>
+            <button id="task-move" class="ghost" type="button">Переместить</button>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <h3>Назначения</h3>
+          <div id="assignment-list" class="list compact-list"></div>
+          <div class="inline-fields">
+            <label
+              >Роль
+              <select id="assignment-role">
+                <option value="responsible">Ответственный</option>
+                <option value="executor">Исполнитель</option>
+                <option value="co_executor">Соисполнитель</option>
+              </select>
+            </label>
+            <label
+              >Тип
+              <select id="assignment-type">
+                <option value="user">Пользователь</option>
+                <option value="executor">Исполнитель</option>
+              </select>
+            </label>
+            <label
+              >Кто
+              <select id="assignment-person"></select>
+            </label>
+            <button id="assignment-add" class="ghost" type="button">Назначить</button>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <h3>Комментарии</h3>
+          <div id="comment-list" class="list compact-list"></div>
+          <form id="comment-form" class="form compact">
+            <textarea name="body" rows="3" placeholder="Новый комментарий" required></textarea>
+            <button class="ghost" type="submit">Добавить комментарий</button>
+          </form>
+        </section>
+      </div>
+    </aside>
+
+    <div id="sessions-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Активные сессии</h2>
+          <button id="sessions-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <div id="session-list" class="list"></div>
+        <button id="logout-all" class="danger" type="button">Выйти на всех устройствах</button>
+      </div>
     </div>
 
     <div id="toast" class="toast hidden"></div>
