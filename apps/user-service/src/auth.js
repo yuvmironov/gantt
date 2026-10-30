@@ -201,6 +201,12 @@ export async function ensureDevAdmin(db, env = process.env) {
      ON CONFLICT DO NOTHING`,
     [userId],
   );
+  await db.query(
+    `UPDATE access.user_sessions
+     SET revoked_at = now()
+     WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId],
+  );
   return true;
 }
 

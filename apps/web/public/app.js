@@ -59,6 +59,10 @@ async function api(path, { method = 'GET', body } = {}) {
     } catch {
       // Keep the HTTP status when the response is not JSON.
     }
+    if (detail.includes('session_limit_reached')) {
+      detail =
+        'Достигнут лимит двух активных сессий. Перезапустите user-service или завершите сессию в другом окне.';
+    }
     throw new Error(detail);
   }
   if (response.status === 204) return null;
