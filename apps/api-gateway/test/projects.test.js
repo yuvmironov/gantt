@@ -266,6 +266,118 @@ describe('api-gateway project routes', () => {
     });
   });
 
+  it('updates task progress, deletes tasks and manages dependencies', async () => {
+    const task = {
+      id: 'task-1',
+      diagram_id: 'diagram-1',
+      direction_id: 'direction-1',
+      level: 2,
+      wbs_code: '1.1',
+      sort_order: 1,
+      name: 'Task 1',
+      status: 'TASK_STATUS_IN_PROGRESS',
+      progress: 40,
+      priority: 'PRIORITY_MEDIUM',
+      version: 2,
+      created_by_user_id: 'user-1',
+    };
+    const dependency = {
+      id: 'dependency-1',
+      diagram_id: 'diagram-1',
+      predecessor_type: 'task',
+      predecessor_id: 'task-1',
+      successor_type: 'task',
+      successor_id: 'task-2',
+      color: '',
+      line_style: 'DEPENDENCY_LINE_STYLE_DASHED',
+      arrow_shape: 'DEPENDENCY_ARROW_SHAPE_STRAIGHT',
+      created_by_user_id: 'user-1',
+      created_at: { seconds: '1793290000', nanos: 0 },
+      updated_at: { seconds: '1793290000', nanos: 0 },
+    };
+    const app = build(sessionUser, {
+      UpdateTaskProgress(_request, _metadata, callback) {
+        callback(null, { task, revision: '0' });
+      },
+      DeleteTask(_request, _metadata, callback) {
+        callback(null, { deleted: true });
+      },
+      CreateDependency(_request, _metadata, callback) {
+        callback(null, { dependency, revision: '0' });
+      },
+      ListDependencies(_request, _metadata, callback) {
+        callback(null, {
+          items: [dependency],
+          page: { total: 1, limit: 50, offset: 0 },
+        });
+      },
+      DeleteDependency(_request, _metadata, callback) {
+        callback(null, { deleted: true });
+      },
+    });
+    const cookies = { '__Host-session': 'token', '__Host-csrf': 'csrf' };
+    const headers = { 'x-csrf-token': 'csrf' };
+
+    const progress = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/tasks/task-1/progress',
+      cookies,
+      headers,
+      payload: { status: 'in_progress', progress: 40 },
+    });
+    expect(progress.statusCode).toBe(200);
+    expect(progress.json()).toMatchObject({ status: 'in_progress', progress: 40 });
+
+    const deletedTask = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/tasks/task-2',
+      cookies,
+      headers,
+    });
+    expect(deletedTask.statusCode).toBe(204);
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/diagrams/diagram-1/dependencies',
+      cookies,
+      headers,
+      payload: {
+        predecessorType: 'task',
+        predecessorId: 'task-1',
+        successorType: 'task',
+        successorId: 'task-2',
+        lineStyle: 'dashed',
+        arrowShape: 'straight',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      id: 'dependency-1',
+      linkType: 'finish_to_start',
+      lineStyle: 'dashed',
+      arrowShape: 'straight',
+    });
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/diagrams/diagram-1/dependencies',
+      cookies,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({
+      items: [{ id: 'dependency-1' }],
+      page: { total: 1 },
+    });
+
+    const deletedDependency = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/dependencies/dependency-1',
+      cookies,
+      headers,
+    });
+    expect(deletedDependency.statusCode).toBe(204);
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {

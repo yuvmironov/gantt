@@ -93,6 +93,24 @@ function priorityEnum(value) {
   );
 }
 
+function dependencyLineStyleEnum(value) {
+  return (
+    {
+      dashed: 'DEPENDENCY_LINE_STYLE_DASHED',
+      dotted: 'DEPENDENCY_LINE_STYLE_DOTTED',
+    }[value] ?? 'DEPENDENCY_LINE_STYLE_SOLID'
+  );
+}
+
+function dependencyArrowEnum(value) {
+  return (
+    {
+      straight: 'DEPENDENCY_ARROW_SHAPE_STRAIGHT',
+      curved: 'DEPENDENCY_ARROW_SHAPE_CURVED',
+    }[value] ?? 'DEPENDENCY_ARROW_SHAPE_ORTHOGONAL'
+  );
+}
+
 function timestampInput(value) {
   if (!value) return undefined;
   const date = new Date(value);
@@ -169,12 +187,38 @@ export function mapTask(task) {
   };
 }
 
+export function mapDependency(dependency) {
+  return {
+    id: dependency.id,
+    diagramId: dependency.diagram_id,
+    predecessorType: dependency.predecessor_type,
+    predecessorId: dependency.predecessor_id,
+    successorType: dependency.successor_type,
+    successorId: dependency.successor_id,
+    linkType: 'finish_to_start',
+    color: dependency.color,
+    lineStyle:
+      {
+        DEPENDENCY_LINE_STYLE_DASHED: 'dashed',
+        DEPENDENCY_LINE_STYLE_DOTTED: 'dotted',
+      }[dependency.line_style] ?? 'solid',
+    arrowShape:
+      {
+        DEPENDENCY_ARROW_SHAPE_STRAIGHT: 'straight',
+        DEPENDENCY_ARROW_SHAPE_CURVED: 'curved',
+      }[dependency.arrow_shape] ?? 'orthogonal',
+    createdByUserId: dependency.created_by_user_id,
+    createdAt: fromTimestamp(dependency.created_at),
+    updatedAt: fromTimestamp(dependency.updated_at),
+  };
+}
+
 export function mapSnapshot(snapshot) {
   return {
     diagram: mapDiagram(snapshot.diagram),
     directions: (snapshot.directions ?? []).map(mapDirection),
     tasks: (snapshot.tasks ?? []).map(mapTask),
-    dependencies: snapshot.dependencies ?? [],
+    dependencies: (snapshot.dependencies ?? []).map(mapDependency),
     comments: snapshot.comments ?? [],
     holidays: snapshot.holidays ?? [],
     currentRevision: Number(snapshot.current_revision ?? 0),
@@ -514,6 +558,111 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.send(mapSnapshot(response.snapshot));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+  app.patch('/api/v1/tasks/:taskId/progress', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const status = String(request.body?.status ?? 'planned');
+      const response = await call(
+        projectClient,
+        'UpdateTaskProgress',
+        {
+          task_id: request.params.taskId,
+          status:
+            {
+              in_progress: 'TASK_STATUS_IN_PROGRESS',
+              done: 'TASK_STATUS_DONE',
+              blocked: 'TASK_STATUS_BLOCKED',
+            }[status] ?? 'TASK_STATUS_PLANNED',
+          progress: Number(request.body?.progress ?? 0),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/tasks/:taskId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteTask',
+        { task_id: request.params.taskId },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/diagrams/:diagramId/dependencies', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(request.query.offset ?? 0), 0);
+      const response = await call(
+        projectClient,
+        'ListDependencies',
+        {
+          diagram_id: request.params.diagramId,
+          page: { limit, offset },
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({
+        items: response.items.map(mapDependency),
+        page: response.page,
+      });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/diagrams/:diagramId/dependencies', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CreateDependency',
+        {
+          diagram_id: request.params.diagramId,
+          predecessor_type: request.body?.predecessorType,
+          predecessor_id: request.body?.predecessorId,
+          successor_type: request.body?.successorType,
+          successor_id: request.body?.successorId,
+          color: request.body?.color,
+          line_style: dependencyLineStyleEnum(request.body?.lineStyle),
+          arrow_shape: dependencyArrowEnum(request.body?.arrowShape),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(201).send(mapDependency(response.dependency));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/dependencies/:dependencyId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteDependency',
+        { dependency_id: request.params.dependencyId },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
     } catch (error) {
       return sendProblem(reply, request, error);
     }

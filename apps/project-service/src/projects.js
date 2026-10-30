@@ -167,12 +167,89 @@ function toTask(row) {
   };
 }
 
+function fromTaskStatus(value) {
+  return (
+    {
+      TASK_STATUS_PLANNED: 'planned',
+      TASK_STATUS_IN_PROGRESS: 'in_progress',
+      TASK_STATUS_DONE: 'done',
+      TASK_STATUS_BLOCKED: 'blocked',
+    }[value] ?? 'planned'
+  );
+}
+
+function toDependency(row) {
+  return {
+    id: row.id,
+    diagram_id: row.diagram_id,
+    predecessor_type: row.predecessor_type,
+    predecessor_id: row.predecessor_id,
+    successor_type: row.successor_type,
+    successor_id: row.successor_id,
+    link_type: 'DEPENDENCY_LINK_TYPE_FINISH_TO_START',
+    color: row.color ?? '',
+    line_style:
+      {
+        solid: 'DEPENDENCY_LINE_STYLE_SOLID',
+        dashed: 'DEPENDENCY_LINE_STYLE_DASHED',
+        dotted: 'DEPENDENCY_LINE_STYLE_DOTTED',
+      }[row.line_style] ?? 'DEPENDENCY_LINE_STYLE_SOLID',
+    arrow_shape:
+      {
+        orthogonal: 'DEPENDENCY_ARROW_SHAPE_ORTHOGONAL',
+        straight: 'DEPENDENCY_ARROW_SHAPE_STRAIGHT',
+        curved: 'DEPENDENCY_ARROW_SHAPE_CURVED',
+      }[row.arrow_shape] ?? 'DEPENDENCY_ARROW_SHAPE_ORTHOGONAL',
+    created_by_user_id: row.created_by_user_id,
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+  };
+}
+
 function mapDbError(error) {
   return error;
 }
 
 function actorUserId(call_) {
   return call_.metadata.get('x-actor-user-id')[0] ?? '';
+}
+
+async function entityBelongsToDiagram(db, type, id, diagramId) {
+  const table = type === 'task' ? 'plan.tasks' : 'plan.directions';
+  const result = await db.query(
+    `SELECT 1 FROM ${table} WHERE id = $1 AND diagram_id = $2 AND deleted_at IS NULL`,
+    [id, diagramId],
+  );
+  return result.rowCount > 0;
+}
+
+async function createsTaskCycle(db, diagramId, fromId, toId) {
+  const result = await db.query(
+    `SELECT predecessor_id, successor_id
+     FROM plan.dependencies
+     WHERE diagram_id = $1
+       AND predecessor_type = 'task'
+       AND successor_type = 'task'`,
+    [diagramId],
+  );
+  const graph = new Map();
+  for (const row of result.rows) {
+    if (!graph.has(row.predecessor_id)) graph.set(row.predecessor_id, []);
+    graph.get(row.predecessor_id).push(row.successor_id);
+  }
+  if (!graph.has(fromId)) graph.set(fromId, []);
+  graph.get(fromId).push(toId);
+
+  const stack = [toId];
+  const seen = new Set();
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === fromId) return true;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const next of graph.get(current) ?? []) stack.push(next);
+  }
+  return false;
 }
 
 async function checkPermission(call_, userClient, projectId, permission) {
@@ -746,18 +823,247 @@ export function createProjectImplementation({ db, userClient }) {
            ORDER BY sort_order ASC`,
           [diagramId],
         );
+        const dependencies = await db.query(
+          `SELECT * FROM plan.dependencies
+           WHERE diagram_id = $1
+           ORDER BY created_at ASC`,
+          [diagramId],
+        );
         callback(null, {
           snapshot: {
             diagram: toDiagram(row),
             directions: directions.rows.map(toDirection),
             tasks: tasks.rows.map(toTask),
-            dependencies: [],
+            dependencies: dependencies.rows.map(toDependency),
             comments: [],
             holidays: [],
             current_revision: String(row.current_revision ?? 0),
             names_resolved: false,
           },
         });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateTaskProgress(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          task.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+        const requestedProgress = Number(call_.request.progress ?? 0);
+        if (!Number.isFinite(requestedProgress)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_progress'));
+          return;
+        }
+        const progress = Math.min(Math.max(requestedProgress, 0), 100);
+        const result = await db.query(
+          `UPDATE plan.tasks
+           SET status = $2, progress = $3, updated_by_user_id = $4,
+               version = version + 1, updated_at = now()
+           WHERE id = $1
+           RETURNING *`,
+          [taskId, fromTaskStatus(call_.request.status), progress, actorUserId(call_)],
+        );
+        callback(null, { task: toTask(result.rows[0]), revision: '0' });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteTask(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          task.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.delete');
+        await db.query(
+          `UPDATE plan.tasks
+           SET deleted_at = now(), updated_by_user_id = $2, updated_at = now()
+           WHERE id = $1`,
+          [taskId, actorUserId(call_)],
+        );
+        await db.query(
+          `DELETE FROM plan.dependencies
+           WHERE (predecessor_type = 'task' AND predecessor_id = $1)
+              OR (successor_type = 'task' AND successor_id = $1)`,
+          [taskId],
+        );
+        callback(null, { deleted: true, revision: '0' });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateDependency(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const predecessorType = String(call_.request.predecessor_type ?? '');
+      const successorType = String(call_.request.successor_type ?? '');
+      const predecessorId = String(call_.request.predecessor_id ?? '');
+      const successorId = String(call_.request.successor_id ?? '');
+      if (
+        !diagramId ||
+        !['task', 'direction'].includes(predecessorType) ||
+        !['task', 'direction'].includes(successorType) ||
+        !predecessorId ||
+        !successorId ||
+        (predecessorType === successorType && predecessorId === successorId)
+      ) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_dependency'));
+        return;
+      }
+
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(
+          call_,
+          userClient,
+          diagram.rows[0].project_id,
+          'project.dependency.manage',
+        );
+        if (
+          !(await entityBelongsToDiagram(db, predecessorType, predecessorId, diagramId)) ||
+          !(await entityBelongsToDiagram(db, successorType, successorId, diagramId))
+        ) {
+          callback(grpcError(status.NOT_FOUND, 'dependency_entity_not_found'));
+          return;
+        }
+        if (
+          predecessorType === 'task' &&
+          successorType === 'task' &&
+          (await createsTaskCycle(db, diagramId, predecessorId, successorId))
+        ) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'dependency_cycle'));
+          return;
+        }
+        const color = String(call_.request.color ?? '');
+        if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_color'));
+          return;
+        }
+        const lineStyle =
+          {
+            DEPENDENCY_LINE_STYLE_DASHED: 'dashed',
+            DEPENDENCY_LINE_STYLE_DOTTED: 'dotted',
+          }[call_.request.line_style] ?? 'solid';
+        const arrowShape =
+          {
+            DEPENDENCY_ARROW_SHAPE_STRAIGHT: 'straight',
+            DEPENDENCY_ARROW_SHAPE_CURVED: 'curved',
+          }[call_.request.arrow_shape] ?? 'orthogonal';
+        const result = await db.query(
+          `INSERT INTO plan.dependencies
+             (diagram_id, predecessor_type, predecessor_id, successor_type, successor_id,
+              color, line_style, arrow_shape, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [
+            diagramId,
+            predecessorType,
+            predecessorId,
+            successorType,
+            successorId,
+            color || null,
+            lineStyle,
+            arrowShape,
+            actorUserId(call_),
+          ],
+        );
+        callback(null, {
+          dependency: toDependency(result.rows[0]),
+          revision: '0',
+        });
+      } catch (error) {
+        if (error.code === '23505') {
+          callback(grpcError(status.ALREADY_EXISTS, 'dependency_exists'));
+          return;
+        }
+        callback(mapDbError(error));
+      }
+    },
+
+    async ListDependencies(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const limit = Math.min(Math.max(Number(call_.request.page?.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(call_.request.page?.offset ?? 0), 0);
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.view');
+        const result = await db.query(
+          `SELECT * FROM plan.dependencies
+           WHERE diagram_id = $1
+           ORDER BY created_at ASC
+           LIMIT $2 OFFSET $3`,
+          [diagramId, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total
+           FROM plan.dependencies WHERE diagram_id = $1`,
+          [diagramId],
+        );
+        callback(null, {
+          items: result.rows.map(toDependency),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteDependency(call_, callback) {
+      const dependencyId = String(call_.request.dependency_id ?? '');
+      try {
+        const dependency = await db.query(`SELECT * FROM plan.dependencies WHERE id = $1`, [
+          dependencyId,
+        ]);
+        if (dependency.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'dependency_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          dependency.rows[0].diagram_id,
+        ]);
+        await checkPermission(
+          call_,
+          userClient,
+          diagram.rows[0].project_id,
+          'project.dependency.manage',
+        );
+        await db.query('DELETE FROM plan.dependencies WHERE id = $1', [dependencyId]);
+        callback(null, { deleted: true, revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
       }
