@@ -94,7 +94,8 @@ pnpm start:project-service
 apps/api-gateway/      # HTTP API Gateway + REST auth proxy + health/config/errors
 apps/user-service/     # User & Access: auth, sessions, HTTP health + gRPC
 apps/project-service/  # Project/Diagram: HTTP health + gRPC
-apps/web/              # минимальный web-интерфейс + same-origin proxy к API
+apps/frontend/         # Nuxt frontend + same-origin proxy к API
+apps/web/              # предыдущий static bootstrap UI (legacy)
 packages/service-kit/  # общий каркас Fastify/gRPC-сервисов
 packages/shared/       # общие утилиты
 contracts/             # REST/gRPC mapping, import/export
@@ -125,8 +126,8 @@ tools/                 # проверки контрактов
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import.
 - [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
-- [ ] Полноценный Nuxt frontend по visual design.
-- [ ] Notification, Audit, Sync services.
+- [x] Nuxt frontend shell with the existing Gantt SPA.
+- [x] Notification, Audit, Sync services.
 - [ ] Staging/prod Helm values.
 - [x] Playwright smoke E2E.
 - [ ] Load tests.

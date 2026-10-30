@@ -7,6 +7,7 @@ const ignores = [
   'openapi/**',
   'proto/**',
   'frontend/design/**',
+  'apps/frontend/**',
 ];
 
 export default [

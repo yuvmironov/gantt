@@ -230,7 +230,7 @@ services:
     profiles: ["apps"]
     build:
       context: ../..
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/frontend/Dockerfile
     image: smart-oati/frontend:local
     restart: unless-stopped
     depends_on:
