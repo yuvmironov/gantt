@@ -121,7 +121,7 @@ tools/                 # проверки контрактов
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + export.
-- [x] Минимальный web-интерфейс: вход, проекты, диаграммы, Gantt-таблица, создание направлений/задач, прогресс, экспорт.
+- [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
 - [ ] Полноценный Nuxt frontend по visual design.
 - [ ] Импорт диаграмм.
 - [ ] Notification, Audit, Sync services.

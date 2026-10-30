@@ -618,6 +618,71 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
       }
     },
 
+    async ListUsers(call, callback) {
+      const query = String(call.request.query ?? '').trim();
+      const limit = Math.min(Math.max(Number(call.request.page?.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(call.request.page?.offset ?? 0), 0);
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.users
+           WHERE ($1 = '' OR display_name ILIKE '%' || $1 || '%' OR email::text ILIKE '%' || $1 || '%')
+           ORDER BY display_name ASC
+           LIMIT $2 OFFSET $3`,
+          [query, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total FROM access.users
+           WHERE ($1 = '' OR display_name ILIKE '%' || $1 || '%' OR email::text ILIKE '%' || $1 || '%')`,
+          [query],
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            id: row.id,
+            email: row.email,
+            display_name: row.display_name,
+            position: row.position ?? '',
+            status: row.status === 'blocked' ? 'USER_STATUS_BLOCKED' : 'USER_STATUS_ACTIVE',
+            email_verified: Boolean(row.email_verified_at),
+            global_roles: [],
+          })),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ListExecutors(call, callback) {
+      const query = String(call.request.query ?? '').trim();
+      const includeInactive = Boolean(call.request.include_inactive);
+      const limit = Math.min(Math.max(Number(call.request.page?.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(call.request.page?.offset ?? 0), 0);
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.executors
+           WHERE deleted_at IS NULL
+             AND ($1 = '' OR full_name ILIKE '%' || $1 || '%')
+             AND ($2 OR is_active)
+           ORDER BY full_name ASC
+           LIMIT $3 OFFSET $4`,
+          [query, includeInactive, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total FROM access.executors
+           WHERE deleted_at IS NULL
+             AND ($1 = '' OR full_name ILIKE '%' || $1 || '%')
+             AND ($2 OR is_active)`,
+          [query, includeInactive],
+        );
+        callback(null, {
+          items: result.rows.map(toExecutor),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
     async GetUsersByIds(call, callback) {
       const ids = call.request.user_ids ?? [];
       if (ids.length === 0) {
@@ -725,6 +790,78 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
           absolute_expires_at: toTimestamp(session.absolute_expires_at),
           idle_expires_at: toTimestamp(idleExpiresAt),
         });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ListMySessions(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.user_sessions
+           WHERE user_id = $1
+             AND revoked_at IS NULL
+             AND (absolute_expires_at > now() OR remember_absolute_expires_at > now())
+           ORDER BY last_seen_at DESC`,
+          [userId],
+        );
+        callback(null, {
+          items: result.rows.map((session) => ({
+            id: session.id,
+            absolute_expires_at: toTimestamp(session.absolute_expires_at),
+            idle_expires_at: toTimestamp(session.idle_expires_at),
+            remember_expires_at: toTimestamp(session.remember_absolute_expires_at),
+            last_seen_at: toTimestamp(session.last_seen_at),
+            user_agent: session.user_agent ?? '',
+            ip: session.ip ?? '',
+            remember: Boolean(session.remember_token_hash),
+            created_at: toTimestamp(session.created_at),
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RevokeMySession(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const sessionId = String(call.request.session_id ?? '');
+      if (!userId || !sessionId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'session_id_required'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.user_sessions
+           SET revoked_at = now()
+           WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`,
+          [sessionId, userId],
+        );
+        callback(null, { revoked: result.rowCount > 0 });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async LogoutAll(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+      try {
+        await db.query(
+          `UPDATE access.user_sessions
+           SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        callback(null, { set_cookie: logoutCookies() });
       } catch (error) {
         callback(mapDbError(error));
       }

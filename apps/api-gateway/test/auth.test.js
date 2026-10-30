@@ -135,4 +135,70 @@ describe('api-gateway auth routes', () => {
       status: 'active',
     });
   });
+
+  it('lists and revokes my sessions', async () => {
+    let revoked;
+    const app = build({
+      ValidateSession(_request, callback) {
+        callback(null, { user_id: 'user-1', session_id: 'session-1' });
+      },
+      ListMySessions(_request, callback) {
+        callback(null, {
+          items: [
+            {
+              id: 'session-1',
+              user_agent: 'test',
+              ip: '127.0.0.1',
+              remember: false,
+              created_at: { seconds: '1793290000', nanos: 0 },
+            },
+          ],
+        });
+      },
+      RevokeMySession(request, callback) {
+        revoked = request;
+        callback(null, { revoked: true });
+      },
+    });
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/sessions',
+      cookies: { '__Host-session': 'token' },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({
+      items: [{ id: 'session-1', ip: '127.0.0.1', remember: false }],
+    });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/auth/sessions/session-1',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+    });
+    expect(deleted.statusCode).toBe(204);
+    expect(revoked).toEqual({ user_id: 'user-1', session_id: 'session-1' });
+  });
+
+  it('logs out all sessions and clears cookies', async () => {
+    const app = build({
+      ValidateSession(_request, callback) {
+        callback(null, { user_id: 'user-1', session_id: 'session-1' });
+      },
+      LogoutAll(_request, callback) {
+        callback(null, { set_cookie: ['__Host-session=; Max-Age=0'] });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout-all',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers['set-cookie'][0]).toContain('__Host-session=');
+  });
 });

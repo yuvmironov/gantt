@@ -57,6 +57,47 @@ export function mapUser(user) {
   };
 }
 
+export function mapSession(session) {
+  return {
+    id: session.id,
+    absoluteExpiresAt: fromTimestamp(session.absolute_expires_at),
+    idleExpiresAt: fromTimestamp(session.idle_expires_at),
+    rememberExpiresAt: fromTimestamp(session.remember_expires_at),
+    lastSeenAt: fromTimestamp(session.last_seen_at),
+    userAgent: session.user_agent,
+    ip: session.ip,
+    remember: session.remember,
+    createdAt: fromTimestamp(session.created_at),
+  };
+}
+
+export function mapUserSummary(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    position: user.position,
+    status: user.status === 'USER_STATUS_BLOCKED' ? 'blocked' : 'active',
+    emailVerified: user.email_verified,
+    globalRoles: (user.global_roles ?? [])
+      .filter((role) => role === 'GLOBAL_ROLE_APP_ADMIN')
+      .map(() => 'app_admin'),
+  };
+}
+
+export function mapExecutor(executor) {
+  return {
+    id: executor.id,
+    lastName: executor.last_name,
+    firstName: executor.first_name,
+    middleName: executor.middle_name,
+    fullName: executor.full_name,
+    position: executor.position,
+    linkedUserId: executor.linked_user_id || null,
+    isActive: executor.is_active,
+  };
+}
+
 export function sendProblem(reply, request, error) {
   const grpcCode = error.code ?? 13;
   const status = GRPC_STATUS[grpcCode] ?? 500;
@@ -163,6 +204,183 @@ export async function authRoutes(app, { userClient }) {
         user_id: session.user_id,
       });
       return reply.send(mapUser(response.user));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/auth/sessions', async (request, reply) => {
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: true,
+      });
+      const response = await call(userClient, 'ListMySessions', {
+        user_id: session.user_id,
+      });
+      return reply.send({ items: response.items.map(mapSession) });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/auth/sessions/:sessionId', async (request, reply) => {
+    if (!csrfValid(request)) {
+      return reply.code(403).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/csrf_invalid',
+        title: TITLES[403],
+        status: 403,
+        detail: 'Invalid CSRF token',
+        instance: request.url,
+        code: 'csrf_invalid',
+        traceId: request.id,
+      });
+    }
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: false,
+      });
+      const response = await call(userClient, 'RevokeMySession', {
+        user_id: session.user_id,
+        session_id: request.params.sessionId,
+      });
+      if (!response.revoked) {
+        return reply.code(404).type('application/problem+json').send({
+          type: 'https://smart-oati.local/problems/not_found',
+          title: TITLES[404],
+          status: 404,
+          detail: 'Session not found',
+          instance: request.url,
+          code: 'session_not_found',
+          traceId: request.id,
+        });
+      }
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/auth/logout-all', async (request, reply) => {
+    if (!csrfValid(request)) {
+      return reply.code(403).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/csrf_invalid',
+        title: TITLES[403],
+        status: 403,
+        detail: 'Invalid CSRF token',
+        instance: request.url,
+        code: 'csrf_invalid',
+        traceId: request.id,
+      });
+    }
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: false,
+      });
+      const response = await call(userClient, 'LogoutAll', {
+        user_id: session.user_id,
+      });
+      setCookies(reply, response.set_cookie);
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/users', async (request, reply) => {
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      await call(userClient, 'ValidateSession', { session_token: token, extend_idle: false });
+      const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(request.query.offset ?? 0), 0);
+      const response = await call(userClient, 'ListUsers', {
+        query: String(request.query.query ?? ''),
+        page: { limit, offset },
+      });
+      return reply.send({
+        items: response.items.map(mapUserSummary),
+        page: response.page,
+      });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/executors', async (request, reply) => {
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      await call(userClient, 'ValidateSession', { session_token: token, extend_idle: false });
+      const limit = Math.min(Math.max(Number(request.query.limit ?? 100), 1), 200);
+      const offset = Math.max(Number(request.query.offset ?? 0), 0);
+      const response = await call(userClient, 'ListExecutors', {
+        query: String(request.query.query ?? ''),
+        include_inactive: request.query.includeInactive === 'true',
+        page: { limit, offset },
+      });
+      return reply.send({
+        items: response.items.map(mapExecutor),
+        page: response.page,
+      });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
