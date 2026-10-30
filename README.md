@@ -123,10 +123,9 @@ tools/                 # проверки контрактов
 - [x] Helm service template и API Gateway chart.
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
-- [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + export.
+- [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import.
 - [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
 - [ ] Полноценный Nuxt frontend по visual design.
-- [ ] Импорт диаграмм.
 - [ ] Notification, Audit, Sync services.
 - [ ] Staging/prod Helm values.
 - [x] Playwright smoke E2E.

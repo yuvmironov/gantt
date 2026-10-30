@@ -219,6 +219,8 @@ $('#project-list').addEventListener('click', async (event) => {
   $('#diagram-hint').textContent = 'Выберите диаграмму';
   $('#gantt-table').classList.add('hidden');
   $('#gantt-forms').classList.add('hidden');
+  $('#import-toggle').classList.add('hidden');
+  $('#import-form').classList.add('hidden');
   $('#export-json').classList.add('hidden');
   try {
     await loadDiagrams();
@@ -323,6 +325,7 @@ async function loadSnapshot() {
     $('#export-json').classList.remove('hidden');
     $('#gantt-forms').classList.remove('hidden');
     $('#diagram-extras').classList.remove('hidden');
+    $('#import-toggle').classList.remove('hidden');
     renderGantt();
     renderDependencies();
     renderHolidays();
@@ -475,6 +478,40 @@ $('#task-form').addEventListener('submit', async (event) => {
 
 $('#refresh-diagram').addEventListener('click', () => {
   loadSnapshot().catch((error) => showToast(error.message));
+});
+
+$('#import-toggle').addEventListener('click', () => {
+  $('#import-form').classList.toggle('hidden');
+});
+
+$('#import-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.diagram) return;
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  try {
+    const response = await fetch(`/api/v1/diagrams/${state.diagram.id}/import`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken() ?? '' },
+      credentials: 'same-origin',
+      body: formData,
+    });
+    const job = await response.json();
+    if (!response.ok) {
+      throw new Error(job.detail || job.title || 'Не удалось импортировать диаграмму');
+    }
+    if (job.status !== 'completed') {
+      throw new Error(job.errorMessage || 'Импорт завершился с ошибкой');
+    }
+    form.reset();
+    $('#import-form').classList.add('hidden');
+    await loadSnapshot();
+    showToast(
+      `Импортировано: направлений ${job.report?.directionsCount ?? 0}, задач ${job.report?.tasksCount ?? 0}`,
+    );
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 $('#task-search').addEventListener('input', (event) => {

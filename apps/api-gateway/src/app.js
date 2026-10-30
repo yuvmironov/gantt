@@ -1,4 +1,5 @@
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { authRoutes } from './auth-routes.js';
 import { createProjectClient } from './project-client.js';
@@ -31,6 +32,7 @@ export function buildApp({ env = process.env, logger = true, userClient, project
     logger,
     routes: async (instance) => {
       await instance.register(cookie);
+      await instance.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
       await instance.register(authRoutes, { userClient: users });
       await instance.register(projectRoutes, {
         userClient: users,

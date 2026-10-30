@@ -90,6 +90,7 @@
             </div>
             <div class="actions">
               <button id="refresh-diagram" class="ghost" type="button">Обновить</button>
+              <button id="import-toggle" class="ghost hidden" type="button">Импорт</button>
               <a id="export-json" class="button hidden" href="#">Экспорт JSON</a>
             </div>
           </div>
@@ -103,6 +104,14 @@
               <select name="directionId" id="task-direction" required></select>
               <input name="name" placeholder="Новая задача" required maxlength="200" />
               <button class="ghost" type="submit">Добавить задачу</button>
+            </form>
+            <form id="import-form" class="form row-form hidden">
+              <select name="format" required>
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>
+              <input name="file" type="file" accept=".json,.csv" required />
+              <button class="ghost" type="submit">Импортировать</button>
             </form>
           </div>
 

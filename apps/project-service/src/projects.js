@@ -332,6 +332,84 @@ function toHoliday(row) {
   };
 }
 
+function toImportJob(row) {
+  const report = row.report ?? {};
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    diagram_id: row.diagram_id,
+    initiator_user_id: row.initiator_user_id,
+    format: row.format === 'csv' ? 'IMPORT_FORMAT_CSV' : 'IMPORT_FORMAT_JSON',
+    status:
+      {
+        queued: 'IMPORT_STATUS_QUEUED',
+        processing: 'IMPORT_STATUS_PROCESSING',
+        completed: 'IMPORT_STATUS_COMPLETED',
+        failed: 'IMPORT_STATUS_FAILED',
+        cancelled: 'IMPORT_STATUS_CANCELLED',
+      }[row.status] ?? 'IMPORT_STATUS_FAILED',
+    file_name: row.file_name ?? '',
+    size_bytes: String(row.size_bytes ?? 0),
+    report: {
+      directions_count: report.directions_count ?? 0,
+      tasks_count: report.tasks_count ?? 0,
+      assignments_count: report.assignments_count ?? 0,
+      without_responsible_count: report.without_responsible_count ?? 0,
+      without_executor_count: report.without_executor_count ?? 0,
+      without_coexecutor_count: report.without_coexecutor_count ?? 0,
+      issues: report.issues ?? [],
+    },
+    error_code: row.error_code ?? '',
+    error_message: row.error_message ?? '',
+    created_at: toTimestamp(row.created_at),
+    started_at: toTimestamp(row.started_at),
+    finished_at: toTimestamp(row.finished_at),
+    expires_at: toTimestamp(row.expires_at),
+  };
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      row.push(cell);
+      cell = '';
+    } else if (char === '\n') {
+      if (cell.endsWith('\r')) cell = cell.slice(0, -1);
+      row.push(cell);
+      if (row.some((value) => value !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  if (cell || row.length > 0) {
+    row.push(cell);
+    if (row.some((value) => value !== '')) rows.push(row);
+  }
+  if (rows.length === 0) return [];
+  const headers = rows.shift().map((header) => header.trim());
+  return rows.map((values) =>
+    Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])),
+  );
+}
+
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
@@ -359,6 +437,294 @@ async function entityBelongsToDiagram(db, type, id, diagramId) {
     [id, diagramId],
   );
   return result.rowCount > 0;
+}
+
+async function processDiagramImport(db, { diagramId, format, data, actorId }) {
+  const client = await db.connect();
+  const report = {
+    directions_count: 0,
+    tasks_count: 0,
+    assignments_count: 0,
+    without_responsible_count: 0,
+    without_executor_count: 0,
+    without_coexecutor_count: 0,
+    issues: [],
+  };
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `DELETE FROM plan.assignments
+       WHERE (entity_type = 'task' AND entity_id IN (SELECT id FROM plan.tasks WHERE diagram_id = $1))
+          OR (entity_type = 'direction' AND entity_id IN (SELECT id FROM plan.directions WHERE diagram_id = $1))`,
+      [diagramId],
+    );
+    await client.query(
+      `DELETE FROM plan.comments
+       WHERE (entity_type = 'task' AND entity_id IN (SELECT id FROM plan.tasks WHERE diagram_id = $1))
+          OR (entity_type = 'direction' AND entity_id IN (SELECT id FROM plan.directions WHERE diagram_id = $1))`,
+      [diagramId],
+    );
+    await client.query('DELETE FROM plan.dependencies WHERE diagram_id = $1', [diagramId]);
+    await client.query(`DELETE FROM plan.diagram_holidays WHERE diagram_id = $1`, [diagramId]);
+    await client.query('DELETE FROM plan.tasks WHERE diagram_id = $1', [diagramId]);
+    await client.query('DELETE FROM plan.directions WHERE diagram_id = $1', [diagramId]);
+
+    const priorityValues = new Set(['low', 'medium', 'high', 'critical']);
+    const statusValues = new Set(['planned', 'in_progress', 'done', 'blocked']);
+    const normalizeRole = (value) =>
+      String(value ?? '')
+        .replace('ASSIGNMENT_ROLE_', '')
+        .toLowerCase();
+    const normalizeType = (value) =>
+      String(value ?? '')
+        .replace('ASSIGNEE_TYPE_', '')
+        .toLowerCase();
+    const normalizeStatus = (value) => {
+      const status = String(value ?? '')
+        .replace('TASK_STATUS_', '')
+        .toLowerCase();
+      return statusValues.has(status) ? status : 'planned';
+    };
+    const normalizePriority = (value) => {
+      const priority = String(value ?? '')
+        .replace('PRIORITY_', '')
+        .toLowerCase();
+      return priorityValues.has(priority) ? priority : 'medium';
+    };
+    const insertTask = async (task, directionId, parentTaskId, index) => {
+      const result = await client.query(
+        `INSERT INTO plan.tasks
+           (diagram_id, direction_id, parent_task_id, level, wbs_code, sort_order, name,
+            description, result, status, progress, priority, start_date, end_date,
+            actual_end_date, jira_number, bp_flag, sp_flag, created_by_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         RETURNING id`,
+        [
+          diagramId,
+          directionId,
+          parentTaskId,
+          parentTaskId ? 3 : 2,
+          String(task.wbsCode ?? task.wbs_code ?? `${index}`),
+          Number(task.sortOrder ?? task.sort_order ?? index),
+          String(task.name ?? '').trim(),
+          String(task.description ?? ''),
+          String(task.result ?? ''),
+          normalizeStatus(task.status),
+          Math.min(Math.max(Number(task.progress ?? 0) || 0, 0), 100),
+          normalizePriority(task.priority),
+          dateOnly(task.startDate ?? task.start_date),
+          dateOnly(task.endDate ?? task.end_date),
+          dateOnly(task.actualEndDate ?? task.actual_end_date),
+          String(task.jiraNumber ?? task.jira_number ?? '') || null,
+          Boolean(task.bpFlag ?? task.bp_flag),
+          Boolean(task.spFlag ?? task.sp_flag),
+          actorId,
+        ],
+      );
+      return result.rows[0].id;
+    };
+
+    if (format === 'csv') {
+      const rows = parseCsv(Buffer.from(data).toString('utf8'));
+      const directionMap = new Map();
+      for (const row of rows) {
+        const key = row.direction_wbs || 'direction';
+        if (!directionMap.has(key)) {
+          const result = await client.query(
+            `INSERT INTO plan.directions
+               (diagram_id, wbs_code, sort_order, name, priority, created_by_user_id)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id`,
+            [
+              diagramId,
+              key,
+              directionMap.size + 1,
+              String(row.direction_name || key),
+              'medium',
+              actorId,
+            ],
+          );
+          directionMap.set(key, result.rows[0].id);
+        }
+      }
+      report.directions_count = directionMap.size;
+      const taskMap = new Map();
+      const orderedRows = [...rows].sort((a, b) => Number(a.level || 2) - Number(b.level || 2));
+      for (const row of orderedRows) {
+        const parentId = row.parent_wbs ? taskMap.get(row.parent_wbs) : null;
+        if (Number(row.level || 2) === 3 && !parentId) {
+          throw new Error('import_parent_not_found');
+        }
+        const taskId = await insertTask(
+          {
+            ...row,
+            sortOrder: row.wbs_code?.split('.').at(-1),
+            status: row.status,
+            priority: row.priority,
+          },
+          directionMap.get(row.direction_wbs || 'direction'),
+          parentId,
+          report.tasks_count + 1,
+        );
+        taskMap.set(row.wbs_code, taskId);
+        report.tasks_count += 1;
+      }
+    } else {
+      const payload = JSON.parse(Buffer.from(data).toString('utf8'));
+      if (!payload || payload.formatVersion !== 2) {
+        throw new Error('import_format_unsupported');
+      }
+      const directionMap = new Map();
+      for (const [index, direction] of (payload.directions ?? []).entries()) {
+        const result = await client.query(
+          `INSERT INTO plan.directions
+             (diagram_id, wbs_code, sort_order, name, description, result, priority,
+              start_date, end_date, jira_number, bp_flag, sp_flag, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           RETURNING id`,
+          [
+            diagramId,
+            String(direction.wbsCode ?? index + 1),
+            Number(direction.sortOrder ?? index + 1),
+            String(direction.name ?? '').trim(),
+            String(direction.description ?? ''),
+            String(direction.result ?? ''),
+            normalizePriority(direction.priority),
+            dateOnly(direction.startDate),
+            dateOnly(direction.endDate),
+            String(direction.jiraNumber ?? '') || null,
+            Boolean(direction.bpFlag),
+            Boolean(direction.spFlag),
+            actorId,
+          ],
+        );
+        directionMap.set(direction.id, result.rows[0].id);
+      }
+      report.directions_count = directionMap.size;
+
+      const taskMap = new Map();
+      const tasks = [...(payload.tasks ?? [])].sort(
+        (a, b) => Number(a.level ?? 2) - Number(b.level ?? 2),
+      );
+      for (const [index, task] of tasks.entries()) {
+        const parentId = task.parentTaskId ? taskMap.get(task.parentTaskId) : null;
+        if (Number(task.level ?? 2) === 3 && !parentId) {
+          throw new Error('import_parent_not_found');
+        }
+        const directionId = directionMap.get(task.directionId);
+        if (!directionId) throw new Error('import_direction_not_found');
+        const taskId = await insertTask(task, directionId, parentId, index + 1);
+        taskMap.set(task.id, taskId);
+        report.tasks_count += 1;
+      }
+
+      const assignments = [];
+      for (const direction of payload.directions ?? []) {
+        for (const assignment of direction.assignments ?? []) {
+          assignments.push({
+            entityType: 'direction',
+            entityId: directionMap.get(direction.id),
+            assignment,
+          });
+        }
+      }
+      for (const task of payload.tasks ?? []) {
+        for (const assignment of task.assignments ?? []) {
+          const entityId = taskMap.get(task.id);
+          if (entityId) assignments.push({ entityType: 'task', entityId, assignment });
+        }
+      }
+      for (const item of assignments) {
+        const role = normalizeRole(item.assignment.role);
+        const assigneeType = normalizeType(item.assignment.assigneeType);
+        const assigneeId = String(item.assignment.assigneeId ?? '');
+        if (
+          !['responsible', 'executor', 'co_executor'].includes(role) ||
+          !['user', 'executor'].includes(assigneeType) ||
+          !isUuid(assigneeId)
+        ) {
+          continue;
+        }
+        await client.query(
+          `INSERT INTO plan.assignments
+             (entity_type, entity_id, role, assignee_type, assignee_id, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT DO NOTHING`,
+          [item.entityType, item.entityId, role, assigneeType, assigneeId, actorId],
+        );
+        report.assignments_count += 1;
+      }
+
+      for (const dependency of payload.dependencies ?? []) {
+        const predecessorId =
+          dependency.predecessorType === 'task'
+            ? taskMap.get(dependency.predecessorId)
+            : directionMap.get(dependency.predecessorId);
+        const successorId =
+          dependency.successorType === 'task'
+            ? taskMap.get(dependency.successorId)
+            : directionMap.get(dependency.successorId);
+        if (!predecessorId || !successorId) continue;
+        await client.query(
+          `INSERT INTO plan.dependencies
+             (diagram_id, predecessor_type, predecessor_id, successor_type, successor_id,
+              link_type, color, line_style, arrow_shape, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, 'finish_to_start', $6, $7, $8, $9)
+           ON CONFLICT DO NOTHING`,
+          [
+            diagramId,
+            dependency.predecessorType,
+            predecessorId,
+            dependency.successorType,
+            successorId,
+            dependency.color || null,
+            dependency.lineStyle || 'solid',
+            dependency.arrowShape || 'orthogonal',
+            actorId,
+          ],
+        );
+      }
+
+      for (const comment of payload.comments ?? []) {
+        const entityId =
+          comment.entityType === 'task'
+            ? taskMap.get(comment.entityId)
+            : directionMap.get(comment.entityId);
+        if (!entityId) continue;
+        await client.query(
+          `INSERT INTO plan.comments
+             (entity_type, entity_id, author_user_id, mentioned_user_ids, body)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            comment.entityType,
+            entityId,
+            comment.authorUserId || actorId,
+            comment.mentionedUserIds ?? [],
+            String(comment.body ?? ''),
+          ],
+        );
+      }
+
+      for (const holiday of payload.workdays?.holidays ?? []) {
+        const holidayDate = dateOnly(holiday.date);
+        if (!holidayDate) continue;
+        await client.query(
+          `INSERT INTO plan.diagram_holidays (diagram_id, holiday_date, name)
+           VALUES ($1, $2, $3)
+           ON CONFLICT DO NOTHING`,
+          [diagramId, holidayDate, String(holiday.name ?? '') || null],
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return report;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function resolveCommentEntity(db, entityType, entityId) {
@@ -1566,6 +1932,129 @@ export function createProjectImplementation({ db, userClient }) {
         callback(mapDbError(error));
       } finally {
         if (client) client.release();
+      }
+    },
+
+    async StartImport(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const format = call_.request.format === 'IMPORT_FORMAT_CSV' ? 'csv' : 'json';
+      const data = Buffer.from(call_.request.data ?? []);
+      const fileName = String(call_.request.file_name ?? '');
+      if (!diagramId || data.length === 0 || data.length > 50 * 1024 * 1024) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_import_file'));
+        return;
+      }
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.import');
+        const actor = actorUserId(call_);
+        const created = await db.query(
+          `INSERT INTO jobs.import_jobs
+             (project_id, diagram_id, initiator_user_id, format, status, file_name,
+              size_bytes, payload, expires_at)
+           VALUES ($1, $2, $3, $4, 'queued', $5, $6, $7, now() + interval '7 days')
+           RETURNING *`,
+          [
+            diagram.rows[0].project_id,
+            diagramId,
+            actor,
+            format,
+            fileName || null,
+            data.length,
+            data,
+          ],
+        );
+        let job = created.rows[0];
+        try {
+          const started = await db.query(
+            `UPDATE jobs.import_jobs
+             SET status = 'processing', started_at = now()
+             WHERE id = $1
+             RETURNING *`,
+            [job.id],
+          );
+          job = started.rows[0];
+          const report = await processDiagramImport(db, {
+            diagramId,
+            format,
+            data,
+            actorId: actor,
+          });
+          const finished = await db.query(
+            `UPDATE jobs.import_jobs
+             SET status = 'completed', report = $2, finished_at = now()
+             WHERE id = $1
+             RETURNING *`,
+            [job.id, report],
+          );
+          job = finished.rows[0];
+        } catch (error) {
+          const failed = await db.query(
+            `UPDATE jobs.import_jobs
+             SET status = 'failed', error_code = $2, error_message = $3, finished_at = now()
+             WHERE id = $1
+             RETURNING *`,
+            [job.id, 'import_failed', String(error.message ?? 'import_failed').slice(0, 1000)],
+          );
+          job = failed.rows[0];
+        }
+        callback(null, { job: toImportJob(job) });
+      } catch (error) {
+        if (error.code === '23505') {
+          callback(grpcError(status.ALREADY_EXISTS, 'import_in_progress'));
+          return;
+        }
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetImportStatus(call_, callback) {
+      const jobId = String(call_.request.job_id ?? '');
+      try {
+        const job = await db.query('SELECT * FROM jobs.import_jobs WHERE id = $1', [jobId]);
+        if (job.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'import_job_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          job.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.import');
+        callback(null, { job: toImportJob(job.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CancelImport(call_, callback) {
+      const jobId = String(call_.request.job_id ?? '');
+      try {
+        const job = await db.query('SELECT * FROM jobs.import_jobs WHERE id = $1', [jobId]);
+        if (job.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'import_job_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          job.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.import');
+        const result = await db.query(
+          `UPDATE jobs.import_jobs
+           SET status = 'cancelled', finished_at = COALESCE(finished_at, now())
+           WHERE id = $1 AND status IN ('queued', 'processing')
+           RETURNING *`,
+          [jobId],
+        );
+        callback(null, { job: toImportJob(result.rows[0] ?? job.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
       }
     },
 

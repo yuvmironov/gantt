@@ -101,6 +101,22 @@ test('local Gantt workflow', async ({ page, browser }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toContain('.json');
 
+  const exportUrl = await page.locator('#export-json').getAttribute('href');
+  const exportBody = await page.evaluate(async (url) => {
+    const response = await fetch(url);
+    return response.text();
+  }, exportUrl);
+  await page.locator('#import-toggle').click();
+  await page.locator('#import-form select[name=format]').selectOption('json');
+  await page.locator('#import-form input[name=file]').setInputFiles({
+    name: 'import.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(exportBody),
+  });
+  await page.locator('#import-form button[type=submit]').click();
+  await expect(page.locator('#toast')).toContainText('Импортировано');
+  await expect(page.locator('#gantt-table')).toBeVisible();
+
   await page.locator('#sessions-toggle').click();
   await expect(page.locator('#sessions-modal')).toBeVisible();
   await expect(page.locator('#session-list .list-item')).toBeVisible();

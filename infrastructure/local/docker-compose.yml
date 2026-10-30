@@ -243,8 +243,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_PROJECT}
       USER_SERVICE_GRPC: user-service:50051
-    ports:
-      - "50052:50051"
     networks: [smart-oati]
 
 volumes:

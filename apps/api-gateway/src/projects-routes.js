@@ -271,6 +271,43 @@ export function mapHoliday(holiday) {
   };
 }
 
+export function mapImportJob(job) {
+  return {
+    id: job.id,
+    projectId: job.project_id,
+    diagramId: job.diagram_id,
+    initiatorUserId: job.initiator_user_id,
+    format: job.format === 'IMPORT_FORMAT_CSV' ? 'csv' : 'json',
+    status:
+      {
+        IMPORT_STATUS_QUEUED: 'queued',
+        IMPORT_STATUS_PROCESSING: 'processing',
+        IMPORT_STATUS_COMPLETED: 'completed',
+        IMPORT_STATUS_FAILED: 'failed',
+        IMPORT_STATUS_CANCELLED: 'cancelled',
+      }[job.status] ?? 'failed',
+    fileName: job.file_name,
+    sizeBytes: Number(job.size_bytes ?? 0),
+    report: job.report
+      ? {
+          directionsCount: job.report.directions_count,
+          tasksCount: job.report.tasks_count,
+          assignmentsCount: job.report.assignments_count,
+          withoutResponsibleCount: job.report.without_responsible_count,
+          withoutExecutorCount: job.report.without_executor_count,
+          withoutCoexecutorCount: job.report.without_coexecutor_count,
+          issues: job.report.issues ?? [],
+        }
+      : undefined,
+    errorCode: job.error_code,
+    errorMessage: job.error_message,
+    createdAt: fromTimestamp(job.created_at),
+    startedAt: fromTimestamp(job.started_at),
+    finishedAt: fromTimestamp(job.finished_at),
+    expiresAt: fromTimestamp(job.expires_at),
+  };
+}
+
 export function mapSnapshot(snapshot) {
   return {
     diagram: mapDiagram(snapshot.diagram),
@@ -1025,6 +1062,80 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/diagrams/:diagramId/import', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      let data;
+      let fileName = '';
+      let format = 'json';
+      for await (const part of request.parts()) {
+        if (part.type === 'file') {
+          data = await part.toBuffer();
+          fileName = part.filename ?? '';
+        } else if (part.fieldname === 'format') {
+          format = String(part.value);
+        }
+      }
+      if (!data) {
+        return reply.code(400).type('application/problem+json').send({
+          type: 'https://smart-oati.local/problems/invalid_import',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Import file is required',
+          instance: request.url,
+          code: 'invalid_import',
+          traceId: request.id,
+        });
+      }
+      const response = await call(
+        projectClient,
+        'StartImport',
+        {
+          diagram_id: request.params.diagramId,
+          format: format === 'csv' ? 'IMPORT_FORMAT_CSV' : 'IMPORT_FORMAT_JSON',
+          file_name: fileName,
+          data,
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(202).send(mapImportJob(response.job));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/import-jobs/:jobId', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetImportStatus',
+        { job_id: request.params.jobId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapImportJob(response.job));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/import-jobs/:jobId/cancel', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CancelImport',
+        { job_id: request.params.jobId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapImportJob(response.job));
     } catch (error) {
       return sendProblem(reply, request, error);
     }

@@ -69,7 +69,7 @@ Traefik использует собственный самоподписанны
 | Mailpit SMTP | 1025 |
 | Mailpit UI | 8025 |
 | User & Access gRPC | 50051 |
-| Project / Diagram gRPC | 50052 |
+| Project / Diagram gRPC | internal 50051 |
 | Traefik HTTP/HTTPS | 80/443 |
 
 ## Ограничения
@@ -78,4 +78,4 @@ Traefik использует собственный самоподписанны
 - Telegram — WireMock, реальный бот не нужен.
 - Frontend — минимальный bootstrap UI, не полный Nuxt-интерфейс.
 - `sync.localhost` и `notify.localhost` пока не обслуживаются.
-- Импорт диаграмм пока не реализован; экспорт JSON/CSV работает.
+- Импорт JSON v2/CSV работает через API и кнопку «Импорт» в интерфейсе.
