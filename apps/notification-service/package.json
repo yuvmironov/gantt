@@ -10,6 +10,7 @@
   "dependencies": {
     "@fastify/rate-limit": "10.2.0",
     "@smart-oati/service-kit": "workspace:*",
+    "kafkajs": "2.2.4",
     "pg": "^8.23.1"
   }
 }

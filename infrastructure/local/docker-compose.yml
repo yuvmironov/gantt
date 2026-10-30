@@ -186,10 +186,17 @@ services:
       dockerfile: apps/sync-service/Dockerfile
     image: smart-oati/sync-service:local
     restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_CONSUMER_GROUP_SYNC: sync
+      SYNC_SERVICE_URL: http://127.0.0.1:8080
     networks: [smart-oati]
 
   audit-service:
@@ -202,11 +209,16 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_AUDIT}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_CONSUMER_GROUP_AUDIT: audit
     networks: [smart-oati]
 
   notification-service:
@@ -219,11 +231,16 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_NOTIFICATION}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_CONSUMER_GROUP_NOTIFICATION: notification
     networks: [smart-oati]
 
   frontend:
@@ -285,6 +302,8 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -292,6 +311,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_PROJECT}
       USER_SERVICE_GRPC: user-service:50051
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
     networks: [smart-oati]
 
 volumes:

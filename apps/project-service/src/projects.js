@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { status } from '@grpc/grpc-js';
 import { call } from './user-client.js';
+import { queueEvent } from './events/outbox.js';
 
 function grpcError(code, message) {
   const error = new Error(message);
@@ -1605,7 +1606,19 @@ export function createProjectImplementation({ db, userClient }) {
             actorUserId(call_),
           ],
         );
-        callback(null, { task: toTask(result.rows[0]) });
+        const task = result.rows[0];
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: task.id,
+          eventType: 'task.created',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId,
+          entityType: 'task',
+          entityId: task.id,
+          payload: { task: toTask(task) },
+        });
+        callback(null, { task: toTask(task) });
       } catch (error) {
         callback(mapDbError(error));
       }
@@ -1779,7 +1792,28 @@ export function createProjectImplementation({ db, userClient }) {
            RETURNING *`,
           [entityType, entityId, actorUserId(call_), mentionedUserIds, body],
         );
-        callback(null, { comment: toComment(result.rows[0]) });
+        const comment = toComment(result.rows[0]);
+        await queueEvent(db, {
+          aggregateType: 'comment',
+          aggregateId: comment.id,
+          eventType: 'comment.created',
+          actorUserId: actorUserId(call_),
+          projectId: entity.project_id,
+          diagramId: entity.diagram_id,
+          entityType,
+          entityId,
+          payload: {
+            commentId: comment.id,
+            entityType,
+            entityId,
+            projectId: entity.project_id,
+            diagramId: entity.diagram_id,
+            authorUserId: comment.author_user_id,
+            mentionedUserIds: comment.mentioned_user_ids,
+            bodyPreview: comment.body.slice(0, 200),
+          },
+        });
+        callback(null, { comment });
       } catch (error) {
         callback(mapDbError(error));
       }
@@ -2416,7 +2450,19 @@ export function createProjectImplementation({ db, userClient }) {
           values,
         );
         const assignments = await loadAssignments(db, userClient, 'task', taskId);
-        callback(null, { task: toTask(result.rows[0], assignments), revision: '0' });
+        const updatedTask = toTask(result.rows[0], assignments);
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: taskId,
+          eventType: 'task.updated',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId: result.rows[0].diagram_id,
+          entityType: 'task',
+          entityId: taskId,
+          payload: { task: updatedTask, changedFields: [] },
+        });
+        callback(null, { task: updatedTask, revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
       }
@@ -2663,10 +2709,20 @@ export function createProjectImplementation({ db, userClient }) {
         );
         await client.query('COMMIT');
         const updated = await db.query(`SELECT * FROM plan.tasks WHERE id = $1`, [taskId]);
-        callback(null, {
-          task: toTask(updated.rows[0], await loadAssignments(db, userClient, 'task', taskId)),
-          revision: '0',
+        const resolvedAssignments = await loadAssignments(db, userClient, 'task', taskId);
+        const updatedTask = toTask(updated.rows[0], resolvedAssignments);
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: taskId,
+          eventType: 'task.assignments.changed',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId: updatedTask.diagram_id,
+          entityType: 'task',
+          entityId: taskId,
+          payload: { task: updatedTask, assignments: resolvedAssignments },
         });
+        callback(null, { task: updatedTask, revision: '0' });
       } catch (error) {
         if (client) await client.query('ROLLBACK');
         callback(mapDbError(error));
@@ -2707,6 +2763,17 @@ export function createProjectImplementation({ db, userClient }) {
               OR (successor_type = 'task' AND successor_id = $1)`,
           [taskId],
         );
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: taskId,
+          eventType: 'task.deleted',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId: task.rows[0].diagram_id,
+          entityType: 'task',
+          entityId: taskId,
+          payload: { taskId, diagramId: task.rows[0].diagram_id },
+        });
         callback(null, { deleted: true, revision: '0' });
       } catch (error) {
         callback(mapDbError(error));

@@ -37,6 +37,8 @@ export default [
         console: 'readonly',
         process: 'readonly',
         setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     rules: {

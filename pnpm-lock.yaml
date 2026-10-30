@@ -41,6 +41,9 @@ importers:
       '@smart-oati/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
+      kafkajs:
+        specifier: 2.2.4
+        version: 2.2.4
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -53,6 +56,9 @@ importers:
       '@smart-oati/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
+      kafkajs:
+        specifier: 2.2.4
+        version: 2.2.4
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -65,6 +71,9 @@ importers:
       '@smart-oati/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
+      kafkajs:
+        specifier: 2.2.4
+        version: 2.2.4
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -74,6 +83,9 @@ importers:
       '@smart-oati/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
+      kafkajs:
+        specifier: 2.2.4
+        version: 2.2.4
       ws:
         specifier: ^8.18.0
         version: 8.22.0
@@ -983,6 +995,10 @@ packages:
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
+
+  kafkajs@2.2.4:
+    resolution: {integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==}
+    engines: {node: '>=14.0.0'}
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -2148,6 +2164,8 @@ snapshots:
   json-schema-traverse@1.0.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
+
+  kafkajs@2.2.4: {}
 
   keyv@4.5.4:
     dependencies:
