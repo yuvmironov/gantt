@@ -110,6 +110,20 @@ function dateString(timestamp) {
   return new Date(milliseconds).toISOString().slice(0, 10);
 }
 
+function dateOnly(value) {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function csvCell(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
 function toDirection(row, assignments = []) {
   return {
     id: row.id,
@@ -1552,6 +1566,265 @@ export function createProjectImplementation({ db, userClient }) {
         callback(mapDbError(error));
       } finally {
         if (client) client.release();
+      }
+    },
+
+    async ExportDiagram(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const csv = call_.request.format === 'EXPORT_FORMAT_CSV';
+      try {
+        const diagramResult = await db.query(
+          `SELECT d.*, p.name AS project_name, p.description AS project_description,
+                  p.settings AS project_settings
+           FROM project.diagrams d
+           JOIN project.projects p ON p.id = d.project_id
+           WHERE d.id = $1 AND d.deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagramResult.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        const diagram = diagramResult.rows[0];
+        await checkPermission(call_, userClient, diagram.project_id, 'project.view');
+
+        const [directions, tasks, dependencies, comments, holidays, assignmentRows] =
+          await Promise.all([
+            db.query(
+              `SELECT * FROM plan.directions
+               WHERE diagram_id = $1 AND deleted_at IS NULL
+               ORDER BY sort_order ASC`,
+              [diagramId],
+            ),
+            db.query(
+              `SELECT * FROM plan.tasks
+               WHERE diagram_id = $1 AND deleted_at IS NULL
+               ORDER BY sort_order ASC`,
+              [diagramId],
+            ),
+            db.query(
+              `SELECT * FROM plan.dependencies
+               WHERE diagram_id = $1
+               ORDER BY created_at ASC`,
+              [diagramId],
+            ),
+            db.query(
+              `SELECT * FROM plan.comments
+               WHERE deleted_at IS NULL
+                 AND (entity_type = 'task' OR entity_type = 'direction')
+                 AND (
+                   (entity_type = 'task' AND entity_id IN (
+                     SELECT id FROM plan.tasks WHERE diagram_id = $1 AND deleted_at IS NULL
+                   ))
+                   OR
+                   (entity_type = 'direction' AND entity_id IN (
+                     SELECT id FROM plan.directions WHERE diagram_id = $1 AND deleted_at IS NULL
+                   ))
+                 )
+               ORDER BY created_at ASC`,
+              [diagramId],
+            ),
+            db.query(
+              `SELECT * FROM plan.diagram_holidays
+               WHERE diagram_id = $1
+               ORDER BY holiday_date ASC`,
+              [diagramId],
+            ),
+            db.query(
+              `SELECT * FROM plan.assignments
+               WHERE (entity_type = 'task' AND entity_id IN (
+                 SELECT id FROM plan.tasks WHERE diagram_id = $1 AND deleted_at IS NULL
+               ))
+               OR (entity_type = 'direction' AND entity_id IN (
+                 SELECT id FROM plan.directions WHERE diagram_id = $1 AND deleted_at IS NULL
+               ))
+               ORDER BY created_at ASC`,
+              [diagramId],
+            ),
+          ]);
+
+        const assignmentsByEntity = new Map();
+        for (const assignment of assignmentRows.rows) {
+          const key = `${assignment.entity_type}:${assignment.entity_id}`;
+          if (!assignmentsByEntity.has(key)) assignmentsByEntity.set(key, []);
+          assignmentsByEntity.get(key).push({
+            role: assignment.role,
+            assigneeType: assignment.assignee_type,
+            assigneeId: assignment.assignee_id,
+          });
+        }
+        const wbsById = new Map();
+        for (const direction of directions.rows) {
+          wbsById.set(`direction:${direction.id}`, direction.wbs_code);
+        }
+        for (const task of tasks.rows) {
+          wbsById.set(`task:${task.id}`, task.wbs_code);
+        }
+
+        const directionItems = directions.rows.map((direction) => ({
+          id: direction.id,
+          wbsCode: direction.wbs_code,
+          sortOrder: direction.sort_order,
+          name: direction.name,
+          description: direction.description ?? '',
+          result: direction.result ?? '',
+          priority: direction.priority,
+          startDate: dateOnly(direction.start_date) ?? undefined,
+          endDate: dateOnly(direction.end_date) ?? undefined,
+          jiraNumber: direction.jira_number ?? undefined,
+          bpFlag: direction.bp_flag,
+          spFlag: direction.sp_flag,
+          assignments: assignmentsByEntity.get(`direction:${direction.id}`) ?? [],
+        }));
+        const taskItems = tasks.rows.map((task) => ({
+          id: task.id,
+          directionId: task.direction_id,
+          parentTaskId: task.parent_task_id ?? null,
+          level: task.level,
+          wbsCode: task.wbs_code,
+          sortOrder: task.sort_order,
+          name: task.name,
+          description: task.description ?? '',
+          result: task.result ?? '',
+          status: task.status,
+          progress: task.progress,
+          priority: task.priority,
+          startDate: dateOnly(task.start_date) ?? undefined,
+          endDate: dateOnly(task.end_date) ?? undefined,
+          actualEndDate: dateOnly(task.actual_end_date) ?? undefined,
+          jiraNumber: task.jira_number ?? undefined,
+          bpFlag: task.bp_flag,
+          spFlag: task.sp_flag,
+          assignments: assignmentsByEntity.get(`task:${task.id}`) ?? [],
+        }));
+        const dependencyItems = dependencies.rows.map((dependency) => ({
+          id: dependency.id,
+          predecessorType: dependency.predecessor_type,
+          predecessorId: dependency.predecessor_id,
+          predecessorWbs:
+            wbsById.get(`${dependency.predecessor_type}:${dependency.predecessor_id}`) ?? undefined,
+          successorType: dependency.successor_type,
+          successorId: dependency.successor_id,
+          successorWbs:
+            wbsById.get(`${dependency.successor_type}:${dependency.successor_id}`) ?? undefined,
+          linkType: dependency.link_type,
+          color: dependency.color ?? undefined,
+          lineStyle: dependency.line_style,
+          arrowShape: dependency.arrow_shape,
+        }));
+        const commentItems = comments.rows.map((comment) => ({
+          id: comment.id,
+          entityType: comment.entity_type,
+          entityId: comment.entity_id,
+          authorUserId: comment.author_user_id ?? null,
+          body: comment.body,
+          mentionedUserIds: comment.mentioned_user_ids ?? [],
+          createdAt: new Date(comment.created_at).toISOString(),
+          updatedAt: new Date(comment.updated_at).toISOString(),
+        }));
+        const holidayItems = holidays.rows.map((holiday) => ({
+          date: dateOnly(holiday.holiday_date),
+          name: holiday.name ?? undefined,
+        }));
+
+        let data;
+        let contentType;
+        let extension;
+        if (csv) {
+          const parentWbs = new Map(tasks.rows.map((task) => [task.id, task.wbs_code]));
+          const directionWbs = new Map(
+            directions.rows.map((direction) => [direction.id, direction.wbs_code]),
+          );
+          const lines = [
+            [
+              'direction_wbs',
+              'direction_name',
+              'wbs_code',
+              'level',
+              'parent_wbs',
+              'name',
+              'description',
+              'result',
+              'status',
+              'progress',
+              'priority',
+              'start_date',
+              'end_date',
+              'actual_end_date',
+              'jira_number',
+              'bp_flag',
+              'sp_flag',
+            ],
+            ...tasks.rows.map((task) => [
+              directionWbs.get(task.direction_id) ?? '',
+              directions.rows.find((direction) => direction.id === task.direction_id)?.name ?? '',
+              task.wbs_code,
+              task.level,
+              task.parent_task_id ? (parentWbs.get(task.parent_task_id) ?? '') : '',
+              task.name,
+              task.description ?? '',
+              task.result ?? '',
+              task.status,
+              task.progress,
+              task.priority,
+              dateOnly(task.start_date) ?? '',
+              dateOnly(task.end_date) ?? '',
+              dateOnly(task.actual_end_date) ?? '',
+              task.jira_number ?? '',
+              task.bp_flag,
+              task.sp_flag,
+            ]),
+          ];
+          data = lines.map((line) => line.map(csvCell).join(',')).join('\r\n');
+          contentType = 'text/csv; charset=utf-8';
+          extension = 'csv';
+        } else {
+          data = JSON.stringify(
+            {
+              formatVersion: 2,
+              exportedAt: new Date().toISOString(),
+              projectId: diagram.project_id,
+              diagramId: diagram.id,
+              baseRevision: Number(diagram.current_revision ?? 0),
+              project: {
+                id: diagram.project_id,
+                name: diagram.project_name,
+                description: diagram.project_description ?? '',
+                settings: diagram.project_settings ?? {},
+              },
+              diagram: {
+                id: diagram.id,
+                name: diagram.name,
+                description: diagram.description ?? '',
+                dayMode: diagram.day_mode,
+                currentRevision: Number(diagram.current_revision ?? 0),
+              },
+              workdays: {
+                mode: diagram.day_mode,
+                holidays: holidayItems,
+              },
+              executors: [],
+              directions: directionItems,
+              tasks: taskItems,
+              dependencies: dependencyItems,
+              comments: commentItems,
+            },
+            null,
+            2,
+          );
+          contentType = 'application/json; charset=utf-8';
+          extension = 'json';
+        }
+        const baseName = String(diagram.name)
+          .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+          .replace(/^-+|-+$/g, '');
+        callback(null, {
+          data: Buffer.from(data, 'utf8'),
+          content_type: contentType,
+          file_name: `${baseName || diagram.id}.${extension}`,
+        });
+      } catch (error) {
+        callback(mapDbError(error));
       }
     },
 

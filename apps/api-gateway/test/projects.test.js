@@ -704,6 +704,29 @@ describe('api-gateway project routes', () => {
     expect(deleted.statusCode).toBe(204);
   });
 
+  it('exports a diagram as a downloadable file', async () => {
+    const app = build(sessionUser, {
+      ExportDiagram(_request, _metadata, callback) {
+        callback(null, {
+          data: Buffer.from('{"formatVersion":2}'),
+          content_type: 'application/json; charset=utf-8',
+          file_name: 'diagram.json',
+        });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/diagrams/diagram-1/export?format=json',
+      cookies: { '__Host-session': 'token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(response.headers['content-disposition']).toContain('diagram.json');
+    expect(response.body).toBe('{"formatVersion":2}');
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {
