@@ -176,6 +176,24 @@ services:
       USER_SERVICE_GRPC: user-service:50051
       PROJECT_SERVICE_GRPC: project-service:50051
       NOTIFICATION_SERVICE_URL: http://notification-service:8080
+      AUDIT_SERVICE_URL: http://audit-service:8080
+    networks: [smart-oati]
+
+  audit-service:
+    profiles: ["apps"]
+    build:
+      context: ../..
+      dockerfile: apps/audit-service/Dockerfile
+    image: smart-oati/audit-service:local
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL_AUDIT}
     networks: [smart-oati]
 
   notification-service:

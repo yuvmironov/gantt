@@ -117,6 +117,10 @@ function showApp() {
   authView.classList.add('hidden');
   appView.classList.remove('hidden');
   $('#current-user').textContent = state.user?.displayName ?? state.user?.email ?? '';
+  $('#audit-toggle').classList.toggle(
+    'hidden',
+    !(state.user?.globalRoles ?? []).includes('app_admin'),
+  );
   window.clearInterval(unreadTimer);
   loadUnreadCount();
   unreadTimer = window.setInterval(loadUnreadCount, 60_000);
@@ -951,6 +955,32 @@ $('#holiday-list').addEventListener('click', async (event) => {
   );
   await saveHolidays(holidays);
 });
+
+async function openAudit() {
+  $('#audit-modal').classList.remove('hidden');
+  const container = $('#audit-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  try {
+    const response = await api('/audit/events?limit=50');
+    const items = response.items ?? [];
+    container.innerHTML =
+      items
+        .map(
+          (item) => `
+            <div class="list-item">
+              <span class="item-title">${escapeHtml(item.actionCode)}</span>
+              <span class="item-meta">${escapeHtml(item.actorUserId || 'system')} · ${escapeHtml(item.severity)} · ${formatDate(item.occurredAt)}</span>
+            </div>`,
+        )
+        .join('') || '<p class="empty">Событий пока нет.</p>';
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить аудит.</p>';
+    showToast(error.message);
+  }
+}
+
+$('#audit-toggle').addEventListener('click', openAudit);
+$('#audit-close').addEventListener('click', () => $('#audit-modal').classList.add('hidden'));
 
 async function loadUnreadCount() {
   try {

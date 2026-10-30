@@ -52,6 +52,7 @@
           <button id="notifications-toggle" class="ghost" type="button">
             Уведомления <span id="unread-count">0</span>
           </button>
+          <button id="audit-toggle" class="ghost hidden" type="button">Аудит</button>
           <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
           <button id="logout" class="ghost" type="button">Выйти</button>
         </div>
@@ -307,6 +308,16 @@
         </section>
       </div>
     </aside>
+
+    <div id="audit-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Аудит</h2>
+          <button id="audit-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <div id="audit-list" class="list"></div>
+      </div>
+    </div>
 
     <div id="notifications-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
