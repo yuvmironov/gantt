@@ -13,6 +13,7 @@ const state = {
   filters: { query: '', status: '' },
 };
 
+let unreadTimer;
 const $ = (selector) => document.querySelector(selector);
 const authView = $('#auth-view');
 const appView = $('#app-view');
@@ -116,6 +117,9 @@ function showApp() {
   authView.classList.add('hidden');
   appView.classList.remove('hidden');
   $('#current-user').textContent = state.user?.displayName ?? state.user?.email ?? '';
+  window.clearInterval(unreadTimer);
+  loadUnreadCount();
+  unreadTimer = window.setInterval(loadUnreadCount, 60_000);
 }
 
 async function boot() {
@@ -946,6 +950,65 @@ $('#holiday-list').addEventListener('click', async (event) => {
     (holiday) => holiday.holidayDate !== button.dataset.holidayDelete,
   );
   await saveHolidays(holidays);
+});
+
+async function loadUnreadCount() {
+  try {
+    const response = await api('/notifications/unread-count');
+    $('#unread-count').textContent = response.count ?? 0;
+  } catch {
+    // Notifications are optional for the main workflow.
+  }
+}
+
+async function openNotifications() {
+  $('#notifications-modal').classList.remove('hidden');
+  const container = $('#notification-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  try {
+    const response = await api('/notifications?limit=50');
+    const items = response.items ?? [];
+    container.innerHTML =
+      items
+        .map(
+          (item) => `
+            <div class="list-item ${item.isRead ? '' : 'unread'}">
+              <span class="item-title">${escapeHtml(item.title)}</span>
+              <span class="item-meta">${escapeHtml(item.body)}</span>
+              ${item.isRead ? '' : `<button class="ghost small" data-notification-read="${escapeHtml(item.id)}" type="button">Прочитано</button>`}
+            </div>`,
+        )
+        .join('') || '<p class="empty">Уведомлений пока нет.</p>';
+    await loadUnreadCount();
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить уведомления.</p>';
+    showToast(error.message);
+  }
+}
+
+$('#notifications-toggle').addEventListener('click', openNotifications);
+$('#notifications-close').addEventListener('click', () =>
+  $('#notifications-modal').classList.add('hidden'),
+);
+
+$('#notification-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-notification-read]');
+  if (!button) return;
+  try {
+    await api(`/notifications/${button.dataset.notificationRead}/read`, { method: 'POST' });
+    await openNotifications();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#notifications-read-all').addEventListener('click', async () => {
+  try {
+    await api('/notifications/read-all', { method: 'POST' });
+    await openNotifications();
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 async function openSessions() {

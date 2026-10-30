@@ -30,7 +30,9 @@ export default [
       sourceType: 'module',
       globals: {
         Buffer: 'readonly',
+        fetch: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         console: 'readonly',
         process: 'readonly',
         setTimeout: 'readonly',

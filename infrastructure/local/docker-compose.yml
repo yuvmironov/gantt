@@ -175,6 +175,24 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       USER_SERVICE_GRPC: user-service:50051
       PROJECT_SERVICE_GRPC: project-service:50051
+      NOTIFICATION_SERVICE_URL: http://notification-service:8080
+    networks: [smart-oati]
+
+  notification-service:
+    profiles: ["apps"]
+    build:
+      context: ../..
+      dockerfile: apps/notification-service/Dockerfile
+    image: smart-oati/notification-service:local
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL_NOTIFICATION}
     networks: [smart-oati]
 
   frontend:
