@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SMART OATI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <section id="auth-view" class="auth-shell">
+      <div class="auth-brand">
+        <div class="brand">SMART OATI</div>
+        <h1>Планирование, которое видно</h1>
+        <p>Направления, задачи, зависимости и сроки в одном рабочем пространстве.</p>
+      </div>
+      <div class="auth-card">
+        <div class="tabs">
+          <button id="login-tab" class="tab active" type="button">Вход</button>
+          <button id="register-tab" class="tab" type="button">Регистрация</button>
+        </div>
+        <form id="login-form" class="form">
+          <label>Email <input name="email" type="email" autocomplete="email" required /></label>
+          <label
+            >Пароль <input name="password" type="password" autocomplete="current-password" required
+          /></label>
+          <button class="primary" type="submit">Войти</button>
+        </form>
+        <form id="register-form" class="form hidden">
+          <label>Email <input name="email" type="email" autocomplete="email" required /></label>
+          <label>Фамилия <input name="lastName" required /></label>
+          <label>Имя <input name="firstName" required /></label>
+          <label
+            >Пароль
+            <input
+              name="password"
+              type="password"
+              minlength="8"
+              autocomplete="new-password"
+              required
+          /></label>
+          <button class="primary" type="submit">Создать аккаунт</button>
+        </form>
+        <p class="hint">Локальный администратор: admin@smart-oati.local</p>
+      </div>
+    </section>
+
+    <div id="app-view" class="app hidden">
+      <header class="topbar">
+        <div class="brand">SMART OATI</div>
+        <div class="topbar-user">
+          <span id="current-user"></span>
+          <button id="logout" class="ghost" type="button">Выйти</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Проекты</h2>
+            <button id="new-project-toggle" class="ghost" type="button">Новый проект</button>
+          </div>
+          <form id="project-form" class="form compact hidden">
+            <label>Название <input name="name" required maxlength="200" /></label>
+            <label>Описание <input name="description" /></label>
+            <button class="primary" type="submit">Создать</button>
+          </form>
+          <div id="project-list" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Диаграммы</h2>
+            <button id="new-diagram-toggle" class="ghost" type="button">Новая диаграмма</button>
+          </div>
+          <p id="project-title" class="muted">Выберите проект</p>
+          <form id="diagram-form" class="form compact hidden">
+            <label>Название <input name="name" required maxlength="200" /></label>
+            <label>Описание <input name="description" /></label>
+            <button class="primary" type="submit">Создать</button>
+          </form>
+          <div id="diagram-list" class="list"></div>
+        </section>
+
+        <section class="panel gantt-panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="diagram-title">Диаграмма</h2>
+              <p id="diagram-hint" class="muted">Выберите диаграмму</p>
+            </div>
+            <div class="actions">
+              <button id="refresh-diagram" class="ghost" type="button">Обновить</button>
+              <a id="export-json" class="button hidden" href="#">Экспорт JSON</a>
+            </div>
+          </div>
+
+          <div id="gantt-forms" class="inline-forms hidden">
+            <form id="direction-form" class="form row-form">
+              <input name="name" placeholder="Новое направление" required maxlength="200" />
+              <button class="ghost" type="submit">Добавить направление</button>
+            </form>
+            <form id="task-form" class="form row-form">
+              <select name="directionId" id="task-direction" required></select>
+              <input name="name" placeholder="Новая задача" required maxlength="200" />
+              <button class="ghost" type="submit">Добавить задачу</button>
+            </form>
+          </div>
+
+          <div class="table-wrap">
+            <table id="gantt-table" class="gantt hidden">
+              <thead>
+                <tr>
+                  <th>WBS</th>
+                  <th>Название</th>
+                  <th>Статус</th>
+                  <th>Готовность</th>
+                  <th>Даты</th>
+                  <th>Ответственный</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

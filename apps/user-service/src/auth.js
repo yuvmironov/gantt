@@ -164,6 +164,46 @@ export async function verifyPassword(passwordHash, password) {
   return argonVerify(passwordHash, password);
 }
 
+export async function ensureDevAdmin(db, env = process.env) {
+  const email = normalizeEmail(env.DEV_ADMIN_EMAIL ?? '');
+  const password = String(env.DEV_ADMIN_PASSWORD ?? '');
+  if (!email || !password) return false;
+
+  const lastName = String(env.DEV_ADMIN_LAST_NAME ?? '').trim() || 'Администратор';
+  const firstName = String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() || 'Системный';
+  const middleName = String(env.DEV_ADMIN_MIDDLE_NAME ?? '').trim() || null;
+  const displayName = `${lastName} ${firstName}`.trim();
+  const passwordHash = await hashPassword(password);
+
+  const existing = await db.query('SELECT id FROM access.users WHERE email = $1', [email]);
+  let userId = existing.rows[0]?.id;
+  if (!userId) {
+    const result = await db.query(
+      `INSERT INTO access.users
+         (email, password_hash, display_name, last_name, first_name, middle_name, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now())
+       RETURNING id`,
+      [email, passwordHash, displayName, lastName, firstName, middleName],
+    );
+    userId = result.rows[0].id;
+  } else {
+    await db.query(
+      `UPDATE access.users
+       SET password_hash = $2, email_verified_at = COALESCE(email_verified_at, now()),
+           status = 'active', updated_at = now()
+       WHERE id = $1`,
+      [userId, passwordHash],
+    );
+  }
+  await db.query(
+    `INSERT INTO access.user_roles (user_id, role_code)
+     VALUES ($1, 'app_admin')
+     ON CONFLICT DO NOTHING`,
+    [userId],
+  );
+  return true;
+}
+
 export function createUserImplementation({ db, devAutoVerify = false }) {
   return {
     async Register(call, callback) {
