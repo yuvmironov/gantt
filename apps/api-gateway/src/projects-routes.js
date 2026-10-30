@@ -789,6 +789,26 @@ export async function projectRoutes(app, { userClient, projectClient }) {
     }
   });
 
+  app.post('/api/v1/tasks/:taskId/move', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const body = request.body ?? {};
+      const move = {
+        task_id: request.params.taskId,
+        sort_order: Number(body.sortOrder ?? 0),
+        expected_version: Number(body.expectedVersion ?? 0),
+        base_revision: Number(body.baseRevision ?? 0),
+      };
+      if ('parentTaskId' in body) move.parent_task_id = body.parentTaskId ?? '';
+      if ('directionId' in body) move.direction_id = body.directionId;
+      const response = await call(projectClient, 'MoveTask', move, actorMetadata(current.user_id));
+      return reply.send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.patch('/api/v1/tasks/:taskId/progress', async (request, reply) => {
     if (requireCsrf(request, reply)) return reply;
     try {

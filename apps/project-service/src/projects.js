@@ -1660,6 +1660,138 @@ export function createProjectImplementation({ db, userClient }) {
       }
     },
 
+    async MoveTask(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
+      let client;
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        const current = task.rows[0];
+        if (expectedVersion > 0 && expectedVersion !== current.version) {
+          callback(versionConflict());
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          current.diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+
+        const directionId = hasField(call_.request, 'direction_id')
+          ? String(call_.request.direction_id)
+          : current.direction_id;
+        const direction = await db.query(
+          `SELECT * FROM plan.directions
+           WHERE id = $1 AND diagram_id = $2 AND deleted_at IS NULL`,
+          [directionId, current.diagram_id],
+        );
+        if (direction.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'direction_not_found'));
+          return;
+        }
+
+        const parentProvided = hasField(call_.request, 'parent_task_id');
+        const parentTaskId = parentProvided
+          ? String(call_.request.parent_task_id) || null
+          : current.parent_task_id;
+        if (parentTaskId === taskId) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'task_parent_invalid'));
+          return;
+        }
+
+        let parent = null;
+        if (parentTaskId) {
+          const parentResult = await db.query(
+            `SELECT * FROM plan.tasks
+             WHERE id = $1 AND diagram_id = $2 AND deleted_at IS NULL`,
+            [parentTaskId, current.diagram_id],
+          );
+          if (parentResult.rowCount === 0 || parentResult.rows[0].level !== 2) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'task_parent_invalid'));
+            return;
+          }
+          parent = parentResult.rows[0];
+          const children = await db.query(
+            `SELECT 1 FROM plan.tasks
+             WHERE parent_task_id = $1 AND deleted_at IS NULL
+             LIMIT 1`,
+            [taskId],
+          );
+          if (children.rowCount > 0) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'task_has_children'));
+            return;
+          }
+        }
+
+        const requestedSort = Number(call_.request.sort_order ?? 0);
+        let sortOrder = requestedSort;
+        if (!Number.isInteger(sortOrder) || sortOrder <= 0) {
+          const next = await db.query(
+            `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
+             FROM plan.tasks
+             WHERE direction_id = $1
+               AND parent_task_id IS NOT DISTINCT FROM $2
+               AND deleted_at IS NULL`,
+            [directionId, parentTaskId],
+          );
+          sortOrder = next.rows[0].next;
+        }
+
+        const level = parent ? 3 : 2;
+        const wbsCode = parent
+          ? `${parent.wbs_code}.${sortOrder}`
+          : `${direction.rows[0].wbs_code}.${sortOrder}`;
+        const conflict = await db.query(
+          `SELECT 1 FROM plan.tasks
+           WHERE diagram_id = $1 AND wbs_code = $2 AND deleted_at IS NULL AND id <> $3`,
+          [current.diagram_id, wbsCode, taskId],
+        );
+        if (conflict.rowCount > 0) {
+          callback(grpcError(status.ALREADY_EXISTS, 'task_wbs_conflict'));
+          return;
+        }
+
+        client = await db.connect();
+        await client.query('BEGIN');
+        const updated = await client.query(
+          `UPDATE plan.tasks
+           SET direction_id = $2, parent_task_id = $3, level = $4, wbs_code = $5,
+               sort_order = $6, updated_by_user_id = $7,
+               version = version + 1, updated_at = now()
+           WHERE id = $1
+           RETURNING *`,
+          [taskId, directionId, parentTaskId, level, wbsCode, sortOrder, actorUserId(call_)],
+        );
+        if (directionId !== current.direction_id || wbsCode !== current.wbs_code) {
+          await client.query(
+            `UPDATE plan.tasks
+             SET direction_id = $2,
+                 wbs_code = $3 || substr(wbs_code, length($4) + 1),
+                 updated_at = now(),
+                 updated_by_user_id = $5
+             WHERE parent_task_id = $1
+               AND deleted_at IS NULL
+               AND left(wbs_code, length($4) + 1) = $4 || '.'`,
+            [taskId, directionId, wbsCode, current.wbs_code, actorUserId(call_)],
+          );
+        }
+        await client.query('COMMIT');
+        const assignments = await loadAssignments(db, userClient, 'task', taskId);
+        callback(null, { task: toTask(updated.rows[0], assignments), revision: '0' });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
+      }
+    },
+
     async UpdateTaskProgress(call_, callback) {
       const taskId = String(call_.request.task_id ?? '');
       const expectedVersion = Number(call_.request.expected_version ?? 0);
