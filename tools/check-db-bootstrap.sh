@@ -25,7 +25,7 @@ assert_count() {
 
 assert_count smart_oati_user "SELECT count(*) FROM access.roles" 6
 assert_count smart_oati_user "SELECT count(*) FROM access.permissions" 26
-assert_count smart_oati_user "SELECT count(*) FROM access.role_permissions" 46
+assert_count smart_oati_user "SELECT count(*) FROM access.role_permissions" 72
 assert_count smart_oati_user "SELECT count(*) FROM settings.system_settings" 16
 assert_count smart_oati_audit "SELECT count(*) FROM audit.audit_actions" 64
 assert_count smart_oati_project "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'project' AND table_name = 'projects'" 1
