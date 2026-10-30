@@ -79,11 +79,14 @@ pnpm format:check
 pnpm test
 pnpm test:unit
 pnpm test:contract
+pnpm test:e2e
 pnpm build
 pnpm start:api-gateway
 pnpm start:user-service
 pnpm start:project-service
 ```
+
+`pnpm test:e2e` использует Playwright и Chrome, поэтому требует запущенный локальный стек.
 
 ## Структура
 
@@ -126,4 +129,5 @@ tools/                 # проверки контрактов
 - [ ] Импорт диаграмм.
 - [ ] Notification, Audit, Sync services.
 - [ ] Staging/prod Helm values.
-- [ ] E2E и load tests.
+- [x] Playwright smoke E2E.
+- [ ] Load tests.

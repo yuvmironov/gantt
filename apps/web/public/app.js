@@ -86,12 +86,24 @@ function setTableMessage(message) {
 
 async function loadDirectory() {
   if (state.users && state.executors) return;
-  const [users, executors] = await Promise.all([
+  const [users, executors] = await Promise.allSettled([
     api('/users?limit=200'),
     api('/executors?limit=200'),
   ]);
-  state.users = users.items ?? [];
-  state.executors = executors.items ?? [];
+  state.users = users.status === 'fulfilled' ? (users.value.items ?? []) : [];
+  state.executors = executors.status === 'fulfilled' ? (executors.value.items ?? []) : [];
+  if (state.users.length === 0 && state.user) {
+    state.users = [
+      {
+        id: state.user.id,
+        displayName: state.user.displayName,
+        email: state.user.email,
+      },
+    ];
+  }
+  if (users.status === 'rejected' && executors.status === 'rejected') {
+    throw users.reason;
+  }
 }
 
 function showAuth() {

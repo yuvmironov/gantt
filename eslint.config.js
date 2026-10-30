@@ -12,7 +12,7 @@ const ignores = [
 export default [
   { ignores },
   {
-    files: ['apps/web/public/**/*.js'],
+    files: ['apps/web/public/**/*.js', 'e2e/**/*.js'],
     languageOptions: {
       globals: {
         document: 'readonly',
