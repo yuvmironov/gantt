@@ -110,7 +110,7 @@ function dateString(timestamp) {
   return new Date(milliseconds).toISOString().slice(0, 10);
 }
 
-function toDirection(row) {
+function toDirection(row, assignments = []) {
   return {
     id: row.id,
     diagram_id: row.diagram_id,
@@ -126,7 +126,7 @@ function toDirection(row) {
     bp_flag: row.bp_flag,
     sp_flag: row.sp_flag,
     version: row.version,
-    assignments: [],
+    assignments,
     created_by_user_id: row.created_by_user_id,
     updated_by_user_id: row.updated_by_user_id ?? '',
     created_at: toTimestamp(row.created_at),
@@ -135,7 +135,7 @@ function toDirection(row) {
   };
 }
 
-function toTask(row) {
+function toTask(row, assignments = []) {
   return {
     id: row.id,
     diagram_id: row.diagram_id,
@@ -157,7 +157,7 @@ function toTask(row) {
     bp_flag: row.bp_flag,
     sp_flag: row.sp_flag,
     version: row.version,
-    assignments: [],
+    assignments,
     comments_count: 0,
     created_by_user_id: row.created_by_user_id,
     updated_by_user_id: row.updated_by_user_id ?? '',
@@ -165,6 +165,25 @@ function toTask(row) {
     updated_at: toTimestamp(row.updated_at),
     deleted_at: toTimestamp(row.deleted_at),
   };
+}
+
+function fromAssignmentRole(value) {
+  return (
+    {
+      ASSIGNMENT_ROLE_RESPONSIBLE: 'responsible',
+      ASSIGNMENT_ROLE_EXECUTOR: 'executor',
+      ASSIGNMENT_ROLE_CO_EXECUTOR: 'co_executor',
+    }[value] ?? ''
+  );
+}
+
+function fromAssigneeType(value) {
+  return (
+    {
+      ASSIGNEE_TYPE_USER: 'user',
+      ASSIGNEE_TYPE_EXECUTOR: 'executor',
+    }[value] ?? ''
+  );
 }
 
 function fromTaskStatus(value) {
@@ -204,6 +223,76 @@ function toDependency(row) {
     created_at: toTimestamp(row.created_at),
     updated_at: toTimestamp(row.updated_at),
   };
+}
+
+function toAssignment(row, refs) {
+  const ref = refs.get(`${row.assignee_type}:${row.assignee_id}`);
+  return {
+    id: row.id,
+    role:
+      {
+        responsible: 'ASSIGNMENT_ROLE_RESPONSIBLE',
+        executor: 'ASSIGNMENT_ROLE_EXECUTOR',
+        co_executor: 'ASSIGNMENT_ROLE_CO_EXECUTOR',
+      }[row.role] ?? 'ASSIGNMENT_ROLE_UNSPECIFIED',
+    assignee_type:
+      row.assignee_type === 'executor' ? 'ASSIGNEE_TYPE_EXECUTOR' : 'ASSIGNEE_TYPE_USER',
+    assignee_id: row.assignee_id,
+    display_name: ref?.display_name ?? '',
+    linked_user_id: ref?.linked_user_id ?? '',
+    resolved: Boolean(ref),
+  };
+}
+
+async function resolveAssignments(rows, userClient) {
+  const userIds = [
+    ...new Set(rows.filter((row) => row.assignee_type === 'user').map((row) => row.assignee_id)),
+  ];
+  const executorIds = [
+    ...new Set(
+      rows.filter((row) => row.assignee_type === 'executor').map((row) => row.assignee_id),
+    ),
+  ];
+  const refs = new Map();
+  if (userIds.length > 0) {
+    try {
+      const users = await call(userClient, 'GetUsersByIds', { user_ids: userIds });
+      for (const user of users.items) {
+        refs.set(`user:${user.id}`, {
+          display_name: user.display_name,
+          linked_user_id: user.id,
+        });
+      }
+    } catch {
+      // Keep unresolved refs when User Service is unavailable.
+    }
+  }
+  if (executorIds.length > 0) {
+    try {
+      const executors = await call(userClient, 'GetExecutorsByIds', {
+        executor_ids: executorIds,
+      });
+      for (const executor of executors.items) {
+        refs.set(`executor:${executor.id}`, {
+          display_name: executor.full_name,
+          linked_user_id: executor.linked_user_id ?? '',
+        });
+      }
+    } catch {
+      // Keep unresolved refs when User Service is unavailable.
+    }
+  }
+  return rows.map((row) => toAssignment(row, refs));
+}
+
+async function loadAssignments(db, userClient, entityType, entityId) {
+  const result = await db.query(
+    `SELECT * FROM plan.assignments
+     WHERE entity_type = $1 AND entity_id = $2
+     ORDER BY role, created_at ASC`,
+    [entityType, entityId],
+  );
+  return resolveAssignments(result.rows, userClient);
 }
 
 function toComment(row) {
@@ -913,12 +1002,35 @@ export function createProjectImplementation({ db, userClient }) {
           [diagramId],
         );
         const counts = new Map(commentCounts.rows.map((item) => [item.entity_id, item.total]));
+        const assignmentRows = await db.query(
+          `SELECT a.*
+           FROM plan.assignments a
+           WHERE (a.entity_type = 'task' AND EXISTS (
+             SELECT 1 FROM plan.tasks t
+             WHERE t.id = a.entity_id AND t.diagram_id = $1 AND t.deleted_at IS NULL
+           ))
+           OR (a.entity_type = 'direction' AND EXISTS (
+             SELECT 1 FROM plan.directions d
+             WHERE d.id = a.entity_id AND d.diagram_id = $1 AND d.deleted_at IS NULL
+           ))
+           ORDER BY a.role, a.created_at ASC`,
+          [diagramId],
+        );
+        const resolvedAssignments = await resolveAssignments(assignmentRows.rows, userClient);
+        const assignmentsByEntity = new Map();
+        assignmentRows.rows.forEach((assignment, index) => {
+          const key = `${assignment.entity_type}:${assignment.entity_id}`;
+          if (!assignmentsByEntity.has(key)) assignmentsByEntity.set(key, []);
+          assignmentsByEntity.get(key).push(resolvedAssignments[index]);
+        });
         callback(null, {
           snapshot: {
             diagram: toDiagram(row),
-            directions: directions.rows.map(toDirection),
+            directions: directions.rows.map((direction) =>
+              toDirection(direction, assignmentsByEntity.get(`direction:${direction.id}`) ?? []),
+            ),
             tasks: tasks.rows.map((task) => ({
-              ...toTask(task),
+              ...toTask(task, assignmentsByEntity.get(`task:${task.id}`) ?? []),
               comments_count: counts.get(task.id) ?? 0,
             })),
             dependencies: dependencies.rows.map(toDependency),
@@ -1161,7 +1273,8 @@ export function createProjectImplementation({ db, userClient }) {
           task.rows[0].diagram_id,
         ]);
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.view');
-        callback(null, { task: toTask(task.rows[0]) });
+        const assignments = await loadAssignments(db, userClient, 'task', taskId);
+        callback(null, { task: toTask(task.rows[0], assignments) });
       } catch (error) {
         callback(mapDbError(error));
       }
@@ -1243,7 +1356,8 @@ export function createProjectImplementation({ db, userClient }) {
           `UPDATE plan.tasks SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
           values,
         );
-        callback(null, { task: toTask(result.rows[0]), revision: '0' });
+        const assignments = await loadAssignments(db, userClient, 'task', taskId);
+        callback(null, { task: toTask(result.rows[0], assignments), revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
       }
@@ -1283,9 +1397,90 @@ export function createProjectImplementation({ db, userClient }) {
            RETURNING *`,
           [taskId, fromTaskStatus(call_.request.status), progress, actorUserId(call_)],
         );
-        callback(null, { task: toTask(result.rows[0]), revision: '0' });
+        const assignments = await loadAssignments(db, userClient, 'task', taskId);
+        callback(null, { task: toTask(result.rows[0], assignments), revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
+      }
+    },
+
+    async SetTaskAssignments(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      const assignments = [];
+      const roles = { responsible: 0, executor: 0, co_executor: 0 };
+      const assignees = new Set();
+      for (const item of call_.request.assignments ?? []) {
+        const role = fromAssignmentRole(item.role);
+        const assigneeType = fromAssigneeType(item.assignee_type);
+        const assigneeId = String(item.assignee_id ?? '');
+        if (!role || !assigneeType || !isUuid(assigneeId)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_assignment'));
+          return;
+        }
+        roles[role] += 1;
+        const key = `${role}:${assigneeType}:${assigneeId}`;
+        if (assignees.has(key)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'duplicate_assignment'));
+          return;
+        }
+        assignees.add(key);
+        assignments.push({ role, assigneeType, assigneeId });
+      }
+      if (
+        assignments.length > 4 ||
+        roles.responsible > 1 ||
+        roles.executor > 1 ||
+        roles.co_executor > 2
+      ) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'assignment_limit_exceeded'));
+        return;
+      }
+
+      let client;
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          task.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+        client = await db.connect();
+        await client.query('BEGIN');
+        await client.query(
+          `DELETE FROM plan.assignments WHERE entity_type = 'task' AND entity_id = $1`,
+          [taskId],
+        );
+        for (const item of assignments) {
+          await client.query(
+            `INSERT INTO plan.assignments
+               (entity_type, entity_id, role, assignee_type, assignee_id, created_by_user_id)
+             VALUES ('task', $1, $2, $3, $4, $5)`,
+            [taskId, item.role, item.assigneeType, item.assigneeId, actorUserId(call_)],
+          );
+        }
+        await client.query(
+          `UPDATE plan.tasks
+           SET version = version + 1, updated_by_user_id = $2, updated_at = now()
+           WHERE id = $1`,
+          [taskId, actorUserId(call_)],
+        );
+        await client.query('COMMIT');
+        const updated = await db.query(`SELECT * FROM plan.tasks WHERE id = $1`, [taskId]);
+        callback(null, {
+          task: toTask(updated.rows[0], await loadAssignments(db, userClient, 'task', taskId)),
+          revision: '0',
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
       }
     },
 

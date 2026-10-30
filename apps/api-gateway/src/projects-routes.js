@@ -93,6 +93,19 @@ function priorityEnum(value) {
   );
 }
 
+function assignmentRoleEnum(value) {
+  return (
+    {
+      executor: 'ASSIGNMENT_ROLE_EXECUTOR',
+      co_executor: 'ASSIGNMENT_ROLE_CO_EXECUTOR',
+    }[value] ?? 'ASSIGNMENT_ROLE_RESPONSIBLE'
+  );
+}
+
+function assigneeTypeEnum(value) {
+  return value === 'executor' ? 'ASSIGNEE_TYPE_EXECUTOR' : 'ASSIGNEE_TYPE_USER';
+}
+
 function dependencyLineStyleEnum(value) {
   return (
     {
@@ -137,6 +150,23 @@ function toTaskStatus(value) {
   );
 }
 
+export function mapAssignment(assignment) {
+  return {
+    id: assignment.id,
+    role:
+      {
+        ASSIGNMENT_ROLE_RESPONSIBLE: 'responsible',
+        ASSIGNMENT_ROLE_EXECUTOR: 'executor',
+        ASSIGNMENT_ROLE_CO_EXECUTOR: 'co_executor',
+      }[assignment.role] ?? 'responsible',
+    assigneeType: assignment.assignee_type === 'ASSIGNEE_TYPE_EXECUTOR' ? 'executor' : 'user',
+    assigneeId: assignment.assignee_id,
+    displayName: assignment.display_name,
+    linkedUserId: assignment.linked_user_id,
+    resolved: assignment.resolved,
+  };
+}
+
 export function mapDirection(direction) {
   return {
     id: direction.id,
@@ -153,7 +183,7 @@ export function mapDirection(direction) {
     bpFlag: direction.bp_flag,
     spFlag: direction.sp_flag,
     version: direction.version,
-    assignments: [],
+    assignments: (direction.assignments ?? []).map(mapAssignment),
     createdByUserId: direction.created_by_user_id,
     updatedByUserId: direction.updated_by_user_id,
     createdAt: fromTimestamp(direction.created_at),
@@ -183,7 +213,7 @@ export function mapTask(task) {
     bpFlag: task.bp_flag,
     spFlag: task.sp_flag,
     version: task.version,
-    assignments: [],
+    assignments: (task.assignments ?? []).map(mapAssignment),
     commentsCount: task.comments_count,
     createdByUserId: task.created_by_user_id,
     updatedByUserId: task.updated_by_user_id,
@@ -630,6 +660,31 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         projectClient,
         'UpdateTask',
         update,
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.put('/api/v1/tasks/:taskId/assignments', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const assignments = (request.body?.assignments ?? []).map((item) => ({
+        role: assignmentRoleEnum(item.role),
+        assignee_type: assigneeTypeEnum(item.assigneeType),
+        assignee_id: item.assigneeId,
+      }));
+      const response = await call(
+        projectClient,
+        'SetTaskAssignments',
+        {
+          task_id: request.params.taskId,
+          assignments,
+          base_revision: Number(request.body?.baseRevision ?? 0),
+        },
         actorMetadata(current.user_id),
       );
       return reply.send(mapTask(response.task));
