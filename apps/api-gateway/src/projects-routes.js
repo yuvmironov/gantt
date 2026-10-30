@@ -577,6 +577,102 @@ export async function projectRoutes(app, { userClient, projectClient }) {
     }
   });
 
+  app.patch('/api/v1/directions/:directionId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const body = request.body ?? {};
+      const update = {
+        direction_id: request.params.directionId,
+        expected_version: Number(body.expectedVersion ?? 0),
+        base_revision: Number(body.baseRevision ?? 0),
+      };
+      if ('name' in body) update.name = body.name;
+      if ('description' in body) update.description = body.description;
+      if ('result' in body) update.result = body.result;
+      if ('priority' in body) update.priority = priorityEnum(body.priority);
+      if ('startDate' in body) update.start_date = timestampInput(body.startDate);
+      if ('endDate' in body) update.end_date = timestampInput(body.endDate);
+      if ('jiraNumber' in body) update.jira_number = body.jiraNumber;
+      if ('bpFlag' in body) update.bp_flag = Boolean(body.bpFlag);
+      if ('spFlag' in body) update.sp_flag = Boolean(body.spFlag);
+      const response = await call(
+        projectClient,
+        'UpdateDirection',
+        update,
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapDirection(response.direction));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/directions/:directionId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteDirection',
+        {
+          direction_id: request.params.directionId,
+          expected_version: Number(request.query.expectedVersion ?? 0),
+          base_revision: Number(request.query.baseRevision ?? 0),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/diagrams/:diagramId/directions/reorder', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'ReorderDirections',
+        {
+          diagram_id: request.params.diagramId,
+          direction_ids: request.body?.directionIds ?? [],
+          base_revision: Number(request.body?.baseRevision ?? 0),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({ items: response.items.map(mapDirection) });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.put('/api/v1/directions/:directionId/responsible', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const item = request.body?.assignment ?? {};
+      const response = await call(
+        projectClient,
+        'SetDirectionResponsible',
+        {
+          direction_id: request.params.directionId,
+          assignment: {
+            role: 'ASSIGNMENT_ROLE_RESPONSIBLE',
+            assignee_type: assigneeTypeEnum(item.assigneeType),
+            assignee_id: item.assigneeId,
+          },
+          base_revision: Number(request.body?.baseRevision ?? 0),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapDirection(response.direction));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.post('/api/v1/diagrams/:diagramId/tasks', async (request, reply) => {
     if (requireCsrf(request, reply)) return reply;
     try {
