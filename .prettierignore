@@ -12,3 +12,5 @@ frontend/design/
 *.yml
 *.json
 notifications/templates/
+
+apps/frontend/
