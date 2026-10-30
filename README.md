@@ -130,4 +130,5 @@ tools/                 # проверки контрактов
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.
 - [x] Playwright smoke E2E.
-- [ ] Load tests.
+- [x] Security headers, CSP, API rate limiting and auth audit events.
+- [ ] Load tests (k6 smoke scenario added).
