@@ -70,6 +70,103 @@ function toDiagram(row) {
   };
 }
 
+function toPriority(value) {
+  return (
+    {
+      low: 'PRIORITY_LOW',
+      medium: 'PRIORITY_MEDIUM',
+      high: 'PRIORITY_HIGH',
+      critical: 'PRIORITY_CRITICAL',
+    }[value] ?? 'PRIORITY_UNSPECIFIED'
+  );
+}
+
+function fromPriority(value) {
+  return (
+    {
+      PRIORITY_LOW: 'low',
+      PRIORITY_MEDIUM: 'medium',
+      PRIORITY_HIGH: 'high',
+      PRIORITY_CRITICAL: 'critical',
+    }[value] ?? 'medium'
+  );
+}
+
+function toTaskStatus(value) {
+  return (
+    {
+      planned: 'TASK_STATUS_PLANNED',
+      in_progress: 'TASK_STATUS_IN_PROGRESS',
+      done: 'TASK_STATUS_DONE',
+      blocked: 'TASK_STATUS_BLOCKED',
+    }[value] ?? 'TASK_STATUS_PLANNED'
+  );
+}
+
+function dateString(timestamp) {
+  if (!timestamp) return null;
+  const milliseconds =
+    Number(timestamp.seconds ?? 0) * 1000 + Math.floor(Number(timestamp.nanos ?? 0) / 1_000_000);
+  return new Date(milliseconds).toISOString().slice(0, 10);
+}
+
+function toDirection(row) {
+  return {
+    id: row.id,
+    diagram_id: row.diagram_id,
+    wbs_code: row.wbs_code,
+    sort_order: row.sort_order,
+    name: row.name,
+    description: row.description ?? '',
+    result: row.result ?? '',
+    priority: toPriority(row.priority),
+    start_date: toTimestamp(row.start_date),
+    end_date: toTimestamp(row.end_date),
+    jira_number: row.jira_number ?? '',
+    bp_flag: row.bp_flag,
+    sp_flag: row.sp_flag,
+    version: row.version,
+    assignments: [],
+    created_by_user_id: row.created_by_user_id,
+    updated_by_user_id: row.updated_by_user_id ?? '',
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+    deleted_at: toTimestamp(row.deleted_at),
+  };
+}
+
+function toTask(row) {
+  return {
+    id: row.id,
+    diagram_id: row.diagram_id,
+    direction_id: row.direction_id,
+    parent_task_id: row.parent_task_id ?? '',
+    level: row.level,
+    wbs_code: row.wbs_code,
+    sort_order: row.sort_order,
+    name: row.name,
+    description: row.description ?? '',
+    result: row.result ?? '',
+    status: toTaskStatus(row.status),
+    progress: row.progress,
+    priority: toPriority(row.priority),
+    start_date: toTimestamp(row.start_date),
+    end_date: toTimestamp(row.end_date),
+    actual_end_date: toTimestamp(row.actual_end_date),
+    jira_number: row.jira_number ?? '',
+    bp_flag: row.bp_flag,
+    sp_flag: row.sp_flag,
+    version: row.version,
+    assignments: [],
+    comments_count: 0,
+    created_by_user_id: row.created_by_user_id,
+    updated_by_user_id: row.updated_by_user_id ?? '',
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+    deleted_at: toTimestamp(row.deleted_at),
+  };
+}
+
 function mapDbError(error) {
   return error;
 }
@@ -497,6 +594,170 @@ export function createProjectImplementation({ db, userClient }) {
           [diagramId, actorUserId(call_)],
         );
         callback(null, { deleted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateDirection(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const name = String(call_.request.name ?? '').trim();
+      if (!diagramId || !name || name.length > 200) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_direction_name'));
+        return;
+      }
+
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.create');
+        const next = await db.query(
+          `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
+           FROM plan.directions WHERE diagram_id = $1`,
+          [diagramId],
+        );
+        const sortOrder = next.rows[0].next;
+        const result = await db.query(
+          `INSERT INTO plan.directions
+             (diagram_id, wbs_code, sort_order, name, description, result, priority,
+              start_date, end_date, jira_number, bp_flag, sp_flag, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           RETURNING *`,
+          [
+            diagramId,
+            String(sortOrder),
+            sortOrder,
+            name,
+            String(call_.request.description ?? ''),
+            String(call_.request.result ?? ''),
+            fromPriority(call_.request.priority),
+            dateString(call_.request.start_date),
+            dateString(call_.request.end_date),
+            String(call_.request.jira_number ?? '') || null,
+            Boolean(call_.request.bp_flag),
+            Boolean(call_.request.sp_flag),
+            actorUserId(call_),
+          ],
+        );
+        callback(null, { direction: toDirection(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateTask(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const directionId = String(call_.request.direction_id ?? '');
+      const name = String(call_.request.name ?? '').trim();
+      if (!diagramId || !directionId || !name || name.length > 200) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_task_name'));
+        return;
+      }
+
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        const direction = await db.query(
+          `SELECT * FROM plan.directions
+           WHERE id = $1 AND diagram_id = $2 AND deleted_at IS NULL`,
+          [directionId, diagramId],
+        );
+        if (direction.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'direction_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.create');
+        const parentTaskId = String(call_.request.parent_task_id ?? '') || null;
+        const next = await db.query(
+          `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
+           FROM plan.tasks WHERE direction_id = $1`,
+          [directionId],
+        );
+        const sortOrder = next.rows[0].next;
+        const result = await db.query(
+          `INSERT INTO plan.tasks
+             (diagram_id, direction_id, parent_task_id, level, wbs_code, sort_order,
+              name, description, result, priority, start_date, end_date, jira_number,
+              bp_flag, sp_flag, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           RETURNING *`,
+          [
+            diagramId,
+            directionId,
+            parentTaskId,
+            parentTaskId ? 3 : 2,
+            `${direction.rows[0].wbs_code}.${sortOrder}`,
+            sortOrder,
+            name,
+            String(call_.request.description ?? ''),
+            String(call_.request.result ?? ''),
+            fromPriority(call_.request.priority),
+            dateString(call_.request.start_date),
+            dateString(call_.request.end_date),
+            String(call_.request.jira_number ?? '') || null,
+            Boolean(call_.request.bp_flag),
+            Boolean(call_.request.sp_flag),
+            actorUserId(call_),
+          ],
+        );
+        callback(null, { task: toTask(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetDiagramSnapshot(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        const row = diagram.rows[0];
+        await checkPermission(call_, userClient, row.project_id, 'project.view');
+        const directions = await db.query(
+          `SELECT * FROM plan.directions
+           WHERE diagram_id = $1 AND deleted_at IS NULL
+           ORDER BY sort_order ASC`,
+          [diagramId],
+        );
+        const tasks = await db.query(
+          `SELECT * FROM plan.tasks
+           WHERE diagram_id = $1 AND deleted_at IS NULL
+           ORDER BY sort_order ASC`,
+          [diagramId],
+        );
+        callback(null, {
+          snapshot: {
+            diagram: toDiagram(row),
+            directions: directions.rows.map(toDirection),
+            tasks: tasks.rows.map(toTask),
+            dependencies: [],
+            comments: [],
+            holidays: [],
+            current_revision: String(row.current_revision ?? 0),
+            names_resolved: false,
+          },
+        });
       } catch (error) {
         callback(mapDbError(error));
       }

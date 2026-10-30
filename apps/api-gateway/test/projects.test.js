@@ -178,6 +178,94 @@ describe('api-gateway project routes', () => {
     expect(deleted.statusCode).toBe(204);
   });
 
+  it('creates directions/tasks and returns a Gantt snapshot', async () => {
+    const direction = {
+      id: 'direction-1',
+      diagram_id: 'diagram-1',
+      wbs_code: '1',
+      sort_order: 1,
+      name: 'Направление',
+      priority: 'PRIORITY_MEDIUM',
+      version: 1,
+      created_by_user_id: 'user-1',
+    };
+    const task = {
+      id: 'task-1',
+      diagram_id: 'diagram-1',
+      direction_id: 'direction-1',
+      level: 2,
+      wbs_code: '1.1',
+      sort_order: 1,
+      name: 'Задача',
+      status: 'TASK_STATUS_PLANNED',
+      progress: 0,
+      priority: 'PRIORITY_MEDIUM',
+      version: 1,
+      created_by_user_id: 'user-1',
+    };
+    const app = build(sessionUser, {
+      CreateDirection(_request, _metadata, callback) {
+        callback(null, { direction });
+      },
+      CreateTask(_request, _metadata, callback) {
+        callback(null, { task });
+      },
+      GetDiagramSnapshot(_request, _metadata, callback) {
+        callback(null, {
+          snapshot: {
+            diagram: {
+              id: 'diagram-1',
+              project_id: 'project-1',
+              name: 'План',
+              day_mode: 'DAY_MODE_WORKING',
+              current_revision: '0',
+            },
+            directions: [direction],
+            tasks: [task],
+            dependencies: [],
+            comments: [],
+            holidays: [],
+            current_revision: '0',
+          },
+        });
+      },
+    });
+    const cookies = { '__Host-session': 'token', '__Host-csrf': 'csrf' };
+    const headers = { 'x-csrf-token': 'csrf' };
+
+    const createdDirection = await app.inject({
+      method: 'POST',
+      url: '/api/v1/diagrams/diagram-1/directions',
+      cookies,
+      headers,
+      payload: { name: 'Направление' },
+    });
+    expect(createdDirection.statusCode).toBe(201);
+    expect(createdDirection.json()).toMatchObject({ wbsCode: '1' });
+
+    const createdTask = await app.inject({
+      method: 'POST',
+      url: '/api/v1/diagrams/diagram-1/tasks',
+      cookies,
+      headers,
+      payload: { directionId: 'direction-1', name: 'Задача' },
+    });
+    expect(createdTask.statusCode).toBe(201);
+    expect(createdTask.json()).toMatchObject({ status: 'planned', progress: 0 });
+
+    const snapshot = await app.inject({
+      method: 'GET',
+      url: '/api/v1/diagrams/diagram-1/snapshot',
+      cookies,
+    });
+    expect(snapshot.statusCode).toBe(200);
+    expect(snapshot.json()).toMatchObject({
+      directions: [{ id: 'direction-1' }],
+      tasks: [{ id: 'task-1' }],
+      currentRevision: 0,
+    });
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {

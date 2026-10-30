@@ -28,6 +28,9 @@
   - `GET /api/v1/diagrams/{diagramId}`;
   - `PATCH /api/v1/diagrams/{diagramId}`;
   - `DELETE /api/v1/diagrams/{diagramId}`;
+  - `POST /api/v1/diagrams/{diagramId}/directions`;
+  - `POST /api/v1/diagrams/{diagramId}/tasks`;
+  - `GET /api/v1/diagrams/{diagramId}/snapshot`;
 - gRPC-клиенты к User Service и Project Service;
 - передача `Set-Cookie` от User Service клиенту;
 - CSRF-проверка logout и создания проекта;
