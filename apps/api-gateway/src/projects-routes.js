@@ -1030,6 +1030,31 @@ export async function projectRoutes(app, { userClient, projectClient }) {
     }
   });
 
+  app.get('/api/v1/diagrams/:diagramId/export', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const format = String(request.query.format ?? 'json').toLowerCase();
+      const response = await call(
+        projectClient,
+        'ExportDiagram',
+        {
+          diagram_id: request.params.diagramId,
+          format: format === 'csv' ? 'EXPORT_FORMAT_CSV' : 'EXPORT_FORMAT_JSON',
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply
+        .type(response.content_type)
+        .header(
+          'content-disposition',
+          `attachment; filename*=UTF-8''${encodeURIComponent(response.file_name)}`,
+        )
+        .send(Buffer.from(response.data));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.get('/api/v1/diagrams/:diagramId/holidays', async (request, reply) => {
     try {
       const current = await session(request, userClient);

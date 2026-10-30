@@ -85,7 +85,7 @@ tools/                 # проверки контрактов
 - [x] API Gateway Compose profile + Helm chart.
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
-- [x] Project / Diagram: lifecycle + direction edit/reorder/responsible + tasks/assignments/move + dependency edit + task detail/edit/progress/delete + comments + holidays + Gantt snapshot.
+- [x] Project / Diagram: lifecycle + direction edit/reorder/responsible + tasks/assignments/move + dependency edit + task detail/edit/progress/delete + comments + holidays + Gantt snapshot + JSON/CSV export.
 - [ ] Остальные сервисы.
 - [ ] Staging/prod Helm values.
 - [ ] E2E и load tests.
