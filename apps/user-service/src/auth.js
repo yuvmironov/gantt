@@ -103,6 +103,21 @@ function toUser(row, roles) {
   };
 }
 
+function toExecutor(row) {
+  return {
+    id: row.id,
+    last_name: row.last_name,
+    first_name: row.first_name,
+    middle_name: row.middle_name ?? '',
+    full_name: row.full_name,
+    position: row.position ?? '',
+    linked_user_id: row.linked_user_id ?? '',
+    is_active: row.is_active,
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+  };
+}
+
 function cookie(name, value, { maxAge, httpOnly = true } = {}) {
   const parts = [`${name}=${value}`, 'Path=/', 'Secure', 'SameSite=Lax'];
   if (httpOnly) parts.push('HttpOnly');
@@ -552,6 +567,54 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
         }
         const roles = await getRoles(db, userId);
         callback(null, { user: toUser(result.rows[0], roles) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetUsersByIds(call, callback) {
+      const ids = call.request.user_ids ?? [];
+      if (ids.length === 0) {
+        callback(null, { items: [] });
+        return;
+      }
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.users
+           WHERE id = ANY($1::uuid[])
+           ORDER BY display_name ASC`,
+          [ids],
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            id: row.id,
+            email: row.email,
+            display_name: row.display_name,
+            position: row.position ?? '',
+            status: row.status === 'blocked' ? 'USER_STATUS_BLOCKED' : 'USER_STATUS_ACTIVE',
+            email_verified: Boolean(row.email_verified_at),
+            global_roles: [],
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetExecutorsByIds(call, callback) {
+      const ids = call.request.executor_ids ?? [];
+      if (ids.length === 0) {
+        callback(null, { items: [] });
+        return;
+      }
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.executors
+           WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL
+           ORDER BY full_name ASC`,
+          [ids],
+        );
+        callback(null, { items: result.rows.map(toExecutor) });
       } catch (error) {
         callback(mapDbError(error));
       }

@@ -514,6 +514,70 @@ describe('api-gateway project routes', () => {
     expect(saved.json()).toMatchObject({ items: [{ holidayDate: '2026-12-31' }] });
   });
 
+  it('sets task assignments', async () => {
+    const task = {
+      id: 'task-1',
+      diagram_id: 'diagram-1',
+      direction_id: 'direction-1',
+      level: 2,
+      wbs_code: '1.1',
+      sort_order: 1,
+      name: 'Task 1',
+      status: 'TASK_STATUS_PLANNED',
+      progress: 0,
+      priority: 'PRIORITY_MEDIUM',
+      version: 3,
+      assignments: [
+        {
+          id: 'assignment-1',
+          role: 'ASSIGNMENT_ROLE_EXECUTOR',
+          assignee_type: 'ASSIGNEE_TYPE_EXECUTOR',
+          assignee_id: 'executor-1',
+          display_name: 'Executor One',
+          linked_user_id: 'user-1',
+          resolved: true,
+        },
+      ],
+      created_by_user_id: 'user-1',
+    };
+    let received;
+    const app = build(sessionUser, {
+      SetTaskAssignments(request, _metadata, callback) {
+        received = request;
+        callback(null, { task, revision: '0' });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/tasks/task-1/assignments',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+      payload: {
+        assignments: [{ role: 'executor', assigneeType: 'executor', assigneeId: 'executor-1' }],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(received.assignments).toEqual([
+      {
+        role: 'ASSIGNMENT_ROLE_EXECUTOR',
+        assignee_type: 'ASSIGNEE_TYPE_EXECUTOR',
+        assignee_id: 'executor-1',
+      },
+    ]);
+    expect(response.json()).toMatchObject({
+      assignments: [
+        {
+          role: 'executor',
+          assigneeType: 'executor',
+          displayName: 'Executor One',
+          resolved: true,
+        },
+      ],
+    });
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {
