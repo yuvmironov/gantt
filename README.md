@@ -131,4 +131,21 @@ tools/                 # проверки контрактов
 - [x] Helm charts for services and staging/prod umbrella values.
 - [x] Playwright smoke E2E.
 - [x] Security headers, CSP, API rate limiting and auth audit events.
-- [ ] Load tests (k6 smoke scenario added).
+- [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
+- [x] Prometheus metrics, local Grafana dashboards and alerts.
+- [ ] Production staging deploy and real-cluster verification.
+
+## Observability
+
+All Fastify services expose Prometheus metrics at `/metrics`: request count, request duration, process metrics and the service target status. Helm pods carry `prometheus.io/*` scrape annotations.
+
+Local monitoring:
+
+```bash
+docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile monitoring up -d prometheus grafana
+```
+
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001 (`admin` / `admin` locally)
+- Alert rules: `infrastructure/local/monitoring/alerts.yml`
+- Dashboard: `infrastructure/local/monitoring/grafana/dashboards/smart-oati.json`

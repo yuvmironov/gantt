@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { loadConfig } from './config.js';
 import { notFoundHandler, problemHandler } from './errors.js';
 import { registerHealthRoutes } from './health.js';
+import { createMetrics, registerMetrics } from './metrics.js';
 
 export function createService({
   name = 'service',
@@ -35,6 +36,7 @@ export function createService({
   app.setErrorHandler(problemHandler);
   app.setNotFoundHandler(notFoundHandler);
   registerHealthRoutes(app, { service: name, version });
+  registerMetrics(app, createMetrics());
 
   if (routes) app.register(routes);
 

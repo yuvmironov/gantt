@@ -319,10 +319,44 @@ services:
       KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
     networks: [smart-oati]
 
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [smart-oati]
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    depends_on: [prometheus]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks: [smart-oati]
+
 volumes:
   postgres_data:
   redis_data:
   kafka_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   smart-oati:
