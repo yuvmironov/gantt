@@ -49,6 +49,27 @@ function toProject(row, myRole) {
   };
 }
 
+function toDayMode(value) {
+  return value === 'calendar' ? 'DAY_MODE_CALENDAR' : 'DAY_MODE_WORKING';
+}
+
+function toDiagram(row) {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    name: row.name,
+    description: row.description ?? '',
+    day_mode: toDayMode(row.day_mode),
+    current_revision: String(row.current_revision ?? 0),
+    created_by_user_id: row.created_by_user_id,
+    updated_by_user_id: row.updated_by_user_id ?? '',
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+    archived_at: toTimestamp(row.archived_at),
+    deleted_at: toTimestamp(row.deleted_at),
+  };
+}
+
 function mapDbError(error) {
   return error;
 }
@@ -317,6 +338,73 @@ export function createProjectImplementation({ db, userClient }) {
           return;
         }
         callback(null, { project: toProject(result.rows[0], role) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateDiagram(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      const name = String(call_.request.name ?? '').trim();
+      const description = String(call_.request.description ?? '');
+      const dayMode = toDayMode(
+        call_.request.day_mode === 'DAY_MODE_CALENDAR' ? 'calendar' : 'working',
+      );
+      if (!projectId || !name || name.length > 200) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_diagram_name'));
+        return;
+      }
+
+      try {
+        await checkPermission(call_, userClient, projectId, 'diagram.create');
+        const result = await db.query(
+          `INSERT INTO project.diagrams
+             (project_id, name, description, day_mode, created_by_user_id, updated_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $5)
+           RETURNING *`,
+          [
+            projectId,
+            name,
+            description,
+            dayMode === 'DAY_MODE_CALENDAR' ? 'calendar' : 'working',
+            actorUserId(call_),
+          ],
+        );
+        callback(null, { diagram: toDiagram(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ListDiagrams(call_, callback) {
+      const projectId = String(call_.request.project_id ?? '');
+      const limit = Math.min(Math.max(Number(call_.request.page?.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(call_.request.page?.offset ?? 0), 0);
+
+      try {
+        await checkPermission(call_, userClient, projectId, 'project.view');
+        const result = await db.query(
+          `SELECT *
+           FROM project.diagrams
+           WHERE project_id = $1 AND deleted_at IS NULL
+           ORDER BY created_at ASC
+           LIMIT $2 OFFSET $3`,
+          [projectId, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total
+           FROM project.diagrams
+           WHERE project_id = $1 AND deleted_at IS NULL`,
+          [projectId],
+        );
+        callback(null, {
+          items: result.rows.map(toDiagram),
+          page: {
+            total: count.rows[0].total,
+            limit,
+            offset,
+          },
+        });
       } catch (error) {
         callback(mapDbError(error));
       }
