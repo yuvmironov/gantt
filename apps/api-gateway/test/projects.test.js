@@ -88,6 +88,47 @@ describe('api-gateway project routes', () => {
     expect(metadata.get('x-actor-user-id')).toEqual(['user-1']);
   });
 
+  it('creates and lists diagrams', async () => {
+    const diagram = {
+      id: 'diagram-1',
+      project_id: 'project-1',
+      name: 'План',
+      description: '',
+      day_mode: 'DAY_MODE_WORKING',
+      current_revision: '0',
+      created_by_user_id: 'user-1',
+    };
+    const app = build(sessionUser, {
+      ListDiagrams(_request, _metadata, callback) {
+        callback(null, {
+          items: [diagram],
+          page: { total: 1, limit: 50, offset: 0 },
+        });
+      },
+      CreateDiagram(_request, _metadata, callback) {
+        callback(null, { diagram });
+      },
+    });
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects/project-1/diagrams',
+      cookies: { '__Host-session': 'token', '__Host-csrf': 'csrf' },
+      headers: { 'x-csrf-token': 'csrf' },
+      payload: { name: 'План' },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ id: 'diagram-1', dayMode: 'working' });
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/project-1/diagrams',
+      cookies: { '__Host-session': 'token' },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({ items: [{ id: 'diagram-1' }] });
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {

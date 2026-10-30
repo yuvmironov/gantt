@@ -50,6 +50,27 @@ export function mapProject(project) {
   };
 }
 
+function toDayMode(value) {
+  return value === 'DAY_MODE_CALENDAR' ? 'calendar' : 'working';
+}
+
+export function mapDiagram(diagram) {
+  return {
+    id: diagram.id,
+    projectId: diagram.project_id,
+    name: diagram.name,
+    description: diagram.description,
+    dayMode: toDayMode(diagram.day_mode),
+    currentRevision: Number(diagram.current_revision ?? 0),
+    createdByUserId: diagram.created_by_user_id,
+    updatedByUserId: diagram.updated_by_user_id,
+    createdAt: fromTimestamp(diagram.created_at),
+    updatedAt: fromTimestamp(diagram.updated_at),
+    archivedAt: fromTimestamp(diagram.archived_at),
+    deletedAt: fromTimestamp(diagram.deleted_at),
+  };
+}
+
 function unauthenticated() {
   const error = new Error('unauthenticated');
   error.code = 16;
@@ -213,6 +234,49 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.send(mapProject(response.project));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+  app.get('/api/v1/projects/:projectId/diagrams', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(request.query.offset ?? 0), 0);
+      const response = await call(
+        projectClient,
+        'ListDiagrams',
+        {
+          project_id: request.params.projectId,
+          page: { limit, offset },
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({
+        items: response.items.map(mapDiagram),
+        page: response.page,
+      });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/projects/:projectId/diagrams', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CreateDiagram',
+        {
+          project_id: request.params.projectId,
+          name: request.body?.name,
+          description: request.body?.description,
+          day_mode: request.body?.dayMode === 'calendar' ? 'DAY_MODE_CALENDAR' : 'DAY_MODE_WORKING',
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(201).send(mapDiagram(response.diagram));
     } catch (error) {
       return sendProblem(reply, request, error);
     }

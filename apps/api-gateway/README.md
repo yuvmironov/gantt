@@ -22,6 +22,9 @@
   - `POST /api/v1/projects/{projectId}/unarchive`;
   - `DELETE /api/v1/projects/{projectId}`;
   - `POST /api/v1/projects/{projectId}/restore`;
+- REST diagrams:
+  - `GET /api/v1/projects/{projectId}/diagrams`;
+  - `POST /api/v1/projects/{projectId}/diagrams`;
 - gRPC-клиенты к User Service и Project Service;
 - передача `Set-Cookie` от User Service клиенту;
 - CSRF-проверка logout и создания проекта;

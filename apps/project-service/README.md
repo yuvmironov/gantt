@@ -10,6 +10,7 @@
 - загрузка контракта `smartoati.project.v1.ProjectService`;
 - реализованы `CreateProject`, `ListProjects`, `GetProject`, `UpdateProject`;
 - реализованы `ArchiveProject`, `UnarchiveProject`, `DeleteProject`, `RestoreProject`;
+- реализованы `CreateDiagram` и `ListDiagrams`;
 - создание проекта вызывает `EnsureProjectOwner` в User Service;
 - список проектов использует `ListAccessibleProjectIds`;
 - проверки прав идут через `CheckProjectPermission` с metadata `x-actor-user-id`;
