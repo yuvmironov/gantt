@@ -71,6 +71,117 @@ export function mapDiagram(diagram) {
   };
 }
 
+function toPriority(value) {
+  return (
+    {
+      PRIORITY_LOW: 'low',
+      PRIORITY_MEDIUM: 'medium',
+      PRIORITY_HIGH: 'high',
+      PRIORITY_CRITICAL: 'critical',
+    }[value] ?? value
+  );
+}
+
+function priorityEnum(value) {
+  return (
+    {
+      low: 'PRIORITY_LOW',
+      medium: 'PRIORITY_MEDIUM',
+      high: 'PRIORITY_HIGH',
+      critical: 'PRIORITY_CRITICAL',
+    }[value] ?? 'PRIORITY_UNSPECIFIED'
+  );
+}
+
+function timestampInput(value) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return {
+    seconds: String(Math.floor(date.getTime() / 1000)),
+    nanos: (date.getTime() % 1000) * 1_000_000,
+  };
+}
+
+function toTaskStatus(value) {
+  return (
+    {
+      TASK_STATUS_PLANNED: 'planned',
+      TASK_STATUS_IN_PROGRESS: 'in_progress',
+      TASK_STATUS_DONE: 'done',
+      TASK_STATUS_BLOCKED: 'blocked',
+    }[value] ?? value
+  );
+}
+
+export function mapDirection(direction) {
+  return {
+    id: direction.id,
+    diagramId: direction.diagram_id,
+    wbsCode: direction.wbs_code,
+    sortOrder: direction.sort_order,
+    name: direction.name,
+    description: direction.description,
+    result: direction.result,
+    priority: toPriority(direction.priority),
+    startDate: fromTimestamp(direction.start_date),
+    endDate: fromTimestamp(direction.end_date),
+    jiraNumber: direction.jira_number,
+    bpFlag: direction.bp_flag,
+    spFlag: direction.sp_flag,
+    version: direction.version,
+    assignments: [],
+    createdByUserId: direction.created_by_user_id,
+    updatedByUserId: direction.updated_by_user_id,
+    createdAt: fromTimestamp(direction.created_at),
+    updatedAt: fromTimestamp(direction.updated_at),
+  };
+}
+
+export function mapTask(task) {
+  return {
+    id: task.id,
+    diagramId: task.diagram_id,
+    directionId: task.direction_id,
+    parentTaskId: task.parent_task_id,
+    level: task.level,
+    wbsCode: task.wbs_code,
+    sortOrder: task.sort_order,
+    name: task.name,
+    description: task.description,
+    result: task.result,
+    status: toTaskStatus(task.status),
+    progress: task.progress,
+    priority: toPriority(task.priority),
+    startDate: fromTimestamp(task.start_date),
+    endDate: fromTimestamp(task.end_date),
+    actualEndDate: fromTimestamp(task.actual_end_date),
+    jiraNumber: task.jira_number,
+    bpFlag: task.bp_flag,
+    spFlag: task.sp_flag,
+    version: task.version,
+    assignments: [],
+    commentsCount: task.comments_count,
+    createdByUserId: task.created_by_user_id,
+    updatedByUserId: task.updated_by_user_id,
+    createdAt: fromTimestamp(task.created_at),
+    updatedAt: fromTimestamp(task.updated_at),
+  };
+}
+
+export function mapSnapshot(snapshot) {
+  return {
+    diagram: mapDiagram(snapshot.diagram),
+    directions: (snapshot.directions ?? []).map(mapDirection),
+    tasks: (snapshot.tasks ?? []).map(mapTask),
+    dependencies: snapshot.dependencies ?? [],
+    comments: snapshot.comments ?? [],
+    holidays: snapshot.holidays ?? [],
+    currentRevision: Number(snapshot.current_revision ?? 0),
+    namesResolved: snapshot.names_resolved,
+  };
+}
+
 function unauthenticated() {
   const error = new Error('unauthenticated');
   error.code = 16;
@@ -333,6 +444,76 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+  app.post('/api/v1/diagrams/:diagramId/directions', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CreateDirection',
+        {
+          diagram_id: request.params.diagramId,
+          name: request.body?.name,
+          description: request.body?.description,
+          result: request.body?.result,
+          priority: priorityEnum(request.body?.priority),
+          start_date: timestampInput(request.body?.startDate),
+          end_date: timestampInput(request.body?.endDate),
+          jira_number: request.body?.jiraNumber,
+          bp_flag: Boolean(request.body?.bpFlag),
+          sp_flag: Boolean(request.body?.spFlag),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(201).send(mapDirection(response.direction));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/diagrams/:diagramId/tasks', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CreateTask',
+        {
+          diagram_id: request.params.diagramId,
+          direction_id: request.body?.directionId,
+          parent_task_id: request.body?.parentTaskId,
+          name: request.body?.name,
+          description: request.body?.description,
+          result: request.body?.result,
+          priority: priorityEnum(request.body?.priority),
+          start_date: timestampInput(request.body?.startDate),
+          end_date: timestampInput(request.body?.endDate),
+          jira_number: request.body?.jiraNumber,
+          bp_flag: Boolean(request.body?.bpFlag),
+          sp_flag: Boolean(request.body?.spFlag),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(201).send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/diagrams/:diagramId/snapshot', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetDiagramSnapshot',
+        { diagram_id: request.params.diagramId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapSnapshot(response.snapshot));
     } catch (error) {
       return sendProblem(reply, request, error);
     }

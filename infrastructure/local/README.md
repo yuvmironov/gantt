@@ -72,9 +72,9 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 - API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
 - REST auth proxy: register/login/session/logout проверены через API Gateway.
 - User & Access: HTTP health healthy, gRPC `50051` отвечает `SERVING`, Register/Login/ValidateSession/Logout работают, остальные методы — `UNIMPLEMENTED`.
-- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, project lifecycle и diagram CRUD работают, задачи — `UNIMPLEMENTED`.
+- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, project lifecycle и diagram CRUD работают.
 - REST projects: create/list/detail/update/archive/unarchive/delete/restore проверены.
-- REST diagrams: create/list/detail/update/delete проверены.
+- REST diagrams: create/list/detail/update/delete, direction/task create и snapshot проверены.
 - Owner membership создается в User DB при создании проекта.
 - `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
 - Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
