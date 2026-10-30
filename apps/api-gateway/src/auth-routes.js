@@ -162,6 +162,86 @@ export async function authRoutes(app, { userClient }) {
     }
   });
 
+  app.post('/api/v1/auth/email/resend', async (request, reply) => {
+    try {
+      const response = await call(userClient, 'ResendEmailVerification', {
+        email: request.body?.email,
+      });
+      return reply.code(202).send({ accepted: response.accepted });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/auth/password/forgot', async (request, reply) => {
+    try {
+      const response = await call(userClient, 'RequestPasswordReset', {
+        email: request.body?.email,
+      });
+      return reply.code(202).send({ accepted: response.accepted });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/auth/password/reset', async (request, reply) => {
+    try {
+      const response = await call(userClient, 'ResetPassword', {
+        token: request.body?.token,
+        new_password: request.body?.newPassword,
+      });
+      setCookies(reply, response.set_cookie);
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/auth/password/change', async (request, reply) => {
+    if (!csrfValid(request)) {
+      return reply.code(403).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/csrf_invalid',
+        title: TITLES[403],
+        status: 403,
+        detail: 'Invalid CSRF token',
+        instance: request.url,
+        code: 'csrf_invalid',
+        traceId: request.id,
+      });
+    }
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: false,
+      });
+      await call(userClient, 'ChangePassword', {
+        user_id: session.user_id,
+        current_password: request.body?.currentPassword,
+        new_password: request.body?.newPassword,
+      });
+      reply.raw.setHeader('set-cookie', [
+        '__Host-session=; Path=/; Secure; SameSite=Lax; HttpOnly; Max-Age=0',
+        '__Host-remember=; Path=/; Secure; SameSite=Lax; HttpOnly; Max-Age=0',
+        '__Host-csrf=; Path=/; Secure; SameSite=Lax; Max-Age=0',
+      ]);
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.post('/api/v1/auth/login', async (request, reply) => {
     try {
       const response = await call(userClient, 'Login', {

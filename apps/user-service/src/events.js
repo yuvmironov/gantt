@@ -10,6 +10,8 @@ export async function queueUserEvent(db, event) {
       JSON.stringify(event.payload ?? {}),
       JSON.stringify({
         actor_user_id: event.actorUserId ?? '',
+        project_id: event.projectId ?? '',
+        diagram_id: event.diagramId ?? '',
         entity_type: event.entityType ?? '',
         entity_id: event.entityId ?? '',
       }),

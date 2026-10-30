@@ -9,8 +9,11 @@ test('local Gantt workflow', async ({ page, browser }) => {
   const directionName = `E2E direction ${suffix}`;
   const firstTask = `E2E task A ${suffix}`;
   const secondTask = `E2E task B ${suffix}`;
+  const memberEmail = `e2e-member-${suffix}@smart-oati.test`;
+  const memberPassword = 'E2eMemberPassword123!';
 
   await page.goto('/');
+  await page.waitForFunction(() => window.__smartOatiReady);
   await expect(page.locator('#auth-view')).toBeVisible();
 
   await page.locator('#register-tab').click();
@@ -57,6 +60,58 @@ test('local Gantt workflow', async ({ page, browser }) => {
   await expect(
     page.locator('[data-task-open]').filter({ hasText: secondTask }).first(),
   ).toBeVisible();
+
+  await page.evaluate(
+    async ({ login, secret }) => {
+      const response = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: login,
+          password: secret,
+          lastName: 'Member',
+          firstName: 'E2E',
+          displayName: 'E2E Member',
+        }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+    },
+    { login: memberEmail, secret: memberPassword },
+  );
+
+  await page.locator('#members-toggle').click();
+  await expect(page.locator('#members-modal')).toBeVisible();
+  await page.locator('#member-invite-form input[name=email]').fill(memberEmail);
+  await page.locator('#member-invite-form select[name=role]').selectOption('editor');
+  await page.locator('#member-invite-form button[type=submit]').click();
+  await expect(page.locator('#member-list')).toContainText(memberEmail);
+  await page.locator('#members-close').click();
+
+  const memberContext = await browser.newContext({
+    baseURL: 'https://app.localhost',
+    ignoreHTTPSErrors: true,
+  });
+  const memberPage = await memberContext.newPage();
+  await memberPage.goto('/');
+  await memberPage.locator('#login-form input[name=email]').fill(memberEmail);
+  await memberPage.locator('#login-form input[name=password]').fill(memberPassword);
+  await memberPage.locator('#login-form button[type=submit]').click();
+  const memberProject = memberPage.locator('[data-project]').filter({ hasText: projectName });
+  await expect(memberProject).toBeVisible();
+  await memberProject.click();
+  const memberDiagram = memberPage.locator('[data-diagram]').filter({ hasText: diagramName });
+  await expect(memberDiagram).toBeVisible();
+  await memberDiagram.click();
+  await expect(memberPage.locator('#diagram-title')).toHaveText(diagramName);
+  await memberPage.waitForTimeout(1000);
+
+  const realtimeTask = `E2E realtime ${suffix}`;
+  await taskForm.locator('input[name=name]').fill(realtimeTask);
+  await taskForm.locator('button[type=submit]').click();
+  await expect(
+    memberPage.locator('[data-task-open]').filter({ hasText: realtimeTask }).first(),
+  ).toBeVisible({ timeout: 20_000 });
+  await memberContext.close();
 
   await page.locator('[data-task-open]').filter({ hasText: firstTask }).first().click();
   await expect(page.locator('#task-drawer')).toBeVisible();
