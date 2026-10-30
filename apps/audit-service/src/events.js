@@ -1,17 +1,17 @@
-import { randomUUID } from "node:crypto";
-import { Kafka, logLevel } from "kafkajs";
+import { randomUUID } from 'node:crypto';
+import { Kafka, logLevel } from 'kafkajs';
 
 export async function startAuditConsumer(db, env = process.env) {
   const kafka = new Kafka({
-    clientId: "audit-consumer",
-    brokers: String(env.KAFKA_BROKERS ?? "kafka:9092").split(","),
+    clientId: 'audit-consumer',
+    brokers: String(env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
     logLevel: logLevel.NOTHING,
   });
   const consumer = kafka.consumer({
-    groupId: env.KAFKA_CONSUMER_GROUP_AUDIT ?? "audit",
+    groupId: env.KAFKA_CONSUMER_GROUP_AUDIT ?? 'audit',
   });
   await consumer.connect();
-  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? "smartoati.events" });
+  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'smartoati.events' });
 
   await consumer.run({
     eachMessage: async ({ message }) => {
@@ -22,10 +22,9 @@ export async function startAuditConsumer(db, env = process.env) {
         [event.event_id],
       );
       if (seen.rowCount > 0) return;
-      const action = await db.query(
-        `SELECT severity FROM audit.audit_actions WHERE code = $1`,
-        [event.event_type],
-      );
+      const action = await db.query(`SELECT severity FROM audit.audit_actions WHERE code = $1`, [
+        event.event_type,
+      ]);
       if (action.rowCount === 0) return;
       await db.query(
         `INSERT INTO audit.audit_events
@@ -39,15 +38,15 @@ export async function startAuditConsumer(db, env = process.env) {
         [
           randomUUID(),
           new Date(event.occurred_at),
-          event.actor_user_id ?? "",
+          event.actor_user_id ?? '',
           JSON.stringify(event.actor_roles ?? []),
           event.event_type,
           event.entity_type ?? null,
-          event.entity_id ?? "",
-          event.project_id ?? "",
-          event.diagram_id ?? "",
+          event.entity_id ?? '',
+          event.project_id ?? '',
+          event.diagram_id ?? '',
           event.event_id,
-          event.source_service ?? "project",
+          event.source_service ?? 'project',
           action.rows[0].severity,
           JSON.stringify(event.payload ?? {}),
         ],

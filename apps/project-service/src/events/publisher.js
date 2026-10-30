@@ -1,9 +1,9 @@
-import { Kafka, logLevel } from "kafkajs";
+import { Kafka, logLevel } from 'kafkajs';
 
 export function startOutboxPublisher(db, env = process.env) {
-  const brokers = String(env.KAFKA_BROKERS ?? "kafka:9092").split(",");
-  const topic = env.KAFKA_TOPIC ?? "smartoati.events";
-  const kafka = new Kafka({ clientId: "project-outbox", brokers, logLevel: logLevel.NOTHING });
+  const brokers = String(env.KAFKA_BROKERS ?? 'kafka:9092').split(',');
+  const topic = env.KAFKA_TOPIC ?? 'smartoati.events';
+  const kafka = new Kafka({ clientId: 'project-outbox', brokers, logLevel: logLevel.NOTHING });
   const producer = kafka.producer();
   let stopped = false;
   let timer;
@@ -25,11 +25,11 @@ export function startOutboxPublisher(db, env = process.env) {
           event_type: row.event_type,
           schema_version: 1,
           occurred_at: new Date(row.occurred_at).toISOString(),
-          source_service: "project",
-          actor_user_id: headers.actor_user_id ?? "",
+          source_service: 'project',
+          actor_user_id: headers.actor_user_id ?? '',
           actor_roles: [],
-          project_id: headers.project_id ?? "",
-          diagram_id: headers.diagram_id ?? "",
+          project_id: headers.project_id ?? '',
+          diagram_id: headers.diagram_id ?? '',
           entity_type: headers.entity_type ?? row.aggregate_type,
           entity_id: headers.entity_id ?? row.aggregate_id,
           payload: row.payload ?? {},

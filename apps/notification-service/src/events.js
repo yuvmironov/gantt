@@ -1,16 +1,16 @@
-import { Kafka, logLevel } from "kafkajs";
+import { Kafka, logLevel } from 'kafkajs';
 
 export async function startNotificationConsumer(db, env = process.env) {
   const kafka = new Kafka({
-    clientId: "notification-consumer",
-    brokers: String(env.KAFKA_BROKERS ?? "kafka:9092").split(","),
+    clientId: 'notification-consumer',
+    brokers: String(env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
     logLevel: logLevel.NOTHING,
   });
   const consumer = kafka.consumer({
-    groupId: env.KAFKA_CONSUMER_GROUP_NOTIFICATION ?? "notification",
+    groupId: env.KAFKA_CONSUMER_GROUP_NOTIFICATION ?? 'notification',
   });
   await consumer.connect();
-  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? "smartoati.events" });
+  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'smartoati.events' });
 
   await consumer.run({
     eachMessage: async ({ message }) => {
@@ -22,9 +22,9 @@ export async function startNotificationConsumer(db, env = process.env) {
       );
       if (seen.rowCount > 0) return;
 
-      if (event.event_type === "task.assignments.changed") {
+      if (event.event_type === 'task.assignments.changed') {
         for (const assignment of event.payload?.assignments ?? []) {
-          if (!["user", "ASSIGNEE_TYPE_USER"].includes(assignment.assigneeType)) continue;
+          if (!['user', 'ASSIGNEE_TYPE_USER'].includes(assignment.assigneeType)) continue;
           await db.query(
             `INSERT INTO notify.notifications
                (recipient_user_id, project_id, diagram_id, event_type, title, body,
@@ -43,7 +43,7 @@ export async function startNotificationConsumer(db, env = process.env) {
           );
         }
       }
-      if (event.event_type === "comment.created") {
+      if (event.event_type === 'comment.created') {
         for (const userId of event.payload?.mentionedUserIds ?? []) {
           await db.query(
             `INSERT INTO notify.notifications
@@ -56,9 +56,9 @@ export async function startNotificationConsumer(db, env = process.env) {
               userId,
               event.project_id,
               event.diagram_id,
-              String(event.payload?.bodyPreview ?? "").slice(0, 200),
-              event.payload?.entityType ?? "",
-              event.payload?.entityId ?? "",
+              String(event.payload?.bodyPreview ?? '').slice(0, 200),
+              event.payload?.entityType ?? '',
+              event.payload?.entityId ?? '',
               { eventId: event.event_id },
             ],
           );
