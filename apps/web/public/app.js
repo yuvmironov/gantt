@@ -49,10 +49,10 @@ async function api(path, { method = 'GET', body } = {}) {
   });
   if (response.status === 401) {
     showAuth();
-    throw new Error('РўСЂРµР±СѓРµС‚СЃСЏ РІС…РѕРґ');
+    throw new Error('Требуется вход');
   }
   if (!response.ok) {
-    let detail = `РћС€РёР±РєР° ${response.status}`;
+    let detail = `Ошибка ${response.status}`;
     try {
       const problem = await response.json();
       detail = problem.detail || problem.title || detail;
@@ -155,8 +155,7 @@ async function loadProjects() {
 function renderProjects() {
   const container = $('#project-list');
   if (state.projects.length === 0) {
-    container.innerHTML =
-      '<p class="empty">РџСЂРѕРµРєС‚РѕРІ РїРѕРєР° РЅРµС‚. РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІС‹Р№.</p>';
+    container.innerHTML = '<p class="empty">Проектов пока нет. Создайте первый.</p>';
     return;
   }
   container.innerHTML = state.projects
@@ -177,9 +176,9 @@ $('#project-list').addEventListener('click', async (event) => {
   state.diagram = null;
   state.snapshot = null;
   renderProjects();
-  $('#project-title').textContent = state.project?.name ?? 'Р’С‹Р±РµСЂРёС‚Рµ РїСЂРѕРµРєС‚';
-  $('#diagram-title').textContent = 'Р”РёР°РіСЂР°РјРјР°';
-  $('#diagram-hint').textContent = 'Р’С‹Р±РµСЂРёС‚Рµ РґРёР°РіСЂР°РјРјСѓ';
+  $('#project-title').textContent = state.project?.name ?? 'Выберите проект';
+  $('#diagram-title').textContent = 'Диаграмма';
+  $('#diagram-hint').textContent = 'Выберите диаграмму';
   $('#gantt-table').classList.add('hidden');
   $('#gantt-forms').classList.add('hidden');
   $('#export-json').classList.add('hidden');
@@ -217,8 +216,7 @@ async function loadDiagrams() {
 function renderDiagrams() {
   const container = $('#diagram-list');
   if (state.diagrams.length === 0) {
-    container.innerHTML =
-      '<p class="empty">Р’ РїСЂРѕРµРєС‚Рµ РїРѕРєР° РЅРµС‚ РґРёР°РіСЂР°РјРј.</p>';
+    container.innerHTML = '<p class="empty">В проекте пока нет диаграмм.</p>';
     return;
   }
   container.innerHTML = state.diagrams
@@ -226,7 +224,7 @@ function renderDiagrams() {
       (diagram) => `
         <button class="list-item ${state.diagram?.id === diagram.id ? 'selected' : ''}" data-diagram="${escapeHtml(diagram.id)}" type="button">
           <span class="item-title">${escapeHtml(diagram.name)}</span>
-          <span class="item-meta">${escapeHtml(diagram.dayMode === 'calendar' ? 'РљР°Р»РµРЅРґР°СЂСЊ' : 'Р Р°Р±РѕС‡РёРµ РґРЅРё')}</span>
+          <span class="item-meta">${escapeHtml(diagram.dayMode === 'calendar' ? 'Календарь' : 'Рабочие дни')}</span>
         </button>`,
     )
     .join('');
@@ -234,7 +232,7 @@ function renderDiagrams() {
 
 $('#new-diagram-toggle').addEventListener('click', () => {
   if (!state.project) {
-    showToast('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РїСЂРѕРµРєС‚');
+    showToast('Сначала выберите проект');
     return;
   }
   $('#diagram-form').classList.toggle('hidden');
@@ -274,7 +272,7 @@ async function loadSnapshot() {
   if (!state.diagram) return;
   state.snapshot = await api(`/diagrams/${state.diagram.id}/snapshot`);
   $('#diagram-title').textContent = state.snapshot.diagram.name;
-  $('#diagram-hint').textContent = `Р РµРІРёР·РёСЏ ${state.snapshot.currentRevision}`;
+  $('#diagram-hint').textContent = `Ревизия ${state.snapshot.currentRevision}`;
   $('#export-json').href = `/api/v1/diagrams/${state.diagram.id}/export?format=json`;
   $('#export-json').classList.remove('hidden');
   $('#gantt-forms').classList.remove('hidden');
@@ -285,10 +283,10 @@ async function loadSnapshot() {
 function statusLabel(status) {
   return (
     {
-      planned: 'РџР»Р°РЅ',
-      in_progress: 'Р’ СЂР°Р±РѕС‚Рµ',
-      done: 'Р“РѕС‚РѕРІРѕ',
-      blocked: 'Р‘Р»РѕРє',
+      planned: 'План',
+      in_progress: 'В работе',
+      done: 'Готово',
+      blocked: 'Блок',
     }[status] ?? status
   );
 }
@@ -338,8 +336,7 @@ function renderGantt() {
 
   const body = $('#gantt-table tbody');
   body.innerHTML =
-    rows.join('') ||
-    '<tr><td colspan="7" class="empty">Р”РѕР±Р°РІСЊС‚Рµ РЅР°РїСЂР°РІР»РµРЅРёРµ Рё Р·Р°РґР°С‡Сѓ.</td></tr>';
+    rows.join('') || '<tr><td colspan="7" class="empty">Добавьте направление и задачу.</td></tr>';
   const select = $('#task-direction');
   select.innerHTML = directions
     .map(
