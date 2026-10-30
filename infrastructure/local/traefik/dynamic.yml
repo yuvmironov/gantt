@@ -56,8 +56,3 @@ http:
       loadBalancer:
         servers:
           - url: http://kafka-ui:8080
-
-tls:
-  certificates:
-    - certFile: /certs/local.pem
-      keyFile: /certs/local-key.pem

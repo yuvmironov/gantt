@@ -1,51 +1,62 @@
 # Локальная инфраструктура SMART OATI
 
-Поднимает инфраструктуру, API Gateway, User & Access и Project / Diagram: PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, `api-gateway`, `user-service` и `project-service`.
-
-Остальные приложения `frontend`, `notification-service`, `audit-service`, `sync-service` появятся следующими этапами. До этого их Traefik-маршруты будут возвращать 502.
+Поднимает PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, API Gateway, User & Access, Project / Diagram и минимальный frontend.
 
 ## Запуск
 
 ```bash
 cp .env.example .env.local
-docker compose --env-file .env.local --profile infra --profile apps up -d --build
+docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps up -d --build
+```
+
+При первом запуске:
+
+- `db-init` создаёт схемы, применяет миграции и seed во все 4 БД;
+- Traefik отдаёт локальный самоподписанный сертификат;
+- `user-service` создаёт development-администратора из `DEV_ADMIN_*`.
+
+Открыть: **https://app.localhost**
+
+Администратор по умолчанию:
+
+```text
+admin@smart-oati.local
+ChangeMeDevOnly!
 ```
 
 Проверка:
 
 ```bash
-docker compose --env-file .env.local --profile infra --profile apps ps
-curl -k https://api.localhost/api/v1/health
+docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps ps
+curl -k https://app.localhost/health
+curl -k https://app.localhost/api/v1/health
 ```
 
 Остановка:
 
 ```bash
-docker compose --env-file .env.local --profile infra --profile apps down
+docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps down
 ```
 
 Удаление данных:
 
 ```bash
-docker compose --env-file .env.local --profile infra --profile apps down -v
+docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps down -v
 ```
 
 ## HTTPS
 
-```bash
-mkdir -p certs
-mkcert -install
-mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" localhost 127.0.0.1 ::1
-```
+Traefik использует собственный самоподписанный сертификат. Браузер покажет предупреждение — для local его нужно принять один раз.
 
-Домены:
+Доверенный сертификат можно подключить позже через `tls.certificates` в `traefik/dynamic.yml`.
+
+## Домены
 
 - `app.localhost` — frontend;
 - `api.localhost` — API Gateway;
-- `sync.localhost` — Sync WebSocket;
-- `notify.localhost` — Notification;
-- `mail.localhost` — Mailpit UI: host-порт 8025;
-- `kafka.localhost` — Kafka UI: host-порт 8081.
+- `mail.localhost` — Mailpit UI;
+- `kafka.localhost` — Kafka UI;
+- `sync.localhost`, `notify.localhost` — зарезервированы.
 
 ## Порты
 
@@ -61,28 +72,10 @@ mkcert -cert-file certs/local.pem -key-file certs/local-key.pem "*.localhost" lo
 | Project / Diagram gRPC | 50052 |
 | Traefik HTTP/HTTPS | 80/443 |
 
-## Проверено
-
-- PostgreSQL 17: 4 БД, миграции и seed применены.
-- Redis: `PONG`.
-- Kafka: topic `smartoati.events`, 6 partitions, produce/consume работают.
-- Mailpit: SMTP-письмо принято и видно в API.
-- Telegram WireMock: `sendMessage` возвращает `ok: true`.
-- Traefik: HTTP→HTTPS, `mail.localhost` и `kafka.localhost` отдают 200.
-- API Gateway: container healthy, `https://api.localhost/api/v1/health` отдает 200.
-- REST auth proxy: register/login/session/logout проверены через API Gateway.
-- User & Access: HTTP health healthy, gRPC `50051` отвечает `SERVING`, Register/Login/ValidateSession/Logout работают, остальные методы — `UNIMPLEMENTED`.
-- Project / Diagram: HTTP health healthy, gRPC `50052` отвечает `SERVING`, project lifecycle и diagram CRUD работают.
-- REST projects: create/list/detail/update/archive/unarchive/delete/restore проверены.
-- REST diagrams: create/list/detail/update/delete, direction/task create и snapshot проверены.
-- Owner membership создается в User DB при создании проекта.
-- `app/sync/notify` возвращают 502 до появления приложений — это ожидаемо.
-- Kafka: `apache/kafka:3.9.0`, один KRaft-брокер.
-- TLS: если `mkcert` не установлен, можно использовать self-signed сертификаты; браузер будет предупреждать.
-
 ## Ограничения
 
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
-- Traefik требует сгенерированные сертификаты.
-- API Gateway, User & Access и Project / Diagram добавлены; остальные сервисы и frontend еще не добавлены.
+- Frontend — минимальный bootstrap UI, не полный Nuxt-интерфейс.
+- `sync.localhost` и `notify.localhost` пока не обслуживаются.
+- Импорт диаграмм пока не реализован; экспорт JSON/CSV работает.

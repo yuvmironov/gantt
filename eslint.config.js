@@ -12,6 +12,18 @@ const ignores = [
 export default [
   { ignores },
   {
+    files: ['apps/web/public/**/*.js'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
+        Intl: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',
