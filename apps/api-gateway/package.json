@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
+    "@fastify/multipart": "9.0.3",
     "@smart-oati/service-kit": "workspace:*"
   }
 }
