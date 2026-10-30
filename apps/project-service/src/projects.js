@@ -360,14 +360,15 @@ async function resolveCommentEntity(db, entityType, entityId) {
   return result.rows[0] ?? null;
 }
 
-async function createsTaskCycle(db, diagramId, fromId, toId) {
+async function createsTaskCycle(db, diagramId, fromId, toId, excludeDependencyId = null) {
   const result = await db.query(
     `SELECT predecessor_id, successor_id
      FROM plan.dependencies
      WHERE diagram_id = $1
        AND predecessor_type = 'task'
-       AND successor_type = 'task'`,
-    [diagramId],
+       AND successor_type = 'task'
+       AND ($2::uuid IS NULL OR id <> $2)`,
+    [diagramId, excludeDependencyId],
   );
   const graph = new Map();
   for (const row of result.rows) {
@@ -1942,6 +1943,124 @@ export function createProjectImplementation({ db, userClient }) {
           items: result.rows.map(toDependency),
           page: { total: count.rows[0].total, limit, offset },
         });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateDependency(call_, callback) {
+      const dependencyId = String(call_.request.dependency_id ?? '');
+      try {
+        const dependency = await db.query(`SELECT * FROM plan.dependencies WHERE id = $1`, [
+          dependencyId,
+        ]);
+        if (dependency.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'dependency_not_found'));
+          return;
+        }
+        const current = dependency.rows[0];
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          current.diagram_id,
+        ]);
+        await checkPermission(
+          call_,
+          userClient,
+          diagram.rows[0].project_id,
+          'project.dependency.manage',
+        );
+
+        const predecessorType = hasField(call_.request, 'predecessor_type')
+          ? String(call_.request.predecessor_type)
+          : current.predecessor_type;
+        const predecessorId = hasField(call_.request, 'predecessor_id')
+          ? String(call_.request.predecessor_id)
+          : current.predecessor_id;
+        const successorType = hasField(call_.request, 'successor_type')
+          ? String(call_.request.successor_type)
+          : current.successor_type;
+        const successorId = hasField(call_.request, 'successor_id')
+          ? String(call_.request.successor_id)
+          : current.successor_id;
+        if (
+          !['task', 'direction'].includes(predecessorType) ||
+          !['task', 'direction'].includes(successorType) ||
+          !isUuid(predecessorId) ||
+          !isUuid(successorId) ||
+          (predecessorType === successorType && predecessorId === successorId)
+        ) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_dependency'));
+          return;
+        }
+        if (
+          !(await entityBelongsToDiagram(db, predecessorType, predecessorId, current.diagram_id)) ||
+          !(await entityBelongsToDiagram(db, successorType, successorId, current.diagram_id))
+        ) {
+          callback(grpcError(status.NOT_FOUND, 'dependency_entity_not_found'));
+          return;
+        }
+        if (
+          predecessorType === 'task' &&
+          successorType === 'task' &&
+          (await createsTaskCycle(db, current.diagram_id, predecessorId, successorId, dependencyId))
+        ) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'dependency_cycle'));
+          return;
+        }
+
+        const values = [dependencyId];
+        const sets = [];
+        const add = (column, value) => {
+          values.push(value);
+          sets.push(`${column} = $${values.length}`);
+        };
+        if (hasField(call_.request, 'predecessor_type')) {
+          add('predecessor_type', predecessorType);
+        }
+        if (hasField(call_.request, 'predecessor_id')) {
+          add('predecessor_id', predecessorId);
+        }
+        if (hasField(call_.request, 'successor_type')) {
+          add('successor_type', successorType);
+        }
+        if (hasField(call_.request, 'successor_id')) {
+          add('successor_id', successorId);
+        }
+        if (hasField(call_.request, 'color')) {
+          const color = String(call_.request.color ?? '');
+          if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'invalid_color'));
+            return;
+          }
+          add('color', color || null);
+        }
+        if (hasField(call_.request, 'line_style')) {
+          add(
+            'line_style',
+            {
+              DEPENDENCY_LINE_STYLE_DASHED: 'dashed',
+              DEPENDENCY_LINE_STYLE_DOTTED: 'dotted',
+            }[call_.request.line_style] ?? 'solid',
+          );
+        }
+        if (hasField(call_.request, 'arrow_shape')) {
+          add(
+            'arrow_shape',
+            {
+              DEPENDENCY_ARROW_SHAPE_STRAIGHT: 'straight',
+              DEPENDENCY_ARROW_SHAPE_CURVED: 'curved',
+            }[call_.request.arrow_shape] ?? 'orthogonal',
+          );
+        }
+        if (sets.length === 0) {
+          callback(null, { dependency: toDependency(current), revision: '0' });
+          return;
+        }
+        sets.push('updated_at = now()');
+        const result = await db.query(
+          `UPDATE plan.dependencies SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+          values,
+        );
+        callback(null, { dependency: toDependency(result.rows[0]), revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
       }
