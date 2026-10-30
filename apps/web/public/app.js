@@ -10,6 +10,11 @@ const state = {
   users: null,
   executors: null,
   sessions: [],
+  members: [],
+  invitations: [],
+  pendingInvitation: null,
+  syncSocket: null,
+  syncTimer: null,
   filters: { query: '', status: '' },
 };
 
@@ -109,8 +114,10 @@ async function loadDirectory() {
 
 function showAuth() {
   state.user = null;
+  disconnectSync();
   authView.classList.remove('hidden');
   appView.classList.add('hidden');
+  setTab(false);
 }
 
 function showApp() {
@@ -124,9 +131,37 @@ function showApp() {
   window.clearInterval(unreadTimer);
   loadUnreadCount();
   unreadTimer = window.setInterval(loadUnreadCount, 60_000);
+  connectSync();
 }
 
 async function boot() {
+  const params = new URLSearchParams(window.location.search);
+  const verifyToken = params.get('verify');
+  const resetToken = params.get('reset');
+  const invitationToken = params.get('invitation');
+  if (verifyToken) {
+    try {
+      await api('/auth/email/verify', { method: 'POST', body: { token: verifyToken } });
+      showToast('Email подтверждён. Теперь можно войти.');
+    } catch (error) {
+      showToast(error.message);
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  if (invitationToken) {
+    state.pendingInvitation = invitationToken;
+    window.localStorage.setItem('pendingInvitation', invitationToken);
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  if (resetToken) {
+    window.history.replaceState({}, '', window.location.pathname);
+    showAuth();
+    $('#forgot-modal').classList.remove('hidden');
+    $('#forgot-form').classList.add('hidden');
+    $('#reset-form').classList.remove('hidden');
+    $('#reset-form input[name=token]').value = resetToken;
+    return;
+  }
   try {
     state.user = await api('/auth/session');
   } catch {
@@ -134,6 +169,7 @@ async function boot() {
     return;
   }
   showApp();
+  await acceptPendingInvitation();
   await loadProjects().catch((error) => showToast(error.message));
 }
 
@@ -147,6 +183,7 @@ function setTab(registering) {
 async function login(email, password) {
   state.user = (await api('/auth/login', { method: 'POST', body: { email, password } })).user;
   showApp();
+  await acceptPendingInvitation();
   await loadProjects();
 }
 
@@ -223,6 +260,7 @@ $('#project-list').addEventListener('click', async (event) => {
   state.snapshot = null;
   renderProjects();
   $('#project-title').textContent = state.project?.name ?? 'Выберите проект';
+  $('#members-toggle').classList.toggle('hidden', !state.project);
   $('#diagram-title').textContent = 'Диаграмма';
   $('#diagram-hint').textContent = 'Выберите диаграмму';
   $('#gantt-table').classList.add('hidden');
@@ -1089,4 +1127,313 @@ $('#logout-all').addEventListener('click', async () => {
   }
 });
 
+function roleLabel(role) {
+  return (
+    {
+      owner: 'Владелец',
+      manager: 'Менеджер',
+      editor: 'Редактор',
+      participant: 'Участник',
+      viewer: 'Наблюдатель',
+    }[role] ?? role
+  );
+}
+
+async function openMembers() {
+  if (!state.project) return;
+  $('#members-modal').classList.remove('hidden');
+  await refreshMembers();
+}
+
+async function refreshMembers() {
+  if (!state.project) return;
+  const container = $('#member-list');
+  const invitations = $('#invitation-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  invitations.innerHTML = '';
+  try {
+    const [members, invites] = await Promise.all([
+      api(`/projects/${state.project.id}/members?limit=200`),
+      api(`/projects/${state.project.id}/invitations?limit=200`),
+    ]);
+    state.members = members.items ?? [];
+    state.invitations = invites.items ?? [];
+    renderMembers();
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить участников.</p>';
+    showToast(error.message);
+  }
+}
+
+function renderMembers() {
+  const container = $('#member-list');
+  container.innerHTML =
+    state.members
+      .map((member) => {
+        const user = member.user ?? {};
+        const isOwner = member.role === 'owner';
+        const options = ['manager', 'editor', 'participant', 'viewer']
+          .map(
+            (role) =>
+              `<option value="${role}" ${member.role === role ? 'selected' : ''}>${roleLabel(role)}</option>`,
+          )
+          .join('');
+        return `
+          <div class="list-item">
+            <span class="item-title">${escapeHtml(user.displayName || user.email || member.userId)}</span>
+            <span class="item-meta">${escapeHtml(user.email || '')} · ${roleLabel(member.role)}</span>
+            ${
+              isOwner
+                ? ''
+                : `<div class="inline-fields">
+                    <select data-member-role="${escapeHtml(member.userId)}">${options}</select>
+                    <button class="ghost small" data-member-remove="${escapeHtml(member.userId)}" type="button">Удалить</button>
+                  </div>`
+            }
+          </div>`;
+      })
+      .join('') || '<p class="empty">Участников пока нет.</p>';
+
+  $('#invitation-list').innerHTML =
+    state.invitations
+      .map(
+        (invitation) => `
+          <div class="list-item">
+            <span class="item-title">${escapeHtml(invitation.email)}</span>
+            <span class="item-meta">${roleLabel(invitation.role)} · ${escapeHtml(invitation.status)}</span>
+            ${
+              invitation.status === 'pending'
+                ? `<div class="inline-fields">
+                    <button class="ghost small" data-invitation-resend="${escapeHtml(invitation.id)}" type="button">Отправить снова</button>
+                    <button class="ghost small" data-invitation-revoke="${escapeHtml(invitation.id)}" type="button">Отозвать</button>
+                  </div>`
+                : ''
+            }
+          </div>`,
+      )
+      .join('') || '<p class="empty">Приглашений нет.</p>';
+}
+
+$('#members-toggle').addEventListener('click', openMembers);
+$('#members-close').addEventListener('click', () => $('#members-modal').classList.add('hidden'));
+
+$('#member-invite-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api(`/projects/${state.project.id}/invitations`, {
+      method: 'POST',
+      body: { email: data.get('email'), role: data.get('role') },
+    });
+    form.reset();
+    showToast('Участник добавлен или приглашение отправлено.');
+    await refreshMembers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#member-list').addEventListener('change', async (event) => {
+  const select = event.target.closest('[data-member-role]');
+  if (!select) return;
+  try {
+    await api(`/projects/${state.project.id}/members/${select.dataset.memberRole}`, {
+      method: 'PATCH',
+      body: { role: select.value },
+    });
+    showToast('Роль обновлена.');
+    await refreshMembers();
+  } catch (error) {
+    showToast(error.message);
+    await refreshMembers();
+  }
+});
+
+$('#member-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-member-remove]');
+  if (!button) return;
+  if (!window.confirm('Удалить участника из проекта?')) return;
+  try {
+    await api(`/projects/${state.project.id}/members/${button.dataset.memberRemove}`, {
+      method: 'DELETE',
+    });
+    showToast('Участник удалён.');
+    await refreshMembers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#invitation-list').addEventListener('click', async (event) => {
+  const resend = event.target.closest('[data-invitation-resend]');
+  const revoke = event.target.closest('[data-invitation-revoke]');
+  try {
+    if (resend) {
+      await api(`/invitations/${resend.dataset.invitationResend}/resend`, { method: 'POST' });
+      showToast('Приглашение отправлено снова.');
+    } else if (revoke) {
+      await api(`/invitations/${revoke.dataset.invitationRevoke}`, { method: 'DELETE' });
+      showToast('Приглашение отозвано.');
+    } else {
+      return;
+    }
+    await refreshMembers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+async function acceptPendingInvitation() {
+  const token = state.pendingInvitation || window.localStorage.getItem('pendingInvitation');
+  if (!token || !state.user) return;
+  try {
+    await api('/invitations/accept', { method: 'POST', body: { token } });
+    showToast('Вы добавлены в проект.');
+  } catch (error) {
+    showToast(`Приглашение: ${error.message}`);
+  } finally {
+    state.pendingInvitation = null;
+    window.localStorage.removeItem('pendingInvitation');
+    await loadProjects().catch(() => {});
+  }
+}
+
+$('#password-toggle').addEventListener('click', () =>
+  $('#password-modal').classList.remove('hidden'),
+);
+$('#password-close').addEventListener('click', () => $('#password-modal').classList.add('hidden'));
+$('#password-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api('/auth/password/change', {
+      method: 'POST',
+      body: {
+        currentPassword: data.get('currentPassword'),
+        newPassword: data.get('newPassword'),
+      },
+    });
+    form.reset();
+    $('#password-modal').classList.add('hidden');
+    showToast('Пароль изменён. Войдите снова.');
+    showAuth();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#resend-verification').addEventListener('click', async () => {
+  const email = $('#login-form input[name=email]').value.trim();
+  if (!email) {
+    showToast('Укажите email.');
+    return;
+  }
+  try {
+    await api('/auth/email/resend', { method: 'POST', body: { email } });
+    showToast('Если регистрация не завершена, письмо отправлено.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#forgot-toggle').addEventListener('click', () => {
+  $('#forgot-modal').classList.remove('hidden');
+  $('#forgot-form').classList.remove('hidden');
+  $('#reset-form').classList.add('hidden');
+});
+$('#forgot-close').addEventListener('click', () => $('#forgot-modal').classList.add('hidden'));
+$('#forgot-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  try {
+    await api('/auth/password/forgot', {
+      method: 'POST',
+      body: { email: data.get('email') },
+    });
+    $('#forgot-form').classList.add('hidden');
+    $('#reset-form').classList.remove('hidden');
+    showToast('Если email существует, ссылка отправлена. Проверьте Mailpit.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+$('#reset-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api('/auth/password/reset', {
+      method: 'POST',
+      body: { token: data.get('token'), newPassword: data.get('newPassword') },
+    });
+    form.reset();
+    $('#forgot-modal').classList.add('hidden');
+    setTab(false);
+    showToast('Пароль сброшен. Войдите с новым паролем.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+function syncUrl() {
+  if (window.__SYNC_URL__) return window.__SYNC_URL__;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//sync.localhost/ws`;
+}
+
+function connectSync() {
+  if (!state.user || state.syncSocket || !window.WebSocket) return;
+  try {
+    const socket = new window.WebSocket(syncUrl());
+    state.syncSocket = socket;
+    window.__syncConnected = false;
+    socket.addEventListener('open', () => {
+      window.__syncConnected = true;
+    });
+    socket.addEventListener('message', (message) => {
+      let payload;
+      try {
+        payload = JSON.parse(message.data);
+      } catch {
+        return;
+      }
+      if (payload.type !== 'diagram.changed' || !payload.event) return;
+      const event = payload.event;
+      loadUnreadCount();
+      if (
+        event.diagram_id &&
+        state.diagram?.id === event.diagram_id &&
+        event.actor_user_id !== state.user?.id
+      ) {
+        window.clearTimeout(state.syncTimer);
+        state.syncTimer = window.setTimeout(() => {
+          loadSnapshot().catch((error) => showToast(error.message));
+        }, 400);
+      }
+    });
+    socket.addEventListener('close', () => {
+      window.__syncConnected = false;
+      state.syncSocket = null;
+      if (state.user) window.setTimeout(connectSync, 3000);
+    });
+  } catch {
+    state.syncSocket = null;
+  }
+}
+
+function disconnectSync() {
+  window.__syncConnected = false;
+  window.clearTimeout(state.syncTimer);
+  if (state.syncSocket) {
+    state.syncSocket.onclose = null;
+    state.syncSocket.close();
+    state.syncSocket = null;
+  }
+}
+
+window.addEventListener('beforeunload', disconnectSync);
+
+window.__smartOatiReady = true;
 boot();

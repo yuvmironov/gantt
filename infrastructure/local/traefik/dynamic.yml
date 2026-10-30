@@ -43,11 +43,11 @@ http:
     sync:
       loadBalancer:
         servers:
-          - url: http://sync:8080
+          - url: http://sync-service:8080
     notification:
       loadBalancer:
         servers:
-          - url: http://notification:8080
+          - url: http://notification-service:8080
     mailpit:
       loadBalancer:
         servers:

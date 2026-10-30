@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import { queueUserEvent } from './events.js';
+import { createMailer } from './mailer.js';
 import { status } from '@grpc/grpc-js';
 
 const SESSION_ABSOLUTE_MS = 60 * 60 * 1000;
@@ -8,6 +9,8 @@ const SESSION_IDLE_MS = 10 * 60 * 1000;
 const REMEMBER_ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
 const REMEMBER_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_VERIFICATION_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_MS = 60 * 60 * 1000;
+const INVITATION_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_COOKIE = '__Host-session';
 const REMEMBER_COOKIE = '__Host-remember';
 const CSRF_COOKIE = '__Host-csrf';
@@ -80,6 +83,7 @@ function toMembership(row) {
     joined_at: toTimestamp(row.joined_at),
     revoked_at: toTimestamp(row.revoked_at),
     revoked_reason: row.revoked_reason ?? '',
+    user: row.email ? toUserSummary(row) : undefined,
   };
 }
 
@@ -117,6 +121,86 @@ function toExecutor(row) {
     created_at: toTimestamp(row.created_at),
     updated_at: toTimestamp(row.updated_at),
   };
+}
+
+function fromProjectRole(role) {
+  return (
+    {
+      PROJECT_ROLE_OWNER: 'project_owner',
+      PROJECT_ROLE_MANAGER: 'project_manager',
+      PROJECT_ROLE_EDITOR: 'project_editor',
+      PROJECT_ROLE_PARTICIPANT: 'project_participant',
+      PROJECT_ROLE_VIEWER: 'project_viewer',
+    }[role] ?? null
+  );
+}
+
+function toUserSummary(row) {
+  return {
+    id: row.user_id ?? row.id,
+    email: row.email,
+    display_name: row.display_name,
+    position: row.position ?? '',
+    status: row.status === 'blocked' ? 'USER_STATUS_BLOCKED' : 'USER_STATUS_ACTIVE',
+    email_verified: Boolean(row.email_verified_at),
+    global_roles: [],
+  };
+}
+
+function toInvitation(row) {
+  const status =
+    row.accepted_at != null
+      ? 'accepted'
+      : row.revoked_at != null
+        ? 'revoked'
+        : new Date(row.expires_at) <= new Date()
+          ? 'expired'
+          : 'pending';
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    email: row.email,
+    role: toProjectRole(row.role_code),
+    status,
+    expires_at: toTimestamp(row.expires_at),
+    accepted_at: toTimestamp(row.accepted_at),
+    revoked_at: toTimestamp(row.revoked_at),
+    invited_by_user_id: row.invited_by_user_id ?? '',
+  };
+}
+
+async function canManageProject(db, projectId, userId) {
+  if (!userId) return false;
+  const result = await db.query(
+    `SELECT 1
+     FROM access.project_memberships m
+     JOIN access.role_permissions rp
+       ON rp.role_code = m.role_code AND rp.permission_code = 'project.members.manage'
+     WHERE m.project_id = $1 AND m.user_id = $2 AND m.status = 'active'
+     UNION ALL
+     SELECT 1 FROM access.user_roles
+     WHERE user_id = $2 AND role_code = 'app_admin'
+     LIMIT 1`,
+    [projectId, userId],
+  );
+  return result.rowCount > 0;
+}
+
+async function findUserByEmail(db, email) {
+  const result = await db.query('SELECT * FROM access.users WHERE email = $1', [email]);
+  return result.rows[0] ?? null;
+}
+
+function invitationLink(publicAppUrl, token) {
+  return `${publicAppUrl.replace(/\/$/, '')}/?invitation=${encodeURIComponent(token)}`;
+}
+
+function resetLink(publicAppUrl, token) {
+  return `${publicAppUrl.replace(/\/$/, '')}/?reset=${encodeURIComponent(token)}`;
+}
+
+async function sendMail(mailer, message) {
+  await mailer.send(message).catch(() => false);
 }
 
 function cookie(name, value, { maxAge, httpOnly = true } = {}) {
@@ -172,9 +256,10 @@ export async function ensureDevAdmin(db, env = process.env) {
 
   const lastName =
     String(env.DEV_ADMIN_LAST_NAME ?? '').trim() ||
-    'Р С’Р Т‘Р СР С‘Р Р…Р С‘РЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚';
+    'Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРІвЂћСћР В Р’В Р вЂ™Р’В Р В РЎС›Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’В Р В Р Р‹Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В¦Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р В Р вЂ№Р В Р’В Р РЋРІР‚СљР В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р’В Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС›Р В Р’В Р В Р вЂ№Р В Р’В Р Р†Р вЂљРЎв„ў';
   const firstName =
-    String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() || 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР Р…РЎвЂ№Р в„–';
+    String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() ||
+    'Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р В Р вЂ№Р В Р’В Р РЋРІР‚СљР В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В Р Р‹Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В¦Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РІР‚вЂњР В Р’В Р вЂ™Р’В Р В Р вЂ Р Р†Р вЂљРЎвЂєР Р†Р вЂљРІР‚Сљ';
   const middleName = String(env.DEV_ADMIN_MIDDLE_NAME ?? '').trim() || null;
   const displayName = `${lastName} ${firstName}`.trim();
   const passwordHash = await hashPassword(password);
@@ -214,7 +299,12 @@ export async function ensureDevAdmin(db, env = process.env) {
   return true;
 }
 
-export function createUserImplementation({ db, devAutoVerify = false }) {
+export function createUserImplementation({
+  db,
+  devAutoVerify = false,
+  mailer = createMailer(),
+  publicAppUrl = process.env.PUBLIC_APP_URL ?? 'https://app.localhost',
+}) {
   return {
     async Register(call, callback) {
       const email = normalizeEmail(call.request.email);
@@ -265,9 +355,11 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
           ],
         );
         const userId = result.rows[0].id;
+        let verificationToken = null;
 
         if (!devAutoVerify) {
           const token = randomToken();
+          verificationToken = token;
           await client.query(
             `INSERT INTO access.email_verification_tokens (user_id, token_hash, expires_at)
              VALUES ($1, $2, now() + ($3 * interval '1 millisecond'))`,
@@ -276,6 +368,22 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
         }
 
         await client.query('COMMIT');
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.created',
+          actorUserId: userId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId },
+        }).catch(() => {});
+        if (verificationToken) {
+          await sendMail(mailer, {
+            to: email,
+            subject: 'Verify your SMART OATI email',
+            text: `Verify your email: ${publicAppUrl.replace(/\/$/, '')}/?verify=${encodeURIComponent(verificationToken)}`,
+          });
+        }
         callback(null, {
           user_id: userId,
           requires_email_verification: !devAutoVerify,
@@ -617,6 +725,655 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
         });
       } catch (error) {
         callback(mapDbError(error));
+      }
+    },
+
+    async ResendEmailVerification(call, callback) {
+      const email = normalizeEmail(call.request.email);
+      if (!isValidEmail(email)) {
+        callback(null, { accepted: true });
+        return;
+      }
+      try {
+        const user = await findUserByEmail(db, email);
+        if (user && !user.email_verified_at) {
+          const token = randomToken();
+          await db.query(
+            `UPDATE access.email_verification_tokens SET used_at = now()
+             WHERE user_id = $1 AND used_at IS NULL`,
+            [user.id],
+          );
+          await db.query(
+            `INSERT INTO access.email_verification_tokens (user_id, token_hash, expires_at)
+             VALUES ($1, $2, now() + ($3 * interval '1 millisecond'))`,
+            [user.id, hashToken(token), EMAIL_VERIFICATION_MS],
+          );
+          await sendMail(mailer, {
+            to: email,
+            subject: 'Verify your SMART OATI email',
+            text: `Verify your email: ${publicAppUrl.replace(/\/$/, '')}/?verify=${encodeURIComponent(token)}`,
+          });
+        }
+        callback(null, { accepted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RequestPasswordReset(call, callback) {
+      const email = normalizeEmail(call.request.email);
+      if (!isValidEmail(email)) {
+        callback(null, { accepted: true });
+        return;
+      }
+      try {
+        const user = await findUserByEmail(db, email);
+        if (user && user.status === 'active') {
+          const token = randomToken();
+          await db.query(
+            `UPDATE access.password_reset_tokens SET used_at = now()
+             WHERE user_id = $1 AND used_at IS NULL`,
+            [user.id],
+          );
+          await db.query(
+            `INSERT INTO access.password_reset_tokens (user_id, token_hash, expires_at)
+             VALUES ($1, $2, now() + ($3 * interval '1 millisecond'))`,
+            [user.id, hashToken(token), PASSWORD_RESET_MS],
+          );
+          await sendMail(mailer, {
+            to: email,
+            subject: 'Reset your SMART OATI password',
+            text: `Reset your password: ${resetLink(publicAppUrl, token)}`,
+          });
+        }
+        callback(null, { accepted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ResetPassword(call, callback) {
+      const token = String(call.request.token ?? '');
+      const newPassword = String(call.request.new_password ?? '');
+      if (!token || newPassword.length < 8 || newPassword.length > 128) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_password'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const result = await client.query(
+          `SELECT id, user_id FROM access.password_reset_tokens
+           WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+           FOR UPDATE`,
+          [hashToken(token)],
+        );
+        if (result.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_token'));
+          return;
+        }
+        const row = result.rows[0];
+        await client.query(
+          `UPDATE access.users SET password_hash = $2, updated_at = now() WHERE id = $1`,
+          [row.user_id, await hashPassword(newPassword)],
+        );
+        await client.query(
+          `UPDATE access.password_reset_tokens SET used_at = now() WHERE id = $1`,
+          [row.id],
+        );
+        await client.query(
+          `UPDATE access.user_sessions SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [row.user_id],
+        );
+        await client.query('COMMIT');
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: row.user_id,
+          eventType: 'auth.password.reset',
+          actorUserId: row.user_id,
+          entityType: 'user',
+          entityId: row.user_id,
+          payload: { userId: row.user_id },
+        }).catch(() => {});
+        callback(null, {
+          reset: true,
+          set_cookie: [
+            clearCookie(SESSION_COOKIE),
+            clearCookie(REMEMBER_COOKIE),
+            clearCookie(CSRF_COOKIE),
+          ],
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async ChangePassword(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const currentPassword = String(call.request.current_password ?? '');
+      const newPassword = String(call.request.new_password ?? '');
+      if (!userId || !currentPassword || newPassword.length < 8 || newPassword.length > 128) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_password'));
+        return;
+      }
+      try {
+        const result = await db.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        if (!(await verifyPassword(result.rows[0].password_hash, currentPassword))) {
+          callback(grpcError(status.PERMISSION_DENIED, 'invalid_current_password'));
+          return;
+        }
+        await db.query(
+          `UPDATE access.users SET password_hash = $2, updated_at = now() WHERE id = $1`,
+          [userId, await hashPassword(newPassword)],
+        );
+        await db.query(
+          `UPDATE access.user_sessions SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'auth.password.changed',
+          actorUserId: userId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId },
+        }).catch(() => {});
+        callback(null, { changed: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async SetProjectOwnerMembership(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const newOwnerUserId = String(call.request.new_owner_user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!projectId || !newOwnerUserId || !(await canManageProject(db, projectId, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        await client.query(
+          `UPDATE access.project_memberships SET role_code = 'project_manager', updated_at = now()
+           WHERE project_id = $1 AND role_code = 'project_owner' AND status = 'active'`,
+          [projectId],
+        );
+        await client.query(
+          `INSERT INTO access.project_memberships
+             (project_id, user_id, role_code, status, invited_by_user_id, joined_at)
+           VALUES ($1, $2, 'project_owner', 'active', $3, now())
+           ON CONFLICT (project_id, user_id) DO UPDATE
+             SET role_code = 'project_owner', status = 'active', revoked_at = NULL,
+                 revoked_reason = NULL, updated_at = now()
+           RETURNING *`,
+          [projectId, newOwnerUserId, actorUserId],
+        );
+        await client.query('COMMIT');
+        const items = await db.query(
+          `SELECT m.*, u.email, u.display_name, u.position, u.status, u.email_verified_at
+           FROM access.project_memberships m JOIN access.users u ON u.id = m.user_id
+           WHERE m.project_id = $1 AND m.status = 'active'`,
+          [projectId],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: projectId,
+          eventType: 'project.owner.transferred',
+          actorUserId,
+          entityType: 'user',
+          entityId: newOwnerUserId,
+          payload: { projectId, newOwnerUserId },
+        }).catch(() => {});
+        callback(null, { memberships: items.rows.map(toMembership) });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async ListProjectMembers(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const limit = Math.min(Math.max(Number(call.request.page?.limit ?? 100), 1), 200);
+      const offset = Math.max(Number(call.request.page?.offset ?? 0), 0);
+      try {
+        const result = await db.query(
+          `SELECT m.*, u.email, u.display_name, u.position, u.status, u.email_verified_at
+           FROM access.project_memberships m
+           JOIN access.users u ON u.id = m.user_id
+           WHERE m.project_id = $1 AND m.status IN ('active', 'invited')
+           ORDER BY m.role_code, u.display_name
+           LIMIT $2 OFFSET $3`,
+          [projectId, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total FROM access.project_memberships
+           WHERE project_id = $1 AND status IN ('active', 'invited')`,
+          [projectId],
+        );
+        callback(null, {
+          items: result.rows.map(toMembership),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateProjectMemberRole(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const userId = String(call.request.user_id ?? '');
+      const roleCode = fromProjectRole(call.request.role);
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!projectId || !userId || !roleCode || roleCode === 'project_owner') {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_project_role'));
+        return;
+      }
+      if (!(await canManageProject(db, projectId, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+        return;
+      }
+      try {
+        const current = await db.query(
+          `SELECT role_code FROM access.project_memberships
+           WHERE project_id = $1 AND user_id = $2 AND status = 'active'`,
+          [projectId, userId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'project_member_not_found'));
+          return;
+        }
+        if (current.rows[0].role_code === 'project_owner') {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_owner_role_immutable'));
+          return;
+        }
+        const result = await db.query(
+          `UPDATE access.project_memberships
+           SET role_code = $3, updated_at = now()
+           WHERE project_id = $1 AND user_id = $2 AND status = 'active'
+           RETURNING *`,
+          [projectId, userId, roleCode],
+        );
+        const user = await db.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: projectId,
+          eventType: 'project.member.role_changed',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { projectId, userId, role: roleCode },
+        }).catch(() => {});
+        callback(null, {
+          membership: toMembership({
+            ...result.rows[0],
+            user_id: userId,
+            email: user.rows[0].email,
+            display_name: user.rows[0].display_name,
+            position: user.rows[0].position,
+            status: user.rows[0].status,
+            email_verified_at: user.rows[0].email_verified_at,
+          }),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RemoveProjectMember(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await canManageProject(db, projectId, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+        return;
+      }
+      try {
+        const current = await db.query(
+          `SELECT role_code FROM access.project_memberships
+           WHERE project_id = $1 AND user_id = $2 AND status = 'active'`,
+          [projectId, userId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'project_member_not_found'));
+          return;
+        }
+        if (current.rows[0].role_code === 'project_owner') {
+          callback(grpcError(status.FAILED_PRECONDITION, 'project_owner_cannot_be_removed'));
+          return;
+        }
+        await db.query(
+          `UPDATE access.project_memberships
+           SET status = 'revoked', revoked_at = now(), revoked_reason = 'member_removed', updated_at = now()
+           WHERE project_id = $1 AND user_id = $2 AND status = 'active'`,
+          [projectId, userId],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: projectId,
+          eventType: 'project.member.removed',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { projectId, userId },
+        }).catch(() => {});
+        callback(null, { removed: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateInvitation(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const email = normalizeEmail(call.request.email);
+      const roleCode = fromProjectRole(call.request.role);
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!isValidEmail(email) || !roleCode || roleCode === 'project_owner') {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_invitation'));
+        return;
+      }
+      if (!(await canManageProject(db, projectId, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+        return;
+      }
+      try {
+        const existing = await findUserByEmail(db, email);
+        if (existing) {
+          const current = await db.query(
+            `SELECT role_code FROM access.project_memberships
+             WHERE project_id = $1 AND user_id = $2 AND status = 'active'`,
+            [projectId, existing.id],
+          );
+          if (current.rows[0]?.role_code === 'project_owner') {
+            callback(grpcError(status.ALREADY_EXISTS, 'project_owner_already_member'));
+            return;
+          }
+          await db.query(
+            `UPDATE access.invitations SET revoked_at = now()
+             WHERE project_id = $1 AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
+            [projectId, email],
+          );
+          const token = randomToken();
+          const invitation = await db.query(
+            `INSERT INTO access.invitations
+               (project_id, email, role_code, invited_by_user_id, token_hash, expires_at, accepted_at)
+             VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 millisecond'), now())
+             RETURNING *`,
+            [projectId, email, roleCode, actorUserId, hashToken(token), INVITATION_MS],
+          );
+          await db.query(
+            `INSERT INTO access.project_memberships
+               (project_id, user_id, role_code, status, invited_by_user_id, invited_at, joined_at)
+             VALUES ($1, $2, $3, 'active', $4, now(), now())
+             ON CONFLICT (project_id, user_id) DO UPDATE
+               SET role_code = $3, status = 'active', invited_by_user_id = $4,
+                   joined_at = COALESCE(access.project_memberships.joined_at, now()),
+                   revoked_at = NULL, revoked_reason = NULL, updated_at = now()`,
+            [projectId, existing.id, roleCode, actorUserId],
+          );
+          await sendMail(mailer, {
+            to: email,
+            subject: 'You were added to a SMART OATI project',
+            text: `You now have access to the project: ${publicAppUrl}`,
+          });
+          await queueUserEvent(db, {
+            aggregateType: 'project',
+            aggregateId: projectId,
+            eventType: 'project.member.added',
+            actorUserId,
+            entityType: 'user',
+            entityId: existing.id,
+            payload: { projectId, userId: existing.id, role: roleCode },
+          }).catch(() => {});
+          callback(null, { invitation: toInvitation(invitation.rows[0]) });
+          return;
+        }
+
+        const token = randomToken();
+        const current = await db.query(
+          `SELECT * FROM access.invitations
+           WHERE project_id = $1 AND email = $2 AND accepted_at IS NULL AND revoked_at IS NULL`,
+          [projectId, email],
+        );
+        const invitation =
+          current.rowCount > 0
+            ? await db.query(
+                `UPDATE access.invitations
+                 SET role_code = $2, invited_by_user_id = $3, token_hash = $4,
+                     expires_at = now() + ($5 * interval '1 millisecond')
+                 WHERE id = $1 RETURNING *`,
+                [current.rows[0].id, roleCode, actorUserId, hashToken(token), INVITATION_MS],
+              )
+            : await db.query(
+                `INSERT INTO access.invitations
+                   (project_id, email, role_code, invited_by_user_id, token_hash, expires_at)
+                 VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 millisecond'))
+                 RETURNING *`,
+                [projectId, email, roleCode, actorUserId, hashToken(token), INVITATION_MS],
+              );
+        await sendMail(mailer, {
+          to: email,
+          subject: 'Invitation to SMART OATI',
+          text: `Accept the project invitation: ${invitationLink(publicAppUrl, token)}`,
+        });
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: projectId,
+          eventType: 'invitation.created',
+          actorUserId,
+          entityType: 'invitation',
+          entityId: invitation.rows[0].id,
+          payload: { projectId, email, role: roleCode },
+        }).catch(() => {});
+        callback(null, { invitation: toInvitation(invitation.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ListProjectInvitations(call, callback) {
+      const projectId = String(call.request.project_id ?? '');
+      const limit = Math.min(Math.max(Number(call.request.page?.limit ?? 100), 1), 200);
+      const offset = Math.max(Number(call.request.page?.offset ?? 0), 0);
+      try {
+        const result = await db.query(
+          `SELECT * FROM access.invitations WHERE project_id = $1
+           ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+          [projectId, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total FROM access.invitations WHERE project_id = $1`,
+          [projectId],
+        );
+        callback(null, {
+          items: result.rows.map(toInvitation),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async ResendInvitation(call, callback) {
+      const invitationId = String(call.request.invitation_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      try {
+        const current = await db.query('SELECT * FROM access.invitations WHERE id = $1', [
+          invitationId,
+        ]);
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'invitation_not_found'));
+          return;
+        }
+        if (!(await canManageProject(db, current.rows[0].project_id, actorUserId))) {
+          callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+          return;
+        }
+        if (current.rows[0].accepted_at || current.rows[0].revoked_at) {
+          callback(grpcError(status.FAILED_PRECONDITION, 'invitation_not_pending'));
+          return;
+        }
+        const token = randomToken();
+        const result = await db.query(
+          `UPDATE access.invitations
+           SET token_hash = $2, expires_at = now() + ($3 * interval '1 millisecond'),
+               invited_by_user_id = $4
+           WHERE id = $1 RETURNING *`,
+          [invitationId, hashToken(token), INVITATION_MS, actorUserId],
+        );
+        await sendMail(mailer, {
+          to: result.rows[0].email,
+          subject: 'Invitation to SMART OATI',
+          text: `Accept the project invitation: ${invitationLink(publicAppUrl, token)}`,
+        });
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: result.rows[0].project_id,
+          eventType: 'invitation.resent',
+          actorUserId,
+          entityType: 'invitation',
+          entityId: result.rows[0].id,
+          payload: { projectId: result.rows[0].project_id, email: result.rows[0].email },
+        }).catch(() => {});
+        callback(null, { invitation: toInvitation(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RevokeInvitation(call, callback) {
+      const invitationId = String(call.request.invitation_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      try {
+        const current = await db.query('SELECT * FROM access.invitations WHERE id = $1', [
+          invitationId,
+        ]);
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'invitation_not_found'));
+          return;
+        }
+        if (!(await canManageProject(db, current.rows[0].project_id, actorUserId))) {
+          callback(grpcError(status.PERMISSION_DENIED, 'project_manage_forbidden'));
+          return;
+        }
+        await db.query(
+          `UPDATE access.invitations SET revoked_at = now()
+           WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL`,
+          [invitationId],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: current.rows[0].project_id,
+          eventType: 'invitation.revoked',
+          actorUserId,
+          entityType: 'invitation',
+          entityId: invitationId,
+          payload: { projectId: current.rows[0].project_id, email: current.rows[0].email },
+        }).catch(() => {});
+        callback(null, { revoked: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async AcceptInvitation(call, callback) {
+      const token = String(call.request.token ?? '');
+      const userId = String(call.request.user_id ?? '');
+      if (!token || !userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invitation_token_required'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const invitation = await client.query(
+          `SELECT * FROM access.invitations
+           WHERE token_hash = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+           FOR UPDATE`,
+          [hashToken(token)],
+        );
+        if (invitation.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_invitation_token'));
+          return;
+        }
+        const user = await client.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        if (user.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        if (normalizeEmail(user.rows[0].email) !== normalizeEmail(invitation.rows[0].email)) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.PERMISSION_DENIED, 'invitation_email_mismatch'));
+          return;
+        }
+        const membership = await client.query(
+          `INSERT INTO access.project_memberships
+             (project_id, user_id, role_code, status, invited_by_user_id, invited_at, joined_at)
+           VALUES ($1, $2, $3, 'active', $4, now(), now())
+           ON CONFLICT (project_id, user_id) DO UPDATE
+             SET role_code = $3, status = 'active', invited_by_user_id = $4,
+                 joined_at = COALESCE(access.project_memberships.joined_at, now()),
+                 revoked_at = NULL, revoked_reason = NULL, updated_at = now()
+           RETURNING *`,
+          [
+            invitation.rows[0].project_id,
+            userId,
+            invitation.rows[0].role_code,
+            invitation.rows[0].invited_by_user_id,
+          ],
+        );
+        await client.query(`UPDATE access.invitations SET accepted_at = now() WHERE id = $1`, [
+          invitation.rows[0].id,
+        ]);
+        await client.query('COMMIT');
+        await queueUserEvent(db, {
+          aggregateType: 'project',
+          aggregateId: invitation.rows[0].project_id,
+          eventType: 'invitation.accepted',
+          actorUserId: userId,
+          entityType: 'user',
+          entityId: userId,
+          payload: {
+            projectId: invitation.rows[0].project_id,
+            userId,
+            role: invitation.rows[0].role_code,
+          },
+        }).catch(() => {});
+        callback(null, {
+          membership: toMembership({
+            ...membership.rows[0],
+            user_id: userId,
+            email: user.rows[0].email,
+            display_name: user.rows[0].display_name,
+            position: user.rows[0].position,
+            status: user.rows[0].status,
+            email_verified_at: user.rows[0].email_verified_at,
+          }),
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
       }
     },
 

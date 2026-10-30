@@ -57,6 +57,13 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile infra --profile apps down -v
 ```
 
+## Участники, приглашения и пароли
+
+- Кнопка **Участники** в выбранном проекте: добавление существующего пользователя, приглашение по email, смена роли и удаление.
+- Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.localhost**.
+- Ссылка сброса открывает форму нового пароля; смена пароля доступна в верхнем меню.
+- Уведомления и Gantt обновляются в реальном времени через `sync-service`.
+
 ## HTTPS
 
 Traefik использует собственный самоподписанный сертификат. Браузер покажет предупреждение — для local его нужно принять один раз.
@@ -131,6 +138,9 @@ tools/                 # проверки контрактов
 - [x] Helm charts for services and staging/prod umbrella values.
 - [x] Playwright smoke E2E.
 - [x] Security headers, CSP, API rate limiting and auth audit events.
+- [x] Project members, invitations, password reset/change and resend verification.
+- [x] Real-time Gantt synchronization through `sync-service`.
+- [x] Multi-user Playwright E2E with invitation and real-time updates.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
 - [x] Prometheus metrics, local Grafana dashboards and alerts.
 - [ ] Production staging deploy and real-cluster verification.

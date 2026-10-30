@@ -24,6 +24,10 @@
             >Пароль <input name="password" type="password" autocomplete="current-password" required
           /></label>
           <button class="primary" type="submit">Войти</button>
+          <button id="forgot-toggle" class="ghost" type="button">Забыли пароль?</button>
+          <button id="resend-verification" class="ghost" type="button">
+            Отправить подтверждение email
+          </button>
         </form>
         <form id="register-form" class="form hidden">
           <label>Email <input name="email" type="email" autocomplete="email" required /></label>
@@ -53,6 +57,7 @@
             Уведомления <span id="unread-count">0</span>
           </button>
           <button id="audit-toggle" class="ghost hidden" type="button">Аудит</button>
+          <button id="password-toggle" class="ghost" type="button">Пароль</button>
           <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
           <button id="logout" class="ghost" type="button">Выйти</button>
         </div>
@@ -62,7 +67,10 @@
         <section class="panel">
           <div class="panel-head">
             <h2>Проекты</h2>
-            <button id="new-project-toggle" class="ghost" type="button">Новый проект</button>
+            <div class="actions">
+              <button id="members-toggle" class="ghost hidden" type="button">Участники</button>
+              <button id="new-project-toggle" class="ghost" type="button">Новый проект</button>
+            </div>
           </div>
           <form id="project-form" class="form compact hidden">
             <label>Название <input name="name" required maxlength="200" /></label>
@@ -308,6 +316,71 @@
         </section>
       </div>
     </aside>
+
+    <div id="members-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Участники проекта</h2>
+          <button id="members-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <form id="member-invite-form" class="form compact">
+          <label>Email <input name="email" type="email" required /></label>
+          <label
+            >Роль
+            <select name="role">
+              <option value="manager">Менеджер</option>
+              <option value="editor" selected>Редактор</option>
+              <option value="participant">Участник</option>
+              <option value="viewer">Наблюдатель</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Добавить или пригласить</button>
+        </form>
+        <h3>Состав</h3>
+        <div id="member-list" class="list"></div>
+        <h3>Приглашения</h3>
+        <div id="invitation-list" class="list"></div>
+      </div>
+    </div>
+
+    <div id="password-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Смена пароля</h2>
+          <button id="password-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <form id="password-form" class="form compact">
+          <label>Текущий пароль <input name="currentPassword" type="password" required /></label>
+          <label
+            >Новый пароль
+            <input name="newPassword" type="password" minlength="8" required />
+          </label>
+          <button class="primary" type="submit">Сменить пароль</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="forgot-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Восстановление пароля</h2>
+          <button id="forgot-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <form id="forgot-form" class="form compact">
+          <label>Email <input name="email" type="email" required /></label>
+          <button class="primary" type="submit">Отправить ссылку</button>
+        </form>
+        <form id="reset-form" class="form compact hidden">
+          <p class="muted">Вставьте токен из письма и задайте новый пароль.</p>
+          <label>Токен <input name="token" required /></label>
+          <label
+            >Новый пароль
+            <input name="newPassword" type="password" minlength="8" required />
+          </label>
+          <button class="primary" type="submit">Сбросить пароль</button>
+        </form>
+      </div>
+    </div>
 
     <div id="audit-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">

@@ -189,6 +189,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -211,6 +213,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -233,6 +237,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -278,6 +284,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -286,6 +294,9 @@ services:
       DATABASE_URL: ${DATABASE_URL_USER}
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      SMTP_URL: smtp://mailpit:1025
+      SMTP_FROM: SMART OATI <no-reply@smart-oati.local>
+      PUBLIC_APP_URL: https://app.localhost
       DEV_AUTO_VERIFY: ${DEV_AUTO_VERIFY:-true}
       DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-}
       DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-}
@@ -308,6 +319,8 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: "8080"
