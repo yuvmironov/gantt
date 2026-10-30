@@ -111,6 +111,11 @@ function dependencyArrowEnum(value) {
   );
 }
 
+function fromDateTimestamp(value) {
+  const iso = fromTimestamp(value);
+  return iso ? iso.slice(0, 10) : undefined;
+}
+
 function timestampInput(value) {
   if (!value) return undefined;
   const date = new Date(value);
@@ -213,14 +218,37 @@ export function mapDependency(dependency) {
   };
 }
 
+export function mapComment(comment) {
+  return {
+    id: comment.id,
+    entityType: comment.entity_type,
+    entityId: comment.entity_id,
+    authorUserId: comment.author_user_id,
+    mentionedUserIds: comment.mentioned_user_ids ?? [],
+    mentionedUsers: [],
+    body: comment.body,
+    createdAt: fromTimestamp(comment.created_at),
+    updatedAt: fromTimestamp(comment.updated_at),
+  };
+}
+
+export function mapHoliday(holiday) {
+  return {
+    id: holiday.id,
+    diagramId: holiday.diagram_id,
+    holidayDate: fromDateTimestamp(holiday.holiday_date),
+    name: holiday.name,
+  };
+}
+
 export function mapSnapshot(snapshot) {
   return {
     diagram: mapDiagram(snapshot.diagram),
     directions: (snapshot.directions ?? []).map(mapDirection),
     tasks: (snapshot.tasks ?? []).map(mapTask),
     dependencies: (snapshot.dependencies ?? []).map(mapDependency),
-    comments: snapshot.comments ?? [],
-    holidays: snapshot.holidays ?? [],
+    comments: (snapshot.comments ?? []).map(mapComment),
+    holidays: (snapshot.holidays ?? []).map(mapHoliday),
     currentRevision: Number(snapshot.current_revision ?? 0),
     namesResolved: snapshot.names_resolved,
   };
@@ -717,6 +745,126 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/comments', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(request.query.offset ?? 0), 0);
+      const response = await call(
+        projectClient,
+        'ListComments',
+        {
+          entity_type: request.query.entityType,
+          entity_id: request.query.entityId,
+          page: { limit, offset },
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({
+        items: response.items.map(mapComment),
+        page: response.page,
+      });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.post('/api/v1/comments', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'CreateComment',
+        {
+          entity_type: request.body?.entityType,
+          entity_id: request.body?.entityId,
+          body: request.body?.body,
+          mentioned_user_ids: request.body?.mentionedUserIds ?? [],
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(201).send(mapComment(response.comment));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.patch('/api/v1/comments/:commentId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'UpdateComment',
+        {
+          comment_id: request.params.commentId,
+          body: request.body?.body,
+          mentioned_user_ids: request.body?.mentionedUserIds ?? [],
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapComment(response.comment));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/comments/:commentId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteComment',
+        { comment_id: request.params.commentId },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/diagrams/:diagramId/holidays', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetHolidays',
+        { diagram_id: request.params.diagramId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({ items: response.items.map(mapHoliday) });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.put('/api/v1/diagrams/:diagramId/holidays', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const items = (request.body?.items ?? []).map((item) => ({
+        holiday_date: timestampInput(item.holidayDate),
+        name: item.name ?? '',
+      }));
+      const response = await call(
+        projectClient,
+        'UpdateHolidays',
+        {
+          diagram_id: request.params.diagramId,
+          items,
+          base_revision: Number(request.body?.baseRevision ?? 0),
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send({ items: response.items.map(mapHoliday) });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
