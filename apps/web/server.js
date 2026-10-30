@@ -63,6 +63,7 @@ function staticFile(request, response) {
     if (!statSync(filePath).isFile()) throw new Error('not a file');
     response.writeHead(200, {
       'Content-Type': contentTypes[extname(filePath)] ?? 'application/octet-stream',
+      'Cache-Control': 'no-store',
     });
     createReadStream(filePath).pipe(response);
   } catch {
