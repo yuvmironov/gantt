@@ -214,6 +214,14 @@ function actorUserId(call_) {
   return call_.metadata.get('x-actor-user-id')[0] ?? '';
 }
 
+function hasField(request, field) {
+  return Object.prototype.hasOwnProperty.call(request, field) && request[field] !== undefined;
+}
+
+function versionConflict() {
+  return grpcError(status.ABORTED, 'version_conflict');
+}
+
 async function entityBelongsToDiagram(db, type, id, diagramId) {
   const table = type === 'task' ? 'plan.tasks' : 'plan.directions';
   const result = await db.query(
@@ -846,7 +854,7 @@ export function createProjectImplementation({ db, userClient }) {
       }
     },
 
-    async UpdateTaskProgress(call_, callback) {
+    async GetTask(call_, callback) {
       const taskId = String(call_.request.task_id ?? '');
       try {
         const task = await db.query(
@@ -855,6 +863,114 @@ export function createProjectImplementation({ db, userClient }) {
         );
         if (task.rowCount === 0) {
           callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          task.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.view');
+        callback(null, { task: toTask(task.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateTask(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        if (expectedVersion > 0 && expectedVersion !== task.rows[0].version) {
+          callback(versionConflict());
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          task.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+
+        const values = [taskId];
+        const sets = [];
+        const add = (column, value) => {
+          values.push(value);
+          sets.push(`${column} = $${values.length}`);
+        };
+
+        if (hasField(call_.request, 'name')) {
+          const name = String(call_.request.name).trim();
+          if (!name || name.length > 200) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'invalid_task_name'));
+            return;
+          }
+          add('name', name);
+        }
+        if (hasField(call_.request, 'description')) {
+          add('description', String(call_.request.description));
+        }
+        if (hasField(call_.request, 'result')) {
+          add('result', String(call_.request.result));
+        }
+        if (hasField(call_.request, 'priority')) {
+          add('priority', fromPriority(call_.request.priority));
+        }
+        if (hasField(call_.request, 'start_date')) {
+          add('start_date', dateString(call_.request.start_date));
+        }
+        if (hasField(call_.request, 'end_date')) {
+          add('end_date', dateString(call_.request.end_date));
+        }
+        if (hasField(call_.request, 'actual_end_date')) {
+          add('actual_end_date', dateString(call_.request.actual_end_date));
+        }
+        if (hasField(call_.request, 'jira_number')) {
+          add('jira_number', String(call_.request.jira_number).trim() || null);
+        }
+        if (hasField(call_.request, 'bp_flag')) {
+          add('bp_flag', Boolean(call_.request.bp_flag));
+        }
+        if (hasField(call_.request, 'sp_flag')) {
+          add('sp_flag', Boolean(call_.request.sp_flag));
+        }
+
+        if (sets.length === 0) {
+          callback(null, { task: toTask(task.rows[0]), revision: '0' });
+          return;
+        }
+        values.push(actorUserId(call_));
+        sets.push(`updated_by_user_id = $${values.length}`);
+        sets.push('version = version + 1', 'updated_at = now()');
+
+        const result = await db.query(
+          `UPDATE plan.tasks SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+          values,
+        );
+        callback(null, { task: toTask(result.rows[0]), revision: '0' });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateTaskProgress(call_, callback) {
+      const taskId = String(call_.request.task_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
+      try {
+        const task = await db.query(
+          `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
+          [taskId],
+        );
+        if (task.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        if (expectedVersion > 0 && expectedVersion !== task.rows[0].version) {
+          callback(versionConflict());
           return;
         }
         const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
@@ -883,6 +999,7 @@ export function createProjectImplementation({ db, userClient }) {
 
     async DeleteTask(call_, callback) {
       const taskId = String(call_.request.task_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
       try {
         const task = await db.query(
           `SELECT * FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL`,
@@ -890,6 +1007,10 @@ export function createProjectImplementation({ db, userClient }) {
         );
         if (task.rowCount === 0) {
           callback(grpcError(status.NOT_FOUND, 'task_not_found'));
+          return;
+        }
+        if (expectedVersion > 0 && expectedVersion !== task.rows[0].version) {
+          callback(versionConflict());
           return;
         }
         const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [

@@ -295,7 +295,18 @@ describe('api-gateway project routes', () => {
       created_at: { seconds: '1793290000', nanos: 0 },
       updated_at: { seconds: '1793290000', nanos: 0 },
     };
+    let updateRequest;
     const app = build(sessionUser, {
+      GetTask(_request, _metadata, callback) {
+        callback(null, { task });
+      },
+      UpdateTask(request, _metadata, callback) {
+        updateRequest = request;
+        callback(null, {
+          task: { ...task, name: 'Updated task', priority: 'PRIORITY_HIGH' },
+          revision: '0',
+        });
+      },
       UpdateTaskProgress(_request, _metadata, callback) {
         callback(null, { task, revision: '0' });
       },
@@ -317,6 +328,31 @@ describe('api-gateway project routes', () => {
     });
     const cookies = { '__Host-session': 'token', '__Host-csrf': 'csrf' };
     const headers = { 'x-csrf-token': 'csrf' };
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: '/api/v1/tasks/task-1',
+      cookies,
+    });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json()).toMatchObject({ id: 'task-1', status: 'in_progress' });
+
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/tasks/task-1',
+      cookies,
+      headers,
+      payload: { name: 'Updated task', priority: 'high', expectedVersion: 2 },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({ name: 'Updated task', priority: 'high' });
+    expect(updateRequest).toMatchObject({
+      task_id: 'task-1',
+      name: 'Updated task',
+      priority: 'PRIORITY_HIGH',
+      expected_version: 2,
+    });
+    expect(updateRequest.description).toBeUndefined();
 
     const progress = await app.inject({
       method: 'PATCH',
