@@ -13,6 +13,7 @@ const state = {
   filters: { query: '', status: '' },
 };
 
+let unreadTimer;
 const $ = (selector) => document.querySelector(selector);
 const authView = $('#auth-view');
 const appView = $('#app-view');
@@ -55,10 +56,10 @@ async function api(path, { method = 'GET', body } = {}) {
   });
   if (response.status === 401) {
     showAuth();
-    throw new Error('РўСЂРµР±СѓРµС‚СЃСЏ РІС…РѕРґ');
+    throw new Error('Требуется вход');
   }
   if (!response.ok) {
-    let detail = `РћС€РёР±РєР° ${response.status}`;
+    let detail = `Ошибка ${response.status}`;
     try {
       const problem = await response.json();
       detail = problem.detail || problem.title || detail;
@@ -67,7 +68,7 @@ async function api(path, { method = 'GET', body } = {}) {
     }
     if (detail.includes('session_limit_reached')) {
       detail =
-        'Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РґРІСѓС… Р°РєС‚РёРІРЅС‹С… СЃРµСЃСЃРёР№. РџРµСЂРµР·Р°РїСѓСЃС‚РёС‚Рµ user-service РёР»Рё Р·Р°РІРµСЂС€РёС‚Рµ СЃРµСЃСЃРёСЋ РІ РґСЂСѓРіРѕРј РѕРєРЅРµ.';
+        'Достигнут лимит двух активных сессий. Перезапустите user-service или завершите сессию в другом окне.';
     }
     throw new Error(detail);
   }
@@ -196,8 +197,7 @@ async function loadProjects() {
 function renderProjects() {
   const container = $('#project-list');
   if (state.projects.length === 0) {
-    container.innerHTML =
-      '<p class="empty">РџСЂРѕРµРєС‚РѕРІ РїРѕРєР° РЅРµС‚. РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІС‹Р№.</p>';
+    container.innerHTML = '<p class="empty">Проектов пока нет. Создайте первый.</p>';
     return;
   }
   container.innerHTML = state.projects
@@ -218,9 +218,9 @@ $('#project-list').addEventListener('click', async (event) => {
   state.diagram = null;
   state.snapshot = null;
   renderProjects();
-  $('#project-title').textContent = state.project?.name ?? 'Р’С‹Р±РµСЂРёС‚Рµ РїСЂРѕРµРєС‚';
-  $('#diagram-title').textContent = 'Р”РёР°РіСЂР°РјРјР°';
-  $('#diagram-hint').textContent = 'Р’С‹Р±РµСЂРёС‚Рµ РґРёР°РіСЂР°РјРјСѓ';
+  $('#project-title').textContent = state.project?.name ?? 'Выберите проект';
+  $('#diagram-title').textContent = 'Диаграмма';
+  $('#diagram-hint').textContent = 'Выберите диаграмму';
   $('#gantt-table').classList.add('hidden');
   $('#gantt-forms').classList.add('hidden');
   $('#import-toggle').classList.add('hidden');
@@ -264,8 +264,7 @@ async function loadDiagrams() {
 function renderDiagrams() {
   const container = $('#diagram-list');
   if (state.diagrams.length === 0) {
-    container.innerHTML =
-      '<p class="empty">Р’ РїСЂРѕРµРєС‚Рµ РїРѕРєР° РЅРµС‚ РґРёР°РіСЂР°РјРј.</p>';
+    container.innerHTML = '<p class="empty">В проекте пока нет диаграмм.</p>';
     return;
   }
   container.innerHTML = state.diagrams
@@ -273,7 +272,7 @@ function renderDiagrams() {
       (diagram) => `
         <button class="list-item ${state.diagram?.id === diagram.id ? 'selected' : ''}" data-diagram="${escapeHtml(diagram.id)}" type="button">
           <span class="item-title">${escapeHtml(diagram.name)}</span>
-          <span class="item-meta">${escapeHtml(diagram.dayMode === 'calendar' ? 'РљР°Р»РµРЅРґР°СЂСЊ' : 'Р Р°Р±РѕС‡РёРµ РґРЅРё')}</span>
+          <span class="item-meta">${escapeHtml(diagram.dayMode === 'calendar' ? 'Календарь' : 'Рабочие дни')}</span>
         </button>`,
     )
     .join('');
@@ -281,7 +280,7 @@ function renderDiagrams() {
 
 $('#new-diagram-toggle').addEventListener('click', () => {
   if (!state.project) {
-    showToast('РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РїСЂРѕРµРєС‚');
+    showToast('Сначала выберите проект');
     return;
   }
   $('#diagram-form').classList.toggle('hidden');
@@ -321,11 +320,11 @@ async function loadSnapshot() {
   if (!state.diagram) return;
   $('#gantt-table').classList.remove('hidden');
   $('#gantt-filters').classList.remove('hidden');
-  setTableMessage('Р—Р°РіСЂСѓР·РєР°...');
+  setTableMessage('Загрузка...');
   try {
     state.snapshot = await api(`/diagrams/${state.diagram.id}/snapshot`);
     $('#diagram-title').textContent = state.snapshot.diagram.name;
-    $('#diagram-hint').textContent = `Р РµРІРёР·РёСЏ ${state.snapshot.currentRevision}`;
+    $('#diagram-hint').textContent = `Ревизия ${state.snapshot.currentRevision}`;
     $('#export-json').href = `/api/v1/diagrams/${state.diagram.id}/export?format=json`;
     $('#export-json').classList.remove('hidden');
     $('#gantt-forms').classList.remove('hidden');
@@ -340,7 +339,7 @@ async function loadSnapshot() {
       else closeTask();
     }
   } catch (error) {
-    setTableMessage('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґРёР°РіСЂР°РјРјСѓ');
+    setTableMessage('Не удалось загрузить диаграмму');
     showToast(error.message);
   }
 }
@@ -348,10 +347,10 @@ async function loadSnapshot() {
 function statusLabel(status) {
   return (
     {
-      planned: 'РџР»Р°РЅ',
-      in_progress: 'Р’ СЂР°Р±РѕС‚Рµ',
-      done: 'Р“РѕС‚РѕРІРѕ',
-      blocked: 'Р‘Р»РѕРє',
+      planned: 'План',
+      in_progress: 'В работе',
+      done: 'Готово',
+      blocked: 'Блок',
     }[status] ?? status
   );
 }
@@ -405,7 +404,7 @@ function renderGantt() {
           <td>${escapeHtml(dates)}</td>
           <td>${escapeHtml(responsible?.displayName ?? '')}</td>
           <td class="row-actions">
-            <button class="ghost small" data-task-open="${escapeHtml(task.id)}" type="button">РћС‚РєСЂС‹С‚СЊ</button>
+            <button class="ghost small" data-task-open="${escapeHtml(task.id)}" type="button">Открыть</button>
             <button class="ghost small" data-progress="${escapeHtml(task.id)}" type="button">+25%</button>
           </td>
         </tr>`);
@@ -414,8 +413,7 @@ function renderGantt() {
 
   const body = $('#gantt-table tbody');
   body.innerHTML =
-    rows.join('') ||
-    '<tr><td colspan="7" class="empty">Р”РѕР±Р°РІСЊС‚Рµ РЅР°РїСЂР°РІР»РµРЅРёРµ Рё Р·Р°РґР°С‡Сѓ.</td></tr>';
+    rows.join('') || '<tr><td colspan="7" class="empty">Добавьте направление и задачу.</td></tr>';
   const select = $('#task-direction');
   select.innerHTML = directions
     .map(
@@ -504,20 +502,16 @@ $('#import-form').addEventListener('submit', async (event) => {
     });
     const job = await response.json();
     if (!response.ok) {
-      throw new Error(
-        job.detail ||
-          job.title ||
-          'РќРµ СѓРґР°Р»РѕСЃСЊ РёРјРїРѕСЂС‚РёСЂРѕРІР°С‚СЊ РґРёР°РіСЂР°РјРјСѓ',
-      );
+      throw new Error(job.detail || job.title || 'Не удалось импортировать диаграмму');
     }
     if (job.status !== 'completed') {
-      throw new Error(job.errorMessage || 'РРјРїРѕСЂС‚ Р·Р°РІРµСЂС€РёР»СЃСЏ СЃ РѕС€РёР±РєРѕР№');
+      throw new Error(job.errorMessage || 'Импорт завершился с ошибкой');
     }
     form.reset();
     $('#import-form').classList.add('hidden');
     await loadSnapshot();
     showToast(
-      `РРјРїРѕСЂС‚РёСЂРѕРІР°РЅРѕ: РЅР°РїСЂР°РІР»РµРЅРёР№ ${job.report?.directionsCount ?? 0}, Р·Р°РґР°С‡ ${job.report?.tasksCount ?? 0}`,
+      `Импортировано: направлений ${job.report?.directionsCount ?? 0}, задач ${job.report?.tasksCount ?? 0}`,
     );
   } catch (error) {
     showToast(error.message);
@@ -597,9 +591,9 @@ $('#task-drawer-close').addEventListener('click', closeTask);
 function assignmentRoleLabel(role) {
   return (
     {
-      responsible: 'РћС‚РІРµС‚СЃС‚РІРµРЅРЅС‹Р№',
-      executor: 'РСЃРїРѕР»РЅРёС‚РµР»СЊ',
-      co_executor: 'РЎРѕРёСЃРїРѕР»РЅРёС‚РµР»СЊ',
+      responsible: 'Ответственный',
+      executor: 'Исполнитель',
+      co_executor: 'Соисполнитель',
     }[role] ?? role
   );
 }
@@ -608,7 +602,7 @@ function renderAssignments() {
   const container = $('#assignment-list');
   const assignments = state.task?.assignments ?? [];
   if (assignments.length === 0) {
-    container.innerHTML = '<p class="empty">РќР°Р·РЅР°С‡РµРЅРёР№ РїРѕРєР° РЅРµС‚.</p>';
+    container.innerHTML = '<p class="empty">Назначений пока нет.</p>';
     return;
   }
   container.innerHTML = assignments
@@ -616,8 +610,8 @@ function renderAssignments() {
       (assignment) => `
         <div class="list-item assignment-item">
           <span class="item-title">${escapeHtml(assignment.displayName || assignment.assigneeId)}</span>
-          <span class="item-meta">${escapeHtml(assignmentRoleLabel(assignment.role))} В· ${escapeHtml(assignment.assigneeType === 'executor' ? 'РСЃРїРѕР»РЅРёС‚РµР»СЊ' : 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ')}</span>
-          <button class="ghost small" data-assignment-remove="${escapeHtml(assignment.id)}" type="button">РЈР±СЂР°С‚СЊ</button>
+          <span class="item-meta">${escapeHtml(assignmentRoleLabel(assignment.role))} · ${escapeHtml(assignment.assigneeType === 'executor' ? 'Исполнитель' : 'Пользователь')}</span>
+          <button class="ghost small" data-assignment-remove="${escapeHtml(assignment.id)}" type="button">Убрать</button>
         </div>`,
     )
     .join('');
@@ -643,14 +637,12 @@ $('#assignment-add').addEventListener('click', async () => {
   const assigneeType = $('#assignment-type').value;
   const assigneeId = $('#assignment-person').value;
   if (!assigneeId) {
-    showToast('РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РёСЃРїРѕР»РЅРёС‚РµР»РµР№');
+    showToast('Нет доступных исполнителей');
     return;
   }
   const current = state.task.assignments ?? [];
   if (role === 'co_executor' && current.filter((item) => item.role === role).length >= 2) {
-    showToast(
-      'РњРѕР¶РЅРѕ РЅР°Р·РЅР°С‡РёС‚СЊ РЅРµ Р±РѕР»РµРµ РґРІСѓС… СЃРѕРёСЃРїРѕР»РЅРёС‚РµР»РµР№',
-    );
+    showToast('Можно назначить не более двух соисполнителей');
     return;
   }
   const next = current.filter((item) => item.role !== role || role === 'co_executor');
@@ -710,7 +702,7 @@ $('#task-edit-form').addEventListener('submit', async (event) => {
     updateTaskInSnapshot(task);
     $('#task-drawer-title').textContent = `${task.wbsCode} ${task.name}`;
     renderGantt();
-    showToast('Р—Р°РґР°С‡Р° СЃРѕС…СЂР°РЅРµРЅР°');
+    showToast('Задача сохранена');
   } catch (error) {
     showToast(error.message);
   }
@@ -718,7 +710,7 @@ $('#task-edit-form').addEventListener('submit', async (event) => {
 
 $('#task-delete').addEventListener('click', async () => {
   if (!state.task) return;
-  if (!window.confirm('РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ?')) return;
+  if (!window.confirm('Удалить задачу?')) return;
   try {
     await api(`/tasks/${state.task.id}?expectedVersion=${state.task.version}`, {
       method: 'DELETE',
@@ -744,7 +736,7 @@ $('#task-progress-save').addEventListener('click', async () => {
     state.task = task;
     updateTaskInSnapshot(task);
     renderGantt();
-    showToast('РџСЂРѕРіСЂРµСЃСЃ РѕР±РЅРѕРІР»С‘РЅ');
+    showToast('Прогресс обновлён');
   } catch (error) {
     showToast(error.message);
   }
@@ -782,7 +774,7 @@ async function loadComments(taskId) {
 function renderComments() {
   const container = $('#comment-list');
   if (state.comments.length === 0) {
-    container.innerHTML = '<p class="empty">РљРѕРјРјРµРЅС‚Р°СЂРёРµРІ РїРѕРєР° РЅРµС‚.</p>';
+    container.innerHTML = '<p class="empty">Комментариев пока нет.</p>';
     return;
   }
   container.innerHTML = state.comments
@@ -790,8 +782,8 @@ function renderComments() {
       (comment) => `
         <div class="list-item comment-item">
           <span class="item-title">${escapeHtml(comment.body)}</span>
-          <span class="item-meta">${escapeHtml(comment.authorUserId)} В· ${formatDate(comment.createdAt)}</span>
-          <button class="ghost small" data-comment-delete="${escapeHtml(comment.id)}" type="button">РЈРґР°Р»РёС‚СЊ</button>
+          <span class="item-meta">${escapeHtml(comment.authorUserId)} · ${formatDate(comment.createdAt)}</span>
+          <button class="ghost small" data-comment-delete="${escapeHtml(comment.id)}" type="button">Удалить</button>
         </div>`,
     )
     .join('');
@@ -847,12 +839,12 @@ function renderDependencies() {
       .map(
         (dependency) => `
           <div class="list-item dependency-item">
-            <span class="item-title">${escapeHtml(wbsFor(dependency.predecessorType, dependency.predecessorId))} в†’ ${escapeHtml(wbsFor(dependency.successorType, dependency.successorId))}</span>
-            <span class="item-meta">${escapeHtml(dependency.lineStyle)} В· ${escapeHtml(dependency.arrowShape)}</span>
-            <button class="ghost small" data-dependency-delete="${escapeHtml(dependency.id)}" type="button">РЈРґР°Р»РёС‚СЊ</button>
+            <span class="item-title">${escapeHtml(wbsFor(dependency.predecessorType, dependency.predecessorId))} → ${escapeHtml(wbsFor(dependency.successorType, dependency.successorId))}</span>
+            <span class="item-meta">${escapeHtml(dependency.lineStyle)} · ${escapeHtml(dependency.arrowShape)}</span>
+            <button class="ghost small" data-dependency-delete="${escapeHtml(dependency.id)}" type="button">Удалить</button>
           </div>`,
       )
-      .join('') || '<p class="empty">Р—Р°РІРёСЃРёРјРѕСЃС‚РµР№ РїРѕРєР° РЅРµС‚.</p>';
+      .join('') || '<p class="empty">Зависимостей пока нет.</p>';
 
   const tasks = state.snapshot?.tasks ?? [];
   const options = tasks
@@ -882,7 +874,7 @@ $('#dependency-form').addEventListener('submit', async (event) => {
   const form = event.currentTarget;
   const data = new FormData(form);
   if (data.get('predecessorId') === data.get('successorId')) {
-    showToast('Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РЅС‹Рµ Р·Р°РґР°С‡Рё');
+    showToast('Выберите разные задачи');
     return;
   }
   try {
@@ -913,11 +905,11 @@ function renderHolidays() {
         (holiday) => `
           <div class="list-item">
             <span class="item-title">${escapeHtml(holiday.holidayDate)}</span>
-            <span class="item-meta">${escapeHtml(holiday.name || 'РџСЂР°Р·РґРЅРёРє')}</span>
-            <button class="ghost small" data-holiday-delete="${escapeHtml(holiday.holidayDate)}" type="button">РЈРґР°Р»РёС‚СЊ</button>
+            <span class="item-meta">${escapeHtml(holiday.name || 'Праздник')}</span>
+            <button class="ghost small" data-holiday-delete="${escapeHtml(holiday.holidayDate)}" type="button">Удалить</button>
           </div>`,
       )
-      .join('') || '<p class="empty">РџСЂР°Р·РґРЅРёРєРѕРІ РїРѕРєР° РЅРµС‚.</p>';
+      .join('') || '<p class="empty">Праздников пока нет.</p>';
 }
 
 async function saveHolidays(holidays) {
@@ -943,7 +935,7 @@ $('#holiday-form').addEventListener('submit', async (event) => {
   const data = new FormData(form);
   const holidays = [...(state.snapshot?.holidays ?? [])];
   if (holidays.some((holiday) => holiday.holidayDate === data.get('date'))) {
-    showToast('РўР°РєРѕР№ РїСЂР°Р·РґРЅРёРє СѓР¶Рµ РµСЃС‚СЊ');
+    showToast('Такой праздник уже есть');
     return;
   }
   holidays.push({ holidayDate: data.get('date'), name: data.get('name') });
@@ -960,8 +952,6 @@ $('#holiday-list').addEventListener('click', async (event) => {
   await saveHolidays(holidays);
 });
 
-let unreadTimer;
-
 async function loadUnreadCount() {
   try {
     const response = await api('/notifications/unread-count');
@@ -974,7 +964,7 @@ async function loadUnreadCount() {
 async function openNotifications() {
   $('#notifications-modal').classList.remove('hidden');
   const container = $('#notification-list');
-  container.innerHTML = '<p class="empty">Р—Р°РіСЂСѓР·РєР°...</p>';
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
   try {
     const response = await api('/notifications?limit=50');
     const items = response.items ?? [];
@@ -985,14 +975,13 @@ async function openNotifications() {
             <div class="list-item ${item.isRead ? '' : 'unread'}">
               <span class="item-title">${escapeHtml(item.title)}</span>
               <span class="item-meta">${escapeHtml(item.body)}</span>
-              ${item.isRead ? '' : `<button class="ghost small" data-notification-read="${escapeHtml(item.id)}" type="button">РџСЂРѕС‡РёС‚Р°РЅРѕ</button>`}
+              ${item.isRead ? '' : `<button class="ghost small" data-notification-read="${escapeHtml(item.id)}" type="button">Прочитано</button>`}
             </div>`,
         )
-        .join('') || '<p class="empty">РЈРІРµРґРѕРјР»РµРЅРёР№ РїРѕРєР° РЅРµС‚.</p>';
+        .join('') || '<p class="empty">Уведомлений пока нет.</p>';
     await loadUnreadCount();
   } catch (error) {
-    container.innerHTML =
-      '<p class="empty">РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СѓРІРµРґРѕРјР»РµРЅРёСЏ.</p>';
+    container.innerHTML = '<p class="empty">Не удалось загрузить уведомления.</p>';
     showToast(error.message);
   }
 }
@@ -1025,7 +1014,7 @@ $('#notifications-read-all').addEventListener('click', async () => {
 async function openSessions() {
   $('#sessions-modal').classList.remove('hidden');
   const container = $('#session-list');
-  container.innerHTML = '<p class="empty">Р—Р°РіСЂСѓР·РєР°...</p>';
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
   try {
     const response = await api('/auth/sessions');
     state.sessions = response.items ?? [];
@@ -1034,15 +1023,14 @@ async function openSessions() {
         .map(
           (session) => `
             <div class="list-item">
-              <span class="item-title">${escapeHtml(session.userAgent || 'РќРµРёР·РІРµСЃС‚РЅРѕРµ СѓСЃС‚СЂРѕР№СЃС‚РІРѕ')}</span>
-              <span class="item-meta">${escapeHtml(session.ip || '')} В· ${formatDate(session.lastSeenAt)}</span>
-              <button class="ghost small" data-session-revoke="${escapeHtml(session.id)}" type="button">Р—Р°РІРµСЂС€РёС‚СЊ</button>
+              <span class="item-title">${escapeHtml(session.userAgent || 'Неизвестное устройство')}</span>
+              <span class="item-meta">${escapeHtml(session.ip || '')} · ${formatDate(session.lastSeenAt)}</span>
+              <button class="ghost small" data-session-revoke="${escapeHtml(session.id)}" type="button">Завершить</button>
             </div>`,
         )
-        .join('') || '<p class="empty">РђРєС‚РёРІРЅС‹С… СЃРµСЃСЃРёР№ РЅРµС‚.</p>';
+        .join('') || '<p class="empty">Активных сессий нет.</p>';
   } catch (error) {
-    container.innerHTML =
-      '<p class="empty">РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРµСЃСЃРёРё.</p>';
+    container.innerHTML = '<p class="empty">Не удалось загрузить сессии.</p>';
     showToast(error.message);
   }
 }
