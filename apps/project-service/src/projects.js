@@ -206,6 +206,33 @@ function toDependency(row) {
   };
 }
 
+function toComment(row) {
+  return {
+    id: row.id,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    author_user_id: row.author_user_id ?? '',
+    mentioned_user_ids: row.mentioned_user_ids ?? [],
+    body: row.body,
+    created_at: toTimestamp(row.created_at),
+    updated_at: toTimestamp(row.updated_at),
+    deleted_at: toTimestamp(row.deleted_at),
+  };
+}
+
+function toHoliday(row) {
+  return {
+    id: row.id,
+    diagram_id: row.diagram_id,
+    holiday_date: toTimestamp(row.holiday_date),
+    name: row.name ?? '',
+  };
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 function mapDbError(error) {
   return error;
 }
@@ -229,6 +256,19 @@ async function entityBelongsToDiagram(db, type, id, diagramId) {
     [id, diagramId],
   );
   return result.rowCount > 0;
+}
+
+async function resolveCommentEntity(db, entityType, entityId) {
+  if (!['task', 'direction'].includes(entityType) || !isUuid(entityId)) return null;
+  const table = entityType === 'task' ? 'plan.tasks' : 'plan.directions';
+  const result = await db.query(
+    `SELECT d.project_id, e.diagram_id
+     FROM ${table} e
+     JOIN project.diagrams d ON d.id = e.diagram_id
+     WHERE e.id = $1 AND e.deleted_at IS NULL AND d.deleted_at IS NULL`,
+    [entityId],
+  );
+  return result.rows[0] ?? null;
 }
 
 async function createsTaskCycle(db, diagramId, fromId, toId) {
@@ -837,20 +877,272 @@ export function createProjectImplementation({ db, userClient }) {
            ORDER BY created_at ASC`,
           [diagramId],
         );
+        const comments = await db.query(
+          `SELECT c.*
+           FROM plan.comments c
+           WHERE c.deleted_at IS NULL
+             AND (
+               (c.entity_type = 'task' AND EXISTS (
+                 SELECT 1 FROM plan.tasks t
+                 WHERE t.id = c.entity_id AND t.diagram_id = $1 AND t.deleted_at IS NULL
+               ))
+               OR
+               (c.entity_type = 'direction' AND EXISTS (
+                 SELECT 1 FROM plan.directions d
+                 WHERE d.id = c.entity_id AND d.diagram_id = $1 AND d.deleted_at IS NULL
+               ))
+             )
+           ORDER BY c.created_at ASC`,
+          [diagramId],
+        );
+        const holidays = await db.query(
+          `SELECT * FROM plan.diagram_holidays
+           WHERE diagram_id = $1
+           ORDER BY holiday_date ASC`,
+          [diagramId],
+        );
+        const commentCounts = await db.query(
+          `SELECT c.entity_id, count(*)::int AS total
+           FROM plan.comments c
+           JOIN plan.tasks t ON t.id = c.entity_id
+           WHERE c.entity_type = 'task'
+             AND c.deleted_at IS NULL
+             AND t.diagram_id = $1
+             AND t.deleted_at IS NULL
+           GROUP BY c.entity_id`,
+          [diagramId],
+        );
+        const counts = new Map(commentCounts.rows.map((item) => [item.entity_id, item.total]));
         callback(null, {
           snapshot: {
             diagram: toDiagram(row),
             directions: directions.rows.map(toDirection),
-            tasks: tasks.rows.map(toTask),
+            tasks: tasks.rows.map((task) => ({
+              ...toTask(task),
+              comments_count: counts.get(task.id) ?? 0,
+            })),
             dependencies: dependencies.rows.map(toDependency),
-            comments: [],
-            holidays: [],
+            comments: comments.rows.map(toComment),
+            holidays: holidays.rows.map(toHoliday),
             current_revision: String(row.current_revision ?? 0),
             names_resolved: false,
           },
         });
       } catch (error) {
         callback(mapDbError(error));
+      }
+    },
+
+    async ListComments(call_, callback) {
+      const entityType = String(call_.request.entity_type ?? '');
+      const entityId = String(call_.request.entity_id ?? '');
+      const limit = Math.min(Math.max(Number(call_.request.page?.limit ?? 50), 1), 200);
+      const offset = Math.max(Number(call_.request.page?.offset ?? 0), 0);
+      try {
+        const entity = await resolveCommentEntity(db, entityType, entityId);
+        if (!entity) {
+          callback(grpcError(status.NOT_FOUND, 'comment_entity_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, entity.project_id, 'project.view');
+        const result = await db.query(
+          `SELECT * FROM plan.comments
+           WHERE entity_type = $1 AND entity_id = $2 AND deleted_at IS NULL
+           ORDER BY created_at ASC
+           LIMIT $3 OFFSET $4`,
+          [entityType, entityId, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total
+           FROM plan.comments
+           WHERE entity_type = $1 AND entity_id = $2 AND deleted_at IS NULL`,
+          [entityType, entityId],
+        );
+        callback(null, {
+          items: result.rows.map(toComment),
+          page: { total: count.rows[0].total, limit, offset },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateComment(call_, callback) {
+      const entityType = String(call_.request.entity_type ?? '');
+      const entityId = String(call_.request.entity_id ?? '');
+      const body = String(call_.request.body ?? '').trim();
+      const mentionedUserIds = call_.request.mentioned_user_ids ?? [];
+      if (!body || body.length > 5000 || mentionedUserIds.some((id) => !isUuid(id))) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_comment'));
+        return;
+      }
+      try {
+        const entity = await resolveCommentEntity(db, entityType, entityId);
+        if (!entity) {
+          callback(grpcError(status.NOT_FOUND, 'comment_entity_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, entity.project_id, 'project.comment.create');
+        const result = await db.query(
+          `INSERT INTO plan.comments
+             (entity_type, entity_id, author_user_id, mentioned_user_ids, body)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [entityType, entityId, actorUserId(call_), mentionedUserIds, body],
+        );
+        callback(null, { comment: toComment(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateComment(call_, callback) {
+      const commentId = String(call_.request.comment_id ?? '');
+      const body = String(call_.request.body ?? '').trim();
+      const mentionedUserIds = call_.request.mentioned_user_ids ?? [];
+      if (!body || body.length > 5000 || mentionedUserIds.some((id) => !isUuid(id))) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_comment'));
+        return;
+      }
+      try {
+        const comment = await db.query(
+          `SELECT * FROM plan.comments WHERE id = $1 AND deleted_at IS NULL`,
+          [commentId],
+        );
+        if (comment.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'comment_not_found'));
+          return;
+        }
+        const entity = await resolveCommentEntity(
+          db,
+          comment.rows[0].entity_type,
+          comment.rows[0].entity_id,
+        );
+        if (!entity) {
+          callback(grpcError(status.NOT_FOUND, 'comment_entity_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, entity.project_id, 'project.comment.create');
+        if (comment.rows[0].author_user_id !== actorUserId(call_)) {
+          await checkPermission(call_, userClient, entity.project_id, 'project.comment.moderate');
+        }
+        const result = await db.query(
+          `UPDATE plan.comments
+           SET body = $2, mentioned_user_ids = $3, updated_at = now()
+           WHERE id = $1
+           RETURNING *`,
+          [commentId, body, mentionedUserIds],
+        );
+        callback(null, { comment: toComment(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteComment(call_, callback) {
+      const commentId = String(call_.request.comment_id ?? '');
+      try {
+        const comment = await db.query(
+          `SELECT * FROM plan.comments WHERE id = $1 AND deleted_at IS NULL`,
+          [commentId],
+        );
+        if (comment.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'comment_not_found'));
+          return;
+        }
+        const entity = await resolveCommentEntity(
+          db,
+          comment.rows[0].entity_type,
+          comment.rows[0].entity_id,
+        );
+        if (!entity) {
+          callback(grpcError(status.NOT_FOUND, 'comment_entity_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, entity.project_id, 'project.comment.create');
+        if (comment.rows[0].author_user_id !== actorUserId(call_)) {
+          await checkPermission(call_, userClient, entity.project_id, 'project.comment.moderate');
+        }
+        await db.query(
+          `UPDATE plan.comments SET deleted_at = now(), updated_at = now() WHERE id = $1`,
+          [commentId],
+        );
+        callback(null, { deleted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetHolidays(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.view');
+        const result = await db.query(
+          `SELECT * FROM plan.diagram_holidays
+           WHERE diagram_id = $1
+           ORDER BY holiday_date ASC`,
+          [diagramId],
+        );
+        callback(null, { items: result.rows.map(toHoliday) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateHolidays(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const items = [];
+      const dates = new Set();
+      for (const item of call_.request.items ?? []) {
+        const holidayDate = dateString(item.holiday_date);
+        const name = String(item.name ?? '').trim();
+        if (!holidayDate || dates.has(holidayDate) || name.length > 200) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_holiday'));
+          return;
+        }
+        dates.add(holidayDate);
+        items.push({ holidayDate, name });
+      }
+
+      let client;
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'diagram.update');
+        client = await db.connect();
+        await client.query('BEGIN');
+        await client.query('DELETE FROM plan.diagram_holidays WHERE diagram_id = $1', [diagramId]);
+        const saved = [];
+        for (const item of items) {
+          const result = await client.query(
+            `INSERT INTO plan.diagram_holidays (diagram_id, holiday_date, name)
+             VALUES ($1, $2, $3)
+             RETURNING *`,
+            [diagramId, item.holidayDate, item.name || null],
+          );
+          saved.push(result.rows[0]);
+        }
+        await client.query('COMMIT');
+        callback(null, { items: saved.map(toHoliday), revision: '0' });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
       }
     },
 

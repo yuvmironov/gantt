@@ -414,6 +414,106 @@ describe('api-gateway project routes', () => {
     expect(deletedDependency.statusCode).toBe(204);
   });
 
+  it('manages comments and diagram holidays', async () => {
+    const comment = {
+      id: 'comment-1',
+      entity_type: 'task',
+      entity_id: 'task-1',
+      author_user_id: 'user-1',
+      mentioned_user_ids: [],
+      body: 'First comment',
+      created_at: { seconds: '1793290000', nanos: 0 },
+      updated_at: { seconds: '1793290000', nanos: 0 },
+    };
+    const holiday = {
+      id: 'holiday-1',
+      diagram_id: 'diagram-1',
+      holiday_date: { seconds: String(Date.UTC(2026, 11, 31) / 1000), nanos: 0 },
+      name: 'New Year',
+    };
+    const app = build(sessionUser, {
+      ListComments(_request, _metadata, callback) {
+        callback(null, {
+          items: [comment],
+          page: { total: 1, limit: 50, offset: 0 },
+        });
+      },
+      CreateComment(_request, _metadata, callback) {
+        callback(null, { comment });
+      },
+      UpdateComment(_request, _metadata, callback) {
+        callback(null, { comment: { ...comment, body: 'Updated' } });
+      },
+      DeleteComment(_request, _metadata, callback) {
+        callback(null, { deleted: true });
+      },
+      GetHolidays(_request, _metadata, callback) {
+        callback(null, { items: [holiday] });
+      },
+      UpdateHolidays(_request, _metadata, callback) {
+        callback(null, { items: [holiday], revision: '0' });
+      },
+    });
+    const cookies = { '__Host-session': 'token', '__Host-csrf': 'csrf' };
+    const headers = { 'x-csrf-token': 'csrf' };
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/comments?entityType=task&entityId=task-1',
+      cookies,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({ items: [{ id: 'comment-1' }] });
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/comments',
+      cookies,
+      headers,
+      payload: { entityType: 'task', entityId: 'task-1', body: 'First comment' },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ id: 'comment-1', body: 'First comment' });
+
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/comments/comment-1',
+      cookies,
+      headers,
+      payload: { body: 'Updated' },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({ body: 'Updated' });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/comments/comment-1',
+      cookies,
+      headers,
+    });
+    expect(deleted.statusCode).toBe(204);
+
+    const holidays = await app.inject({
+      method: 'GET',
+      url: '/api/v1/diagrams/diagram-1/holidays',
+      cookies,
+    });
+    expect(holidays.statusCode).toBe(200);
+    expect(holidays.json()).toMatchObject({
+      items: [{ id: 'holiday-1', holidayDate: '2026-12-31' }],
+    });
+
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/diagrams/diagram-1/holidays',
+      cookies,
+      headers,
+      payload: { items: [{ holidayDate: '2026-12-31', name: 'New Year' }] },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ items: [{ holidayDate: '2026-12-31' }] });
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {
