@@ -8,6 +8,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "@fastify/rate-limit": "10.2.0",
     "@smart-oati/service-kit": "workspace:*",
     "pg": "^8.23.1"
   }

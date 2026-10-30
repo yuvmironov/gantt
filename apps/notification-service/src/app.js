@@ -1,3 +1,4 @@
+import rateLimit from '@fastify/rate-limit';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 
 const serviceName = 'notification-service';
@@ -46,6 +47,8 @@ export function buildApp({ env = process.env, logger = true, db }) {
     config,
     logger,
     routes: async (app) => {
+      await app.register(rateLimit, { global: true, max: 200, timeWindow: '1 minute' });
+
       app.get('/internal/notifications', async (request) => {
         const userId = String(request.headers['x-user-id'] ?? '');
         const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
