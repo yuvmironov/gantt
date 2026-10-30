@@ -69,7 +69,7 @@ Traefik использует собственный самоподписанны
 | Mailpit SMTP | 1025 |
 | Mailpit UI | 8025 |
 | User & Access gRPC | 50051 |
-| Project / Diagram gRPC | 50052 |
+| Project / Diagram gRPC | internal 50051 |
 | Traefik HTTP/HTTPS | 80/443 |
 
 ## Ограничения
