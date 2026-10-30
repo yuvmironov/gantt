@@ -409,5 +409,97 @@ export function createProjectImplementation({ db, userClient }) {
         callback(mapDbError(error));
       }
     },
+
+    async GetDiagram(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      try {
+        const result = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        const diagram = result.rows[0];
+        await checkPermission(call_, userClient, diagram.project_id, 'project.view');
+        callback(null, {
+          diagram: toDiagram(diagram),
+          project_id: diagram.project_id,
+          current_revision: String(diagram.current_revision ?? 0),
+          names_resolved: false,
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateDiagram(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      try {
+        const current = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        const row = current.rows[0];
+        await checkPermission(call_, userClient, row.project_id, 'diagram.update');
+        const dayMode = call_.request.day_mode
+          ? call_.request.day_mode === 'DAY_MODE_CALENDAR'
+            ? 'calendar'
+            : 'working'
+          : row.day_mode;
+        const result = await db.query(
+          `UPDATE project.diagrams
+           SET name = COALESCE($2, name),
+               description = COALESCE($3, description),
+               day_mode = $4,
+               updated_by_user_id = $5,
+               updated_at = now()
+           WHERE id = $1
+           RETURNING *`,
+          [
+            diagramId,
+            call_.request.name ?? null,
+            call_.request.description ?? null,
+            dayMode,
+            actorUserId(call_),
+          ],
+        );
+        callback(null, { diagram: toDiagram(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteDiagram(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      try {
+        const current = await db.query(
+          `SELECT * FROM project.diagrams
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, current.rows[0].project_id, 'diagram.delete');
+        await db.query(
+          `UPDATE project.diagrams
+           SET deleted_at = now(), updated_by_user_id = $2, updated_at = now()
+           WHERE id = $1`,
+          [diagramId, actorUserId(call_)],
+        );
+        callback(null, { deleted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
   };
 }

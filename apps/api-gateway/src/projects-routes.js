@@ -281,4 +281,60 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       return sendProblem(reply, request, error);
     }
   });
+  app.get('/api/v1/diagrams/:diagramId', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetDiagram',
+        { diagram_id: request.params.diagramId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapDiagram(response.diagram));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.patch('/api/v1/diagrams/:diagramId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'UpdateDiagram',
+        {
+          diagram_id: request.params.diagramId,
+          name: request.body?.name,
+          description: request.body?.description,
+          day_mode:
+            request.body?.dayMode === undefined
+              ? undefined
+              : request.body.dayMode === 'calendar'
+                ? 'DAY_MODE_CALENDAR'
+                : 'DAY_MODE_WORKING',
+        },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapDiagram(response.diagram));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.delete('/api/v1/diagrams/:diagramId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      await call(
+        projectClient,
+        'DeleteDiagram',
+        { diagram_id: request.params.diagramId },
+        actorMetadata(current.user_id),
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
 }
