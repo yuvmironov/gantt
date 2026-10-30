@@ -1,4 +1,6 @@
 import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { auditRoutes } from './audit-routes.js';
@@ -53,6 +55,8 @@ export function buildApp({
     logger,
     routes: async (instance) => {
       await instance.register(cookie);
+      await instance.register(helmet);
+      await instance.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
       await instance.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
       await instance.register(authRoutes, { userClient: users });
       await instance.register(projectRoutes, {

@@ -25,6 +25,10 @@ export default [
     },
   },
   {
+    files: ['load/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly' } },
+  },
+  {
     files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',

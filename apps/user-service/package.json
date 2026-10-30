@@ -12,6 +12,7 @@
     "@grpc/grpc-js": "^1.14.0",
     "@node-rs/argon2": "^2.2.2",
     "@smart-oati/service-kit": "workspace:*",
+    "kafkajs": "2.2.4",
     "pg": "^8.23.1"
   }
 }

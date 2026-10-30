@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
+import { queueUserEvent } from './events.js';
 import { status } from '@grpc/grpc-js';
 
 const SESSION_ABSOLUTE_MS = 60 * 60 * 1000;
@@ -169,8 +170,11 @@ export async function ensureDevAdmin(db, env = process.env) {
   const password = String(env.DEV_ADMIN_PASSWORD ?? '');
   if (!email || !password) return false;
 
-  const lastName = String(env.DEV_ADMIN_LAST_NAME ?? '').trim() || 'Администратор';
-  const firstName = String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() || 'Системный';
+  const lastName =
+    String(env.DEV_ADMIN_LAST_NAME ?? '').trim() ||
+    'Р С’Р Т‘Р СР С‘Р Р…Р С‘РЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚';
+  const firstName =
+    String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() || 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР Р…РЎвЂ№Р в„–';
   const middleName = String(env.DEV_ADMIN_MIDDLE_NAME ?? '').trim() || null;
   const displayName = `${lastName} ${firstName}`.trim();
   const passwordHash = await hashPassword(password);
@@ -399,6 +403,15 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
             [attempts, level, lockedUntil, userStatus, user.id],
           );
           await client.query('COMMIT');
+          await queueUserEvent(db, {
+            aggregateType: 'user',
+            aggregateId: user.id,
+            eventType: 'auth.login.failed',
+            actorUserId: user.id,
+            entityType: 'user',
+            entityId: user.id,
+            payload: { userId: user.id, reasonCode: 'invalid_credentials' },
+          }).catch(() => {});
           callback(grpcError(status.UNAUTHENTICATED, 'invalid_credentials'));
           return;
         }
@@ -451,6 +464,15 @@ export function createUserImplementation({ db, devAutoVerify = false }) {
 
         const roles = await getRoles(client, user.id);
         await client.query('COMMIT');
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: user.id,
+          eventType: 'auth.login.succeeded',
+          actorUserId: user.id,
+          entityType: 'user',
+          entityId: user.id,
+          payload: { userId: user.id, sessionId: sessionResult.rows[0].id },
+        }).catch(() => {});
 
         callback(null, {
           user: toUser({ ...user, last_login_at: new Date() }, roles),

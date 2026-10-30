@@ -276,12 +276,16 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "8080"
       GRPC_PORT: ${GRPC_PORT:-50051}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_USER}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
       DEV_AUTO_VERIFY: ${DEV_AUTO_VERIFY:-true}
       DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-}
       DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-}
