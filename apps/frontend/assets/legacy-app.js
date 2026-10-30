@@ -1388,6 +1388,10 @@ function connectSync() {
   try {
     const socket = new window.WebSocket(syncUrl());
     state.syncSocket = socket;
+    window.__syncConnected = false;
+    socket.addEventListener('open', () => {
+      window.__syncConnected = true;
+    });
     socket.addEventListener('message', (message) => {
       let payload;
       try {
@@ -1410,6 +1414,7 @@ function connectSync() {
       }
     });
     socket.addEventListener('close', () => {
+      window.__syncConnected = false;
       state.syncSocket = null;
       if (state.user) window.setTimeout(connectSync, 3000);
     });
@@ -1419,6 +1424,7 @@ function connectSync() {
 }
 
 function disconnectSync() {
+  window.__syncConnected = false;
   window.clearTimeout(state.syncTimer);
   if (state.syncSocket) {
     state.syncSocket.onclose = null;

@@ -103,7 +103,7 @@ test('local Gantt workflow', async ({ page, browser }) => {
   await expect(memberDiagram).toBeVisible();
   await memberDiagram.click();
   await expect(memberPage.locator('#diagram-title')).toHaveText(diagramName);
-  await memberPage.waitForTimeout(1000);
+  await memberPage.waitForFunction(() => window.__syncConnected);
 
   const realtimeTask = `E2E realtime ${suffix}`;
   await taskForm.locator('input[name=name]').fill(realtimeTask);
