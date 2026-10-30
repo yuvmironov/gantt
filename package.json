@@ -13,12 +13,14 @@
     "test": "pnpm test:unit && pnpm test:contract",
     "test:unit": "vitest run",
     "test:contract": "node tools/check-contracts.mjs",
+    "test:e2e": "playwright test",
     "start:api-gateway": "node apps/api-gateway/src/index.js",
     "start:user-service": "node apps/user-service/src/index.js",
     "start:project-service": "node apps/project-service/src/index.js",
     "build": "pnpm -r --if-present build"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "eslint": "^9.15.0",
     "prettier": "^3.3.3",
     "vitest": "^5.0.5"

@@ -48,15 +48,45 @@ jobs:
       - name: Build
         run: pnpm build
 
+  db-bootstrap:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: smart_oati
+          POSTGRES_PASSWORD: smart_oati_dev
+          POSTGRES_DB: smart_oati_user
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smart_oati"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Check bootstrap
+        run: sh tools/check-db-bootstrap.sh
+
   ci-required:
     if: always()
-    needs: [quality]
+    needs: [quality, db-bootstrap]
     runs-on: ubuntu-latest
     steps:
       - name: Check required jobs
         run: |
           if [ "${{ needs.quality.result }}" != "success" ]; then
             echo "quality failed"
+            exit 1
+          fi
+          if [ "${{ needs.db-bootstrap.result }}" != "success" ]; then
+            echo "db-bootstrap failed"
             exit 1
           fi
           echo "ci ok"
