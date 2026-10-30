@@ -866,6 +866,302 @@ export function createProjectImplementation({ db, userClient }) {
       }
     },
 
+    async UpdateDirection(call_, callback) {
+      const directionId = String(call_.request.direction_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
+      try {
+        const current = await db.query(
+          `SELECT * FROM plan.directions WHERE id = $1 AND deleted_at IS NULL`,
+          [directionId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'direction_not_found'));
+          return;
+        }
+        if (expectedVersion > 0 && expectedVersion !== current.rows[0].version) {
+          callback(versionConflict());
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          current.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+
+        const values = [directionId];
+        const sets = [];
+        const add = (column, value) => {
+          values.push(value);
+          sets.push(`${column} = $${values.length}`);
+        };
+        if (hasField(call_.request, 'name')) {
+          const name = String(call_.request.name).trim();
+          if (!name || name.length > 200) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'invalid_direction_name'));
+            return;
+          }
+          add('name', name);
+        }
+        if (hasField(call_.request, 'description')) {
+          add('description', String(call_.request.description));
+        }
+        if (hasField(call_.request, 'result')) {
+          add('result', String(call_.request.result));
+        }
+        if (hasField(call_.request, 'priority')) {
+          add('priority', fromPriority(call_.request.priority));
+        }
+        if (hasField(call_.request, 'start_date')) {
+          add('start_date', dateString(call_.request.start_date));
+        }
+        if (hasField(call_.request, 'end_date')) {
+          add('end_date', dateString(call_.request.end_date));
+        }
+        if (hasField(call_.request, 'jira_number')) {
+          add('jira_number', String(call_.request.jira_number).trim() || null);
+        }
+        if (hasField(call_.request, 'bp_flag')) {
+          add('bp_flag', Boolean(call_.request.bp_flag));
+        }
+        if (hasField(call_.request, 'sp_flag')) {
+          add('sp_flag', Boolean(call_.request.sp_flag));
+        }
+        if (sets.length === 0) {
+          const assignments = await loadAssignments(db, userClient, 'direction', directionId);
+          callback(null, { direction: toDirection(current.rows[0], assignments), revision: '0' });
+          return;
+        }
+        values.push(actorUserId(call_));
+        sets.push(`updated_by_user_id = $${values.length}`);
+        sets.push('version = version + 1', 'updated_at = now()');
+        const result = await db.query(
+          `UPDATE plan.directions SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+          values,
+        );
+        const assignments = await loadAssignments(db, userClient, 'direction', directionId);
+        callback(null, {
+          direction: toDirection(result.rows[0], assignments),
+          revision: '0',
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteDirection(call_, callback) {
+      const directionId = String(call_.request.direction_id ?? '');
+      const expectedVersion = Number(call_.request.expected_version ?? 0);
+      let client;
+      try {
+        const current = await db.query(
+          `SELECT * FROM plan.directions WHERE id = $1 AND deleted_at IS NULL`,
+          [directionId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'direction_not_found'));
+          return;
+        }
+        if (expectedVersion > 0 && expectedVersion !== current.rows[0].version) {
+          callback(versionConflict());
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          current.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.delete');
+
+        client = await db.connect();
+        await client.query('BEGIN');
+        const tasks = await client.query(
+          `SELECT id FROM plan.tasks WHERE direction_id = $1 AND deleted_at IS NULL`,
+          [directionId],
+        );
+        const taskIds = tasks.rows.map((row) => row.id);
+        await client.query(
+          `UPDATE plan.tasks
+           SET deleted_at = now(), updated_at = now(), updated_by_user_id = $2
+           WHERE direction_id = $1`,
+          [directionId, actorUserId(call_)],
+        );
+        await client.query(
+          `UPDATE plan.directions
+           SET deleted_at = now(), updated_at = now(), updated_by_user_id = $2
+           WHERE id = $1`,
+          [directionId, actorUserId(call_)],
+        );
+        await client.query(
+          `DELETE FROM plan.dependencies
+           WHERE (predecessor_type = 'direction' AND predecessor_id = $1)
+              OR (successor_type = 'direction' AND successor_id = $1)
+              OR (predecessor_type = 'task' AND predecessor_id = ANY($2::uuid[]))
+              OR (successor_type = 'task' AND successor_id = ANY($2::uuid[]))`,
+          [directionId, taskIds],
+        );
+        await client.query(
+          `DELETE FROM plan.assignments
+           WHERE (entity_type = 'direction' AND entity_id = $1)
+              OR (entity_type = 'task' AND entity_id = ANY($2::uuid[]))`,
+          [directionId, taskIds],
+        );
+        await client.query('COMMIT');
+        callback(null, { deleted: true, revision: '0' });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
+      }
+    },
+
+    async ReorderDirections(call_, callback) {
+      const diagramId = String(call_.request.diagram_id ?? '');
+      const directionIds = call_.request.direction_ids ?? [];
+      let client;
+      try {
+        const diagram = await db.query(
+          `SELECT * FROM project.diagrams WHERE id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        if (diagram.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'diagram_not_found'));
+          return;
+        }
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+        const current = await db.query(
+          `SELECT id FROM plan.directions
+           WHERE diagram_id = $1 AND deleted_at IS NULL`,
+          [diagramId],
+        );
+        const currentIds = new Set(current.rows.map((row) => row.id));
+        if (
+          directionIds.length !== currentIds.size ||
+          new Set(directionIds).size !== directionIds.length ||
+          directionIds.some((id) => !currentIds.has(id))
+        ) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_direction_order'));
+          return;
+        }
+
+        client = await db.connect();
+        await client.query('BEGIN');
+        await client.query(
+          `UPDATE plan.directions
+           SET wbs_code = '~' || substr(replace(id::text, '-', ''), 1, 28)
+           WHERE diagram_id = $1`,
+          [diagramId],
+        );
+        for (const [index, directionId] of directionIds.entries()) {
+          const sortOrder = index + 1;
+          await client.query(
+            `UPDATE plan.directions
+             SET sort_order = $2, wbs_code = $3, updated_at = now(), updated_by_user_id = $4
+             WHERE id = $1`,
+            [directionId, sortOrder, String(sortOrder), actorUserId(call_)],
+          );
+          await client.query(
+            `UPDATE plan.tasks
+             SET wbs_code = $2 || substr(wbs_code, strpos(wbs_code, '.'))
+             WHERE direction_id = $1
+               AND deleted_at IS NULL
+               AND strpos(wbs_code, '.') > 0`,
+            [directionId, String(sortOrder)],
+          );
+        }
+        await client.query('COMMIT');
+        const result = await db.query(
+          `SELECT * FROM plan.directions
+           WHERE diagram_id = $1 AND deleted_at IS NULL
+           ORDER BY sort_order ASC`,
+          [diagramId],
+        );
+        const assignmentRows = await db.query(
+          `SELECT * FROM plan.assignments
+           WHERE entity_type = 'direction'
+             AND entity_id = ANY($1::uuid[])
+           ORDER BY role, created_at ASC`,
+          [result.rows.map((direction) => direction.id)],
+        );
+        const resolvedAssignments = await resolveAssignments(assignmentRows.rows, userClient);
+        const assignmentsByDirection = new Map();
+        assignmentRows.rows.forEach((assignment, index) => {
+          if (!assignmentsByDirection.has(assignment.entity_id)) {
+            assignmentsByDirection.set(assignment.entity_id, []);
+          }
+          assignmentsByDirection.get(assignment.entity_id).push(resolvedAssignments[index]);
+        });
+        callback(null, {
+          items: result.rows.map((direction) =>
+            toDirection(direction, assignmentsByDirection.get(direction.id) ?? []),
+          ),
+          revision: '0',
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
+      }
+    },
+
+    async SetDirectionResponsible(call_, callback) {
+      const directionId = String(call_.request.direction_id ?? '');
+      const item = call_.request.assignment ?? {};
+      const role = fromAssignmentRole(item.role);
+      const assigneeType = fromAssigneeType(item.assignee_type);
+      const assigneeId = String(item.assignee_id ?? '');
+      if (role !== 'responsible' || !assigneeType || !isUuid(assigneeId)) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_assignment'));
+        return;
+      }
+      let client;
+      try {
+        const current = await db.query(
+          `SELECT * FROM plan.directions WHERE id = $1 AND deleted_at IS NULL`,
+          [directionId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'direction_not_found'));
+          return;
+        }
+        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
+          current.rows[0].diagram_id,
+        ]);
+        await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+        client = await db.connect();
+        await client.query('BEGIN');
+        await client.query(
+          `DELETE FROM plan.assignments
+           WHERE entity_type = 'direction' AND entity_id = $1 AND role = 'responsible'`,
+          [directionId],
+        );
+        await client.query(
+          `INSERT INTO plan.assignments
+             (entity_type, entity_id, role, assignee_type, assignee_id, created_by_user_id)
+           VALUES ('direction', $1, 'responsible', $2, $3, $4)`,
+          [directionId, assigneeType, assigneeId, actorUserId(call_)],
+        );
+        await client.query(
+          `UPDATE plan.directions
+           SET version = version + 1, updated_at = now(), updated_by_user_id = $2
+           WHERE id = $1`,
+          [directionId, actorUserId(call_)],
+        );
+        await client.query('COMMIT');
+        const updated = await db.query(`SELECT * FROM plan.directions WHERE id = $1`, [
+          directionId,
+        ]);
+        const assignments = await loadAssignments(db, userClient, 'direction', directionId);
+        callback(null, {
+          direction: toDirection(updated.rows[0], assignments),
+          revision: '0',
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        callback(mapDbError(error));
+      } finally {
+        if (client) client.release();
+      }
+    },
+
     async CreateTask(call_, callback) {
       const diagramId = String(call_.request.diagram_id ?? '');
       const directionId = String(call_.request.direction_id ?? '');

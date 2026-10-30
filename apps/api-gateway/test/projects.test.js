@@ -578,6 +578,94 @@ describe('api-gateway project routes', () => {
     });
   });
 
+  it('updates, reorders, assigns and deletes directions', async () => {
+    const direction = {
+      id: 'direction-1',
+      diagram_id: 'diagram-1',
+      wbs_code: '1',
+      sort_order: 1,
+      name: 'Direction',
+      priority: 'PRIORITY_HIGH',
+      version: 2,
+      assignments: [
+        {
+          id: 'assignment-1',
+          role: 'ASSIGNMENT_ROLE_RESPONSIBLE',
+          assignee_type: 'ASSIGNEE_TYPE_USER',
+          assignee_id: 'user-1',
+          display_name: 'User One',
+          linked_user_id: 'user-1',
+          resolved: true,
+        },
+      ],
+      created_by_user_id: 'user-1',
+    };
+    let responsibleRequest;
+    const app = build(sessionUser, {
+      UpdateDirection(_request, _metadata, callback) {
+        callback(null, { direction, revision: '0' });
+      },
+      DeleteDirection(_request, _metadata, callback) {
+        callback(null, { deleted: true });
+      },
+      ReorderDirections(_request, _metadata, callback) {
+        callback(null, { items: [direction], revision: '0' });
+      },
+      SetDirectionResponsible(request, _metadata, callback) {
+        responsibleRequest = request;
+        callback(null, { direction, revision: '0' });
+      },
+    });
+    const cookies = { '__Host-session': 'token', '__Host-csrf': 'csrf' };
+    const headers = { 'x-csrf-token': 'csrf' };
+
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/directions/direction-1',
+      cookies,
+      headers,
+      payload: { name: 'Direction', priority: 'high', expectedVersion: 2 },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({
+      id: 'direction-1',
+      priority: 'high',
+      assignments: [{ role: 'responsible', displayName: 'User One', resolved: true }],
+    });
+
+    const reordered = await app.inject({
+      method: 'POST',
+      url: '/api/v1/diagrams/diagram-1/directions/reorder',
+      cookies,
+      headers,
+      payload: { directionIds: ['direction-1'] },
+    });
+    expect(reordered.statusCode).toBe(200);
+    expect(reordered.json()).toMatchObject({ items: [{ id: 'direction-1' }] });
+
+    const responsible = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/directions/direction-1/responsible',
+      cookies,
+      headers,
+      payload: { assignment: { assigneeType: 'user', assigneeId: 'user-1' } },
+    });
+    expect(responsible.statusCode).toBe(200);
+    expect(responsibleRequest.assignment).toMatchObject({
+      role: 'ASSIGNMENT_ROLE_RESPONSIBLE',
+      assignee_type: 'ASSIGNEE_TYPE_USER',
+      assignee_id: 'user-1',
+    });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/directions/direction-1',
+      cookies,
+      headers,
+    });
+    expect(deleted.statusCode).toBe(204);
+  });
+
   it('creates a project for the current user', async () => {
     let received;
     const app = build(sessionUser, {
