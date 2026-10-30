@@ -562,6 +562,54 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       return sendProblem(reply, request, error);
     }
   });
+  app.get('/api/v1/tasks/:taskId', async (request, reply) => {
+    try {
+      const current = await session(request, userClient);
+      const response = await call(
+        projectClient,
+        'GetTask',
+        { task_id: request.params.taskId },
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.patch('/api/v1/tasks/:taskId', async (request, reply) => {
+    if (requireCsrf(request, reply)) return reply;
+    try {
+      const current = await session(request, userClient);
+      const body = request.body ?? {};
+      const update = {
+        task_id: request.params.taskId,
+        expected_version: Number(body.expectedVersion ?? 0),
+        base_revision: Number(body.baseRevision ?? 0),
+      };
+      if ('name' in body) update.name = body.name;
+      if ('description' in body) update.description = body.description;
+      if ('result' in body) update.result = body.result;
+      if ('priority' in body) update.priority = priorityEnum(body.priority);
+      if ('startDate' in body) update.start_date = timestampInput(body.startDate);
+      if ('endDate' in body) update.end_date = timestampInput(body.endDate);
+      if ('actualEndDate' in body) update.actual_end_date = timestampInput(body.actualEndDate);
+      if ('jiraNumber' in body) update.jira_number = body.jiraNumber;
+      if ('bpFlag' in body) update.bp_flag = Boolean(body.bpFlag);
+      if ('spFlag' in body) update.sp_flag = Boolean(body.spFlag);
+
+      const response = await call(
+        projectClient,
+        'UpdateTask',
+        update,
+        actorMetadata(current.user_id),
+      );
+      return reply.send(mapTask(response.task));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.patch('/api/v1/tasks/:taskId/progress', async (request, reply) => {
     if (requireCsrf(request, reply)) return reply;
     try {
@@ -579,6 +627,8 @@ export async function projectRoutes(app, { userClient, projectClient }) {
               blocked: 'TASK_STATUS_BLOCKED',
             }[status] ?? 'TASK_STATUS_PLANNED',
           progress: Number(request.body?.progress ?? 0),
+          expected_version: Number(request.body?.expectedVersion ?? 0),
+          base_revision: Number(request.body?.baseRevision ?? 0),
         },
         actorMetadata(current.user_id),
       );
@@ -595,7 +645,11 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       await call(
         projectClient,
         'DeleteTask',
-        { task_id: request.params.taskId },
+        {
+          task_id: request.params.taskId,
+          expected_version: Number(request.query.expectedVersion ?? 0),
+          base_revision: Number(request.query.baseRevision ?? 0),
+        },
         actorMetadata(current.user_id),
       );
       return reply.code(204).send();
