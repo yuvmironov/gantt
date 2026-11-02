@@ -1,0 +1,3 @@
+<template>
+  <LegacyShell />
+</template>

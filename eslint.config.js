@@ -3,6 +3,8 @@ const ignores = [
   '**/dist/**',
   '**/build/**',
   '**/coverage/**',
+  'playwright-report/**',
+  'test-results/**',
   '**/generated/**',
   'openapi/**',
   'proto/**',
