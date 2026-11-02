@@ -7,8 +7,7 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   const executorName = `Executor${suffix}`;
   const managedEmail = `managed-${suffix}@smart-oati.test`;
 
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await page.locator('#login-form input[name=email]').fill('admin@smart-oati.local');
   await page.locator('#login-form input[name=password]').fill('ChangeMeDevOnly!');
   await page.locator('#login-form button[type=submit]').click();
@@ -88,8 +87,7 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
     ignoreHTTPSErrors: true,
   });
   const blockedPage = await blockedContext.newPage();
-  await blockedPage.goto('/');
-  await blockedPage.waitForFunction(() => window.__smartOatiReady);
+  await blockedPage.goto('/login');
   await blockedPage.locator('#login-form input[name=email]').fill(blockedEmail);
   await blockedPage.locator('#login-form input[name=password]').fill(password);
   await blockedPage.locator('#login-form button[type=submit]').click();

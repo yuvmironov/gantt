@@ -7,8 +7,7 @@ test('password reset through local mail', async ({ page, context }) => {
   const newPassword = 'ResetPassword456!';
   const mailPage = await context.newPage();
 
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await page.locator('#register-tab').click();
   await page.locator('#register-form input[name=email]').fill(email);
   await page.locator('#register-form input[name=lastName]').fill('Reset');
