@@ -17,6 +17,15 @@ const holidayDate = ref('');
 const holidayName = ref('');
 const importJob = ref(null);
 const importing = ref(false);
+const taskForm = reactive({ name: '', directionId: '' });
+const taskEdit = reactive({
+  name: '',
+  description: '',
+  priority: 'medium',
+  jiraNumber: '',
+  startDate: '',
+  endDate: '',
+});
 let syncSocket = null;
 
 function csrfToken() {
@@ -67,7 +76,7 @@ async function loadDiagrams(preferredDiagram) {
 async function loadSnapshot(preserveTask = false) {
   const previousId = preserveTask ? selectedTask.value?.id : null;
   snapshot.value = null;
-  selectedTask.value = null;
+  if (!preserveTask) selectedTask.value = null;
   if (!diagramId.value) return;
   snapshot.value = await api(`/diagrams/${diagramId.value}/snapshot`);
   const fresh = (snapshot.value?.tasks ?? []).find((task) => task.id === previousId);
@@ -75,14 +84,78 @@ async function loadSnapshot(preserveTask = false) {
     selectedTask.value = fresh;
     progress.value = Number(fresh.progress) || 0;
     status.value = fresh.status ?? 'planned';
+    fillTaskEdit(fresh);
   }
+}
+
+function fillTaskEdit(task) {
+  taskEdit.name = task.name ?? '';
+  taskEdit.description = task.description ?? '';
+  taskEdit.priority = task.priority ?? 'medium';
+  taskEdit.jiraNumber = task.jiraNumber ?? '';
+  taskEdit.startDate = task.startDate ? task.startDate.slice(0, 10) : '';
+  taskEdit.endDate = task.endDate ? task.endDate.slice(0, 10) : '';
 }
 
 async function selectTask(task) {
   selectedTask.value = task;
   progress.value = Number(task.progress) || 0;
   status.value = task.status ?? 'planned';
+  fillTaskEdit(task);
   comments.value = (await api(`/comments?entityType=task&entityId=${task.id}`)).items ?? [];
+}
+
+async function createTask() {
+  if (!taskForm.name.trim() || !taskForm.directionId) return;
+  try {
+    await api(`/diagrams/${diagramId.value}/tasks`, {
+      method: 'POST',
+      body: {
+        directionId: taskForm.directionId,
+        name: taskForm.name,
+        priority: 'medium',
+      },
+    });
+    taskForm.name = '';
+    await loadSnapshot();
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function saveTask() {
+  if (!selectedTask.value || !taskEdit.name.trim()) return;
+  try {
+    await api(`/tasks/${selectedTask.value.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: selectedTask.value.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        name: taskEdit.name,
+        description: taskEdit.description,
+        priority: taskEdit.priority,
+        jiraNumber: taskEdit.jiraNumber,
+        startDate: taskEdit.startDate || null,
+        endDate: taskEdit.endDate || null,
+      },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function deleteTask() {
+  if (!selectedTask.value) return;
+  try {
+    await api(
+      `/tasks/${selectedTask.value.id}?expectedVersion=${selectedTask.value.version}&baseRevision=${snapshot.value?.currentRevision ?? 0}`,
+      { method: 'DELETE' },
+    );
+    await loadSnapshot();
+  } catch (reason) {
+    error.value = reason.message;
+  }
 }
 
 async function saveProgress() {
@@ -104,17 +177,18 @@ async function saveProgress() {
 
 async function addComment() {
   if (!selectedTask.value || !commentBody.value.trim()) return;
+  const taskId = selectedTask.value.id;
   try {
     await api('/comments', {
       method: 'POST',
       body: {
         entityType: 'task',
-        entityId: selectedTask.value.id,
+        entityId: taskId,
         body: commentBody.value,
       },
     });
     commentBody.value = '';
-    comments.value = (await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)).items ?? [];
+    comments.value = (await api(`/comments?entityType=task&entityId=${taskId}`)).items ?? [];
   } catch (reason) {
     error.value = reason.message;
   }
@@ -329,6 +403,23 @@ onMounted(async () => {
           <input v-model.number="progress" type="number" min="0" max="100" step="5" />
           <button type="button" @click="saveProgress">Сохранить</button>
         </div>
+        <div class="stack">
+          <input v-model="taskEdit.name" placeholder="Название задачи" />
+          <textarea v-model="taskEdit.description" rows="2" placeholder="Описание" />
+          <select v-model="taskEdit.priority">
+            <option value="low">Низкий</option>
+            <option value="medium">Средний</option>
+            <option value="high">Высокий</option>
+            <option value="critical">Критический</option>
+          </select>
+          <input v-model="taskEdit.jiraNumber" placeholder="Jira" />
+          <div class="dates">
+            <input v-model="taskEdit.startDate" type="date" />
+            <input v-model="taskEdit.endDate" type="date" />
+          </div>
+          <button type="button" @click="saveTask">Сохранить задачу</button>
+          <button type="button" class="danger" @click="deleteTask">Удалить задачу</button>
+        </div>
         <div v-if="selectedTask.assignments?.length" class="assignments">
           <h3>Назначения</h3>
           <div v-for="assignment in selectedTask.assignments" :key="assignment.id" class="comment">
@@ -350,6 +441,18 @@ onMounted(async () => {
       </aside>
 
       <section v-if="snapshot" class="card manage">
+        <h3>Новая задача</h3>
+        <form class="stack" @submit.prevent="createTask">
+          <select v-model="taskForm.directionId" class="task-direction" required>
+            <option value="" disabled>Направление</option>
+            <option v-for="direction in snapshot.directions" :key="direction.id" :value="direction.id">
+              {{ direction.name }}
+            </option>
+          </select>
+          <input v-model="taskForm.name" placeholder="Название задачи" required />
+          <button type="submit">Создать задачу</button>
+        </form>
+
         <h3>Зависимости</h3>
         <div class="manage-list">
           <div v-for="dependency in snapshot.dependencies" :key="dependency.id" class="manage-item">
@@ -359,11 +462,11 @@ onMounted(async () => {
           <p v-if="!snapshot.dependencies?.length" class="empty">Связей пока нет.</p>
         </div>
         <form class="stack" @submit.prevent="addDependency">
-          <select v-model="dependencyForm.predecessorId" required>
+          <select v-model="dependencyForm.predecessorId" class="dep-predecessor" required>
             <option value="" disabled>Предшественник</option>
             <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
           </select>
-          <select v-model="dependencyForm.successorId" required>
+          <select v-model="dependencyForm.successorId" class="dep-successor" required>
             <option value="" disabled>Последователь</option>
             <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
           </select>
@@ -424,6 +527,7 @@ tbody tr:hover, tbody tr.selected { background: #eff6ff; }
 .manage-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 8px; font-size: 13px; }
 .manage-item span { overflow-wrap: anywhere; }
 .stack { display: grid; gap: 8px; margin-top: 10px; }
+.dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .stack button, .danger { background: #fff; color: #b91c1c; border-color: #fecaca; }
 .stack button { background: #111827; color: #fff; border-color: #111827; }
 .danger { padding: 5px 8px; font-size: 12px; }
