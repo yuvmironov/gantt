@@ -309,8 +309,33 @@ const projectName = computed(
   () => projects.value.find((project) => project.id === projectId.value)?.name ?? 'Проект',
 );
 
-const timelineBars = computed(() => {
+const ganttRows = computed(() => {
   const tasks = snapshot.value?.tasks ?? [];
+  const rows = [];
+  for (const direction of snapshot.value?.directions ?? []) {
+    rows.push({
+      key: `direction-${direction.id}`,
+      type: 'direction',
+      direction,
+      tasksCount: tasks.filter((task) => task.directionId === direction.id).length,
+    });
+    for (const task of tasks.filter((item) => item.directionId === direction.id)) {
+      rows.push({ key: `task-${task.id}`, type: 'task', task });
+    }
+  }
+  const ungrouped = tasks.filter(
+    (task) => !(snapshot.value?.directions ?? []).some((direction) => direction.id === task.directionId),
+  );
+  if (ungrouped.length) {
+    rows.push({ key: 'direction-ungrouped', type: 'direction', direction: { name: 'Без направления' }, tasksCount: ungrouped.length });
+    for (const task of ungrouped) rows.push({ key: `task-${task.id}`, type: 'task', task });
+  }
+  return rows.map((row, index) => ({ ...row, index }));
+});
+
+const timelineBars = computed(() => {
+  const taskRows = ganttRows.value.filter((row) => row.type === 'task');
+  const tasks = taskRows.map((row) => row.task);
   const dates = tasks
     .flatMap((task) => [task.startDate, task.endDate])
     .filter(Boolean)
@@ -319,13 +344,14 @@ const timelineBars = computed(() => {
   const min = dates.length ? Math.min(...dates) : Date.now();
   const max = dates.length ? Math.max(...dates) : min + 1000 * 60 * 60 * 24 * 30;
   const span = Math.max(max - min, 1000 * 60 * 60 * 24);
-  return tasks.map((task, index) => {
-    const start = task.startDate ? new Date(task.startDate).getTime() : min + (span / tasks.length) * index;
+  return taskRows.map((row) => {
+    const { task } = row;
+    const start = task.startDate ? new Date(task.startDate).getTime() : min + (span / tasks.length) * row.index;
     const end = task.endDate ? new Date(task.endDate).getTime() : start + span / Math.max(tasks.length, 1);
     return {
       task,
       style: {
-        top: `${index * 38 + 8}px`,
+        top: `${row.index * 38 + 8}px`,
         left: `${Math.min(96, Math.max(0, ((start - min) / span) * 100))}%`,
         width: `${Math.max(6, Math.min(100, ((end - start) / span) * 100))}%`,
       },
@@ -580,27 +606,33 @@ onMounted(async () => {
       <div v-if="snapshot" class="gantt-frame">
         <div class="gantt-labels">
           <div class="gantt-label-head"><span>Структура работ</span><span class="wbs">WBS</span></div>
-          <div
-            v-for="task in snapshot.tasks"
-            :key="task.id"
-            class="gantt-row-label task"
-            :class="{ selected: selectedTask?.id === task.id }"
-            @click="selectTask(task)"
-          >
-            <span class="caret">›</span>
-            <span class="label-name">{{ task.wbsCode }}. {{ task.name }}</span>
-            <span class="label-meta">
-              <span class="badge badge-dot" :class="statusBadgeClass(task.status)">{{ statusLabel(task.status) }}</span>
-              <span class="badge badge-neutral">{{ task.progress }}%</span>
-            </span>
-          </div>
+          <template v-for="row in ganttRows" :key="row.key">
+            <div v-if="row.type === 'direction'" class="gantt-row-label direction">
+              <span class="caret">⌄</span>
+              <span class="label-name">{{ row.direction.wbsCode ? `${row.direction.wbsCode}. ` : '' }}{{ row.direction.name }}</span>
+              <span class="label-meta"><span class="badge badge-neutral">{{ row.tasksCount }} задач</span></span>
+            </div>
+            <div
+              v-else
+              class="gantt-row-label task"
+              :class="{ selected: selectedTask?.id === row.task.id }"
+              @click="selectTask(row.task)"
+            >
+              <span class="caret">›</span>
+              <span class="label-name">{{ row.task.wbsCode }}. {{ row.task.name }}</span>
+              <span class="label-meta">
+                <span class="badge badge-dot" :class="statusBadgeClass(row.task.status)">{{ statusLabel(row.task.status) }}</span>
+                <span class="badge badge-neutral">{{ row.task.progress }}%</span>
+              </span>
+            </div>
+          </template>
         </div>
         <div class="gantt-timeline">
           <div class="gantt-time-head">
             <div class="gantt-month">План</div>
             <div class="gantt-week" v-for="week in 7" :key="week">Неделя {{ week }}</div>
           </div>
-          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, (snapshot.tasks?.length || 0) * 38 + 24)}px` }">
+          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px` }">
             <span class="gantt-today"></span>
             <div
               v-for="bar in timelineBars"
@@ -763,6 +795,8 @@ onMounted(async () => {
 .gantt-label-head { background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .gantt-label-head .wbs { margin-left: auto; }
 .gantt-row-label { cursor: pointer; font-size: 13px; }
+.gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: default; }
+.gantt-row-label.direction .caret { color: var(--color-text-muted); }
 .gantt-row-label:hover, .gantt-row-label.selected { background: #eff6ff; }
 .gantt-row-label .caret { color: var(--color-text-muted); }
 .label-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
