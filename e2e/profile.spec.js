@@ -17,6 +17,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
 
   await page.locator('#profile-toggle').click();
   await expect(page.locator('#profile-modal')).toBeVisible();
+  await expect(page.locator('#profile-form input[name=displayName]')).toHaveValue('Profile Tester');
   await page.locator('#profile-form input[name=displayName]').fill('Profile Updated');
   await page.locator('#profile-form button[type=submit]').click();
   await expect

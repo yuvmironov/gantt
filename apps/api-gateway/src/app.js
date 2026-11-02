@@ -60,7 +60,11 @@ export function buildApp({
     routes: async (instance) => {
       await instance.register(cookie);
       await instance.register(helmet);
-      await instance.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
+      await instance.register(rateLimit, {
+        global: true,
+        max: Number(env.RATE_LIMIT_MAX ?? 300),
+        timeWindow: '1 minute',
+      });
       await instance.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
       await instance.register(authRoutes, { userClient: users });
       await instance.register(accessRoutes, { userClient: users });
