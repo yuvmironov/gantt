@@ -15,6 +15,23 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   await expect(page.locator('#admin-toggle')).toBeVisible();
   await expect(page.locator('#executors-toggle')).toBeVisible();
 
+  const realtimeRejected = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const socket = new WebSocket('wss://sync.localhost/ws');
+        const timer = setTimeout(() => resolve(false), 5000);
+        socket.addEventListener('open', () => {
+          clearTimeout(timer);
+          resolve(false);
+        });
+        socket.addEventListener('error', () => {
+          clearTimeout(timer);
+          resolve(true);
+        });
+      }),
+  );
+  expect(realtimeRejected).toBe(true);
+
   await page.locator('#executors-toggle').click();
   await expect(page.locator('#executors-modal')).toBeVisible();
   await page.locator('#executor-form input[name=lastName]').fill(executorName);
@@ -65,4 +82,6 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
 
   await blockedRow.locator('[data-admin-block]').click();
   await expect(blockedRow).toContainText('активен');
+  await page.locator('#admin-close').click();
+  await page.locator('#logout').click();
 });
