@@ -26,7 +26,7 @@ export default [
   },
   {
     files: ['load/**/*.js'],
-    languageOptions: { globals: { __ENV: 'readonly' } },
+    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' } },
   },
   {
     files: ['**/*.js', '**/*.mjs'],

@@ -162,6 +162,7 @@ tools/                 # проверки контрактов
 - [x] Executor CRUD, user linking, admin user roles, blocking and user lifecycle.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
 - [x] Prometheus metrics, local Grafana dashboards and alerts.
+- [x] System settings UI, audit filters and authenticated k6 scenario.
 - [ ] Production staging deploy and real-cluster verification.
 
 ## Observability

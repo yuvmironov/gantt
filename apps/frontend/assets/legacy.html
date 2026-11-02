@@ -59,6 +59,7 @@
           <button id="audit-toggle" class="ghost hidden" type="button">Аудит</button>
           <button id="executors-toggle" class="ghost hidden" type="button">Исполнители</button>
           <button id="admin-toggle" class="ghost hidden" type="button">Админ</button>
+          <button id="settings-toggle" class="ghost hidden" type="button">Настройки</button>
           <button id="profile-toggle" class="ghost" type="button">Профиль</button>
           <button id="password-toggle" class="ghost" type="button">Пароль</button>
           <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
@@ -453,11 +454,28 @@
       </div>
     </div>
 
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Системные настройки</h2>
+          <button id="settings-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <p class="muted">JSON-массив объектов вида {"key","value","description"}.</p>
+        <textarea id="settings-json" rows="14"></textarea>
+        <button id="settings-save" class="primary" type="button">Сохранить</button>
+      </div>
+    </div>
+
     <div id="audit-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-card">
         <div class="panel-head">
           <h2>Аудит</h2>
           <button id="audit-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <div class="inline-fields">
+          <input id="audit-filter-action" placeholder="Action code" />
+          <input id="audit-filter-actor" placeholder="Actor user id" />
+          <button id="audit-filter-apply" class="ghost" type="button">Применить</button>
         </div>
         <div id="audit-list" class="list"></div>
       </div>

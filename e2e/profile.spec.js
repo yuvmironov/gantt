@@ -22,7 +22,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await expect
     .poll(async () => {
       const profile = await page.evaluate(async () => {
-        const response = await fetch('/api/v1/users/me');
+        const response = await fetch('/api/v1/users/me', { cache: 'no-store' });
         return response.json();
       });
       return profile.displayName;
@@ -34,7 +34,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await expect
     .poll(async () => {
       const preferences = await page.evaluate(async () => {
-        const response = await fetch('/api/v1/notifications/preferences');
+        const response = await fetch('/api/v1/notifications/preferences', { cache: 'no-store' });
         return response.json();
       });
       return preferences.items.some((item) => item.channel === 'email' && item.enabled);
@@ -46,7 +46,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await expect
     .poll(async () => {
       const linked = await page.evaluate(async () => {
-        const response = await fetch('/api/v1/users/me/contacts');
+        const response = await fetch('/api/v1/users/me/contacts', { cache: 'no-store' });
         return response.json();
       });
       return linked.telegramLinked;
@@ -57,7 +57,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await expect
     .poll(async () => {
       const unlinked = await page.evaluate(async () => {
-        const response = await fetch('/api/v1/users/me/contacts');
+        const response = await fetch('/api/v1/users/me/contacts', { cache: 'no-store' });
         return response.json();
       });
       return unlinked.telegramLinked;
