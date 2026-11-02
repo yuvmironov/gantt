@@ -1083,7 +1083,6 @@ async function openNotifications() {
   }
 }
 
-$('#notifications-toggle').addEventListener('click', openNotifications);
 $('#notifications-close').addEventListener('click', () =>
   $('#notifications-modal').classList.add('hidden'),
 );
