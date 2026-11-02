@@ -117,9 +117,7 @@ async function loadDirectory() {
 function showAuth() {
   state.user = null;
   disconnectSync();
-  authView.classList.remove('hidden');
-  appView.classList.add('hidden');
-  setTab(false);
+  window.location.assign('/login');
 }
 
 function showApp() {

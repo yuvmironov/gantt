@@ -5,8 +5,7 @@ test('nuxt notifications page renders', async ({ page }) => {
   const email = `notifications-${suffix}@smart-oati.test`;
   const password = 'NotificationsPassword123!';
 
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await page.locator('#register-tab').click();
   await page.locator('#register-form input[name=email]').fill(email);
   await page.locator('#register-form input[name=lastName]').fill('Notify');

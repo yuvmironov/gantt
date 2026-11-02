@@ -5,8 +5,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   const email = `profile-${suffix}@smart-oati.test`;
   const password = 'ProfilePassword123!';
 
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await page.locator('#register-tab').click();
   await page.locator('#register-form input[name=email]').fill(email);
   await page.locator('#register-form input[name=lastName]').fill('Profile');

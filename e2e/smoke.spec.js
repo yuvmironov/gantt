@@ -12,8 +12,7 @@ test('local Gantt workflow', async ({ page, browser }) => {
   const memberEmail = `e2e-member-${suffix}@smart-oati.test`;
   const memberPassword = 'E2eMemberPassword123!';
 
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await expect(page.locator('#auth-view')).toBeVisible();
 
   await page.locator('#register-tab').click();
@@ -207,7 +206,7 @@ test('local Gantt workflow', async ({ page, browser }) => {
     ignoreHTTPSErrors: true,
   });
   const limitedPage = await limitedContext.newPage();
-  await limitedPage.goto('/');
+  await limitedPage.goto('/login');
   await limitedPage.locator('#login-form input[name=email]').fill(email);
   await limitedPage.locator('#login-form input[name=password]').fill(password);
   await limitedPage.locator('#login-form button[type=submit]').click();

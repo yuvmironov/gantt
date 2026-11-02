@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('nuxt admin page renders users and settings', async ({ page }) => {
-  await page.goto('/');
-  await page.waitForFunction(() => window.__smartOatiReady);
+  await page.goto('/login');
   await page.locator('#login-form input[name=email]').fill('admin@smart-oati.local');
   await page.locator('#login-form input[name=password]').fill('ChangeMeDevOnly!');
   await page.locator('#login-form button[type=submit]').click();
