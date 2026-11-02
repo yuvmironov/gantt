@@ -15,8 +15,8 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await page.locator('#register-form button[type=submit]').click();
   await expect(page.locator('#app-view')).toBeVisible({ timeout: 20_000 });
 
-  await page.locator('#profile-toggle').click();
-  await expect(page.locator('#profile-modal')).toBeVisible();
+  await page.goto('/profile');
+  await expect(page.locator('.profile-page')).toBeVisible();
   await expect(page.locator('#profile-form input[name=displayName]')).toHaveValue('Profile Tester');
   await page.locator('#profile-form input[name=displayName]').fill('Profile Updated');
   await page.locator('#profile-form button[type=submit]').click();
@@ -35,7 +35,9 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await expect
     .poll(async () => {
       const preferences = await page.evaluate(async () => {
-        const response = await fetch('/api/v1/notifications/preferences', { cache: 'no-store' });
+        const response = await fetch('/api/v1/notifications/preferences', {
+          cache: 'no-store',
+        });
         return response.json();
       });
       return preferences.items.some((item) => item.channel === 'email' && item.enabled);
@@ -65,6 +67,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
     })
     .toBe(false);
 
-  await page.locator('#profile-close').click();
+  await page.locator('.back').click();
+  await expect(page.locator('#app-view')).toBeVisible();
   await page.locator('#logout').click();
 });

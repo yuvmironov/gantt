@@ -1828,5 +1828,6 @@ $('#delivery-log-toggle').addEventListener('click', async () => {
   }
 });
 
-window.__smartOatiReady = true;
-boot();
+boot().finally(() => {
+  window.__smartOatiReady = true;
+});
