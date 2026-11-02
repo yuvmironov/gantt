@@ -69,6 +69,8 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 ```bash
 pnpm local:up       # запуск infra + apps
 pnpm local:status   # состояние контейнеров
+pnpm local:health   # проверка app, sync и Mailpit
+pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи
 pnpm local:logs     # логи
 pnpm local:down     # остановка
 pnpm local:reset    # остановка с удалением volumes
