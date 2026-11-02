@@ -5,6 +5,7 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   const blockedEmail = `blocked-${suffix}@smart-oati.test`;
   const password = 'BlockedPassword123!';
   const executorName = `Executor${suffix}`;
+  const managedEmail = `managed-${suffix}@smart-oati.test`;
 
   await page.goto('/');
   await page.waitForFunction(() => window.__smartOatiReady);
@@ -41,6 +42,20 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   await expect(page.locator('#executor-list')).toContainText(executorName);
   await page.locator('#executors-close').click();
 
+  await page.locator('#admin-toggle').click();
+  await page.locator('#admin-create-form input[name=email]').fill(managedEmail);
+  await page.locator('#admin-create-form input[name=lastName]').fill('Managed');
+  await page.locator('#admin-create-form input[name=firstName]').fill('User');
+  await page.locator('#admin-create-form button[type=submit]').click();
+  const managedRow = page.locator('#admin-user-list .list-item').filter({ hasText: managedEmail });
+  await expect(managedRow).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await managedRow.locator('[data-admin-delete]').click();
+  await expect(managedRow.locator('[data-admin-block]')).toHaveAttribute(
+    'data-admin-block-action',
+    'unblock',
+  );
+
   await page.evaluate(
     async ({ email, secret }) => {
       const response = await fetch('/api/v1/auth/register', {
@@ -59,12 +74,14 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
     { email: blockedEmail, secret: password },
   );
 
-  await page.locator('#admin-toggle').click();
   await page.locator('#admin-user-search').fill(blockedEmail);
   const blockedRow = page.locator('#admin-user-list .list-item').filter({ hasText: blockedEmail });
   await expect(blockedRow).toBeVisible();
   await blockedRow.locator('[data-admin-block]').click();
-  await expect(blockedRow).toContainText('заблокирован');
+  await expect(blockedRow.locator('[data-admin-block]')).toHaveAttribute(
+    'data-admin-block-action',
+    'unblock',
+  );
 
   const blockedContext = await browser.newContext({
     baseURL: 'https://app.localhost',
@@ -81,7 +98,10 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   await blockedContext.close();
 
   await blockedRow.locator('[data-admin-block]').click();
-  await expect(blockedRow).toContainText('активен');
+  await expect(blockedRow.locator('[data-admin-block]')).toHaveAttribute(
+    'data-admin-block-action',
+    'block',
+  );
   await page.locator('#admin-close').click();
   await page.locator('#logout').click();
 });

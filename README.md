@@ -64,6 +64,18 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - Ссылка сброса открывает форму нового пароля; смена пароля доступна в верхнем меню.
 - Уведомления и Gantt обновляются в реальном времени через `sync-service`.
 
+## Локальные команды
+
+```bash
+pnpm local:up       # запуск infra + apps
+pnpm local:status   # состояние контейнеров
+pnpm local:logs     # логи
+pnpm local:down     # остановка
+pnpm local:reset    # остановка с удалением volumes
+pnpm local:backup   # дамп всех БД в backups/
+pnpm local:restore -- backups/<file>.sql
+```
+
 ## HTTPS
 
 Traefik использует собственный самоподписанный сертификат. Браузер покажет предупреждение — для local его нужно принять один раз.
@@ -142,7 +154,9 @@ tools/                 # проверки контрактов
 - [x] Real-time Gantt synchronization through `sync-service`.
 - [x] Multi-user Playwright E2E with invitation and real-time updates.
 - [x] Project-scoped real-time sync tokens and authenticated WebSocket.
-- [x] Executor CRUD, user linking, admin user roles and blocking.
+- [x] Email/Telegram delivery worker, notification preferences and Telegram linking.
+- [x] Session restore, profile editing and local admin user creation.
+- [x] Executor CRUD, user linking, admin user roles, blocking and user lifecycle.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
 - [x] Prometheus metrics, local Grafana dashboards and alerts.
 - [ ] Production staging deploy and real-cluster verification.

@@ -5,6 +5,7 @@ import multipart from '@fastify/multipart';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { accessRoutes } from './access-routes.js';
 import { adminRoutes } from './admin-routes.js';
+import { extraRoutes } from './extra-routes.js';
 import { auditRoutes } from './audit-routes.js';
 import { createAuditClient } from './audit-client.js';
 import { authRoutes } from './auth-routes.js';
@@ -65,6 +66,7 @@ export function buildApp({
       await instance.register(accessRoutes, { userClient: users });
       await instance.register(syncRoutes, { userClient: users, env });
       await instance.register(adminRoutes, { userClient: users });
+      await instance.register(extraRoutes, { userClient: users });
       await instance.register(projectRoutes, {
         userClient: users,
         projectClient: projects,

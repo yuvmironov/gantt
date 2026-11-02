@@ -162,6 +162,127 @@ export async function authRoutes(app, { userClient }) {
     }
   });
 
+  app.post('/api/v1/auth/restore', async (request, reply) => {
+    const rememberToken = request.cookies['__Host-remember'];
+    if (!rememberToken) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/remember_token_required',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Remember token is required',
+        instance: request.url,
+        code: 'remember_token_required',
+        traceId: request.id,
+      });
+    }
+    try {
+      const response = await call(userClient, 'RestoreSession', {
+        remember_token: rememberToken,
+        user_agent: request.headers['user-agent'] ?? '',
+        client_ip: request.ip,
+      });
+      setCookies(reply, response.set_cookie);
+      return reply.send({ user: mapUser(response.user), sessionId: response.session_id });
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/users/me', async (request, reply) => {
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: true,
+      });
+      const response = await call(userClient, 'GetCurrentUser', {
+        user_id: session.user_id,
+      });
+      return reply.send(mapUser(response.user));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.patch('/api/v1/users/me', async (request, reply) => {
+    if (!csrfValid(request)) {
+      return reply.code(403).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/csrf_invalid',
+        title: TITLES[403],
+        status: 403,
+        detail: 'Invalid CSRF token',
+        instance: request.url,
+        code: 'csrf_invalid',
+        traceId: request.id,
+      });
+    }
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      const session = await call(userClient, 'ValidateSession', {
+        session_token: token,
+        extend_idle: false,
+      });
+      const response = await call(userClient, 'UpdateUserProfile', {
+        user_id: session.user_id,
+        display_name: request.body?.displayName,
+        last_name: request.body?.lastName,
+        first_name: request.body?.firstName,
+        middle_name: request.body?.middleName,
+        position: request.body?.position,
+        timezone: request.body?.timezone,
+        locale: request.body?.locale,
+        actor_user_id: session.user_id,
+      });
+      return reply.send(mapUser(response.user));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
+  app.get('/api/v1/users/:userId', async (request, reply) => {
+    const token = request.cookies['__Host-session'];
+    if (!token) {
+      return reply.code(401).type('application/problem+json').send({
+        type: 'https://smart-oati.local/problems/unauthenticated',
+        title: TITLES[401],
+        status: 401,
+        detail: 'Session is required',
+        instance: request.url,
+        code: 'unauthenticated',
+        traceId: request.id,
+      });
+    }
+    try {
+      await call(userClient, 'ValidateSession', { session_token: token, extend_idle: false });
+      const response = await call(userClient, 'GetUser', { user_id: request.params.userId });
+      return reply.send(mapUser(response.user));
+    } catch (error) {
+      return sendProblem(reply, request, error);
+    }
+  });
+
   app.post('/api/v1/auth/email/resend', async (request, reply) => {
     try {
       const response = await call(userClient, 'ResendEmailVerification', {
