@@ -1167,6 +1167,7 @@ function roleLabel(role) {
 
 async function openMembers() {
   if (!state.project) return;
+  $('#members-vue-link').href = `/members?project=${state.project.id}`;
   $('#members-modal').classList.remove('hidden');
   await refreshMembers();
 }
