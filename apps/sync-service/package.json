@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@smart-oati/service-kit": "workspace:*",
+    "@smart-oati/shared": "workspace:*",
     "kafkajs": "2.2.4",
     "ws": "^8.18.0"
   }

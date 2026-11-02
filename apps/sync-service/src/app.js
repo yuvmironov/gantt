@@ -1,14 +1,21 @@
+import { verifySyncToken } from '@smart-oati/shared';
 import { createService, loadConfig } from '@smart-oati/service-kit';
 import { WebSocketServer } from 'ws';
 
 const serviceName = 'sync-service';
 const serviceVersion = '0.1.0';
 
+function rejectUpgrade(socket, status, reason) {
+  socket.write(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\n\r\n`);
+  socket.destroy();
+}
+
 export function buildApp({ env = process.env, logger = true } = {}) {
   const config = loadConfig(env, {
     logLevel: env.LOG_LEVEL ?? 'info',
     port: 8080,
   });
+  const secret = env.SYNC_TOKEN_SECRET ?? 'local-sync-secret';
 
   const wss = new WebSocketServer({ noServer: true });
   const app = createService({
@@ -18,13 +25,16 @@ export function buildApp({ env = process.env, logger = true } = {}) {
     logger,
     routes: async (instance) => {
       instance.post('/internal/broadcast', async (request) => {
-        const payload = JSON.stringify(request.body ?? {});
+        const body = request.body ?? {};
+        const projectId = String(body.event?.project_id ?? '');
         let delivered = 0;
         for (const client of wss.clients) {
-          if (client.readyState === 1) {
-            client.send(payload);
-            delivered += 1;
+          if (client.readyState !== 1) continue;
+          if (!client.projects?.has('*') && (!projectId || !client.projects?.has(projectId))) {
+            continue;
           }
+          client.send(JSON.stringify(body));
+          delivered += 1;
         }
         return { delivered };
       });
@@ -32,16 +42,30 @@ export function buildApp({ env = process.env, logger = true } = {}) {
   });
 
   app.server.on('upgrade', (request, socket, head) => {
-    if ((request.url ?? '') !== '/ws') {
-      socket.destroy();
+    let token;
+    try {
+      token = new URL(request.url ?? '/', 'http://sync.localhost').searchParams.get('token');
+    } catch {
+      rejectUpgrade(socket, 400, 'Bad Request');
+      return;
+    }
+    const claims = verifySyncToken(token, secret);
+    if (!claims) {
+      rejectUpgrade(socket, 401, 'Unauthorized');
       return;
     }
     wss.handleUpgrade(request, socket, head, (client) => {
+      client.userId = claims.sub;
+      client.projects = new Set(claims.projects);
+      client.tokenExpiresAt = claims.exp;
       wss.emit('connection', client, request);
     });
   });
+
   wss.on('connection', (client) => {
     client.send(JSON.stringify({ type: 'connected', service: serviceName }));
+    const expiresInMs = Math.max(0, client.tokenExpiresAt * 1000 - Date.now());
+    const expiryTimer = setTimeout(() => client.close(4001, 'token_expired'), expiresInMs);
     client.on('message', (raw) => {
       try {
         const message = JSON.parse(raw.toString());
@@ -52,7 +76,9 @@ export function buildApp({ env = process.env, logger = true } = {}) {
         client.send(JSON.stringify({ type: 'error', code: 'invalid_message' }));
       }
     });
+    client.on('close', () => clearTimeout(expiryTimer));
   });
+
   app.addHook('onClose', async () => {
     await new Promise((resolve) => wss.close(resolve));
   });

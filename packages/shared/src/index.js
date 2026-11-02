@@ -11,3 +11,5 @@ export function toArray(value) {
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
+
+export { signSyncToken, verifySyncToken } from './sync-token.js';

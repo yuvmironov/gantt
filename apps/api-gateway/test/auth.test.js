@@ -201,4 +201,25 @@ describe('api-gateway auth routes', () => {
     expect(response.statusCode).toBe(204);
     expect(response.headers['set-cookie'][0]).toContain('__Host-session=');
   });
+
+  it('issues a project-scoped sync token', async () => {
+    const app = build({
+      ValidateSession(_request, callback) {
+        callback(null, { user_id: 'user-1', session_id: 'session-1', global_roles: [] });
+      },
+      ListAccessibleProjectIds(_request, callback) {
+        callback(null, { items: [{ project_id: 'project-1' }] });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/sync/token',
+      cookies: { '__Host-session': 'token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ expiresIn: 300 });
+    expect(response.json().token).toContain('.');
+  });
 });
