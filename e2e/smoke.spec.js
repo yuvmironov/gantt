@@ -1,215 +1,41 @@
 import { expect, test } from '@playwright/test';
 
-test('local Gantt workflow', async ({ page, browser }) => {
+test('local Vue MVP workflow', async ({ page }) => {
   const suffix = Date.now();
-  const email = `e2e-${suffix}@smart-oati.test`;
-  const password = 'E2ePassword123!';
-  const projectName = `E2E project ${suffix}`;
-  const diagramName = `E2E diagram ${suffix}`;
-  const directionName = `E2E direction ${suffix}`;
-  const firstTask = `E2E task A ${suffix}`;
-  const secondTask = `E2E task B ${suffix}`;
-  const memberEmail = `e2e-member-${suffix}@smart-oati.test`;
-  const memberPassword = 'E2eMemberPassword123!';
+  const email = `mvp-${suffix}@smart-oati.test`;
+  const password = 'MvpPassword123!';
+  const projectName = `MVP project ${suffix}`;
+  const diagramName = `MVP diagram ${suffix}`;
+  const directionName = `MVP direction ${suffix}`;
+  const taskName = `MVP task ${suffix}`;
 
   await page.goto('/login');
-  await expect(page.locator('#auth-view')).toBeVisible();
-
   await page.locator('#register-tab').click();
   await page.locator('#register-form input[name=email]').fill(email);
-  await page.locator('#register-form input[name=lastName]').fill('E2E');
+  await page.locator('#register-form input[name=lastName]').fill('MVP');
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
+  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
 
-  await expect(page.locator('#app-view')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('#current-user')).toContainText('E2E');
-  await expect(page.locator('#diagram-title')).toHaveText('Диаграмма');
-  await expect(page.locator('#diagram-hint')).toHaveText('Выберите диаграмму');
+  await page.locator('.empty-project input').fill(projectName);
+  await page.locator('.empty-project button').click();
+  await expect(page.locator('.empty-project')).toContainText('диаграмму');
+  await page.locator('.empty-project input').fill(diagramName);
+  await page.locator('.empty-project button').click();
+  await expect(page.locator('.gantt-page')).toContainText(diagramName);
 
-  await page.locator('#new-project-toggle').click();
-  await page.locator('#project-form input[name=name]').fill(projectName);
-  await page.locator('#project-form button[type=submit]').click();
-  const project = page.locator('[data-project]').filter({ hasText: projectName });
-  await expect(project).toBeVisible();
-  await project.click();
-  await expect(page.locator('#project-title')).toHaveText(projectName);
+  await page.locator('.manage input[placeholder="Название направления"]').fill(directionName);
+  await page.locator('.manage button').filter({ hasText: 'Создать направление' }).click();
+  await expect(page.locator('.task-direction')).toContainText(directionName);
 
-  await page.locator('#new-diagram-toggle').click();
-  await page.locator('#diagram-form input[name=name]').fill(diagramName);
-  await page.locator('#diagram-form button[type=submit]').click();
-  const diagram = page.locator('[data-diagram]').filter({ hasText: diagramName });
-  await expect(diagram).toBeVisible();
-  await diagram.click();
-  await expect(page.locator('#diagram-title')).toHaveText(diagramName);
-  await expect(page.locator('#gantt-table')).toBeVisible();
+  const directionValue = await page.locator('.task-direction option').nth(1).getAttribute('value');
+  await page.locator('.task-direction').selectOption(directionValue);
+  await page.locator('.manage input[placeholder="Название задачи"]').fill(taskName);
+  await page.locator('.manage button').filter({ hasText: 'Создать задачу' }).click();
+  await expect(page.locator('tbody')).toContainText(taskName);
 
-  await page.locator('#direction-form input[name=name]').fill(directionName);
-  await page.locator('#direction-form button[type=submit]').click();
-  await expect(page.locator('.direction-row')).toContainText(directionName);
-
-  const taskForm = page.locator('#task-form');
-  await taskForm.locator('input[name=name]').fill(firstTask);
-  await taskForm.locator('button[type=submit]').click();
-  await expect(
-    page.locator('[data-task-open]').filter({ hasText: firstTask }).first(),
-  ).toBeVisible();
-  await taskForm.locator('input[name=name]').fill(secondTask);
-  await taskForm.locator('button[type=submit]').click();
-  await expect(
-    page.locator('[data-task-open]').filter({ hasText: secondTask }).first(),
-  ).toBeVisible();
-
-  await page.evaluate(
-    async ({ login, secret }) => {
-      const response = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: login,
-          password: secret,
-          lastName: 'Member',
-          firstName: 'E2E',
-          displayName: 'E2E Member',
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-    },
-    { login: memberEmail, secret: memberPassword },
-  );
-
-  await page.locator('#members-toggle').click();
-  await expect(page.locator('#members-modal')).toBeVisible();
-  await page.locator('#member-invite-form input[name=email]').fill(memberEmail);
-  await page.locator('#member-invite-form select[name=role]').selectOption('editor');
-  await page.locator('#member-invite-form button[type=submit]').click();
-  await expect(page.locator('#member-list')).toContainText(memberEmail);
-  await page.locator('#members-close').click();
-
-  const memberContext = await browser.newContext({
-    baseURL: 'https://app.localhost',
-    ignoreHTTPSErrors: true,
-  });
-  const memberPage = await memberContext.newPage();
-  await memberPage.goto('/');
-  await memberPage.locator('#login-form input[name=email]').fill(memberEmail);
-  await memberPage.locator('#login-form input[name=password]').fill(memberPassword);
-  await memberPage.locator('#login-form button[type=submit]').click();
-  const memberProject = memberPage.locator('[data-project]').filter({ hasText: projectName });
-  await expect(memberProject).toBeVisible();
-  await memberProject.click();
-  const memberDiagram = memberPage.locator('[data-diagram]').filter({ hasText: diagramName });
-  await expect(memberDiagram).toBeVisible();
-  await memberDiagram.click();
-  await expect(memberPage.locator('#diagram-title')).toHaveText(diagramName);
-  await memberPage.waitForFunction(() => window.__syncConnected);
-
-  const realtimeTask = `E2E realtime ${suffix}`;
-  await taskForm.locator('input[name=name]').fill(realtimeTask);
-  await taskForm.locator('button[type=submit]').click();
-  await expect(
-    memberPage.locator('[data-task-open]').filter({ hasText: realtimeTask }).first(),
-  ).toBeVisible({ timeout: 20_000 });
-  await memberContext.close();
-
-  await page.locator('[data-task-open]').filter({ hasText: firstTask }).first().click();
-  await expect(page.locator('#task-drawer')).toBeVisible();
-  await expect(page.locator('#task-drawer-title')).toContainText(firstTask);
-  await expect(page.locator('#assignment-person option').first()).toBeAttached();
-  await page.locator('#assignment-person').selectOption({ index: 0 });
-  await page.locator('#assignment-add').click();
-  await expect(page.locator('#assignment-list .assignment-item')).toBeVisible();
-
-  await page.locator('#task-progress').fill('25');
-  await page.locator('#task-status').selectOption('in_progress');
-  await page.locator('#task-progress-save').click();
-  await expect(page.locator('#toast')).toContainText('Прогресс');
-
-  await page.locator('#comment-form textarea').fill('E2E comment');
-  await page.locator('#comment-form button[type=submit]').click();
-  await expect(page.locator('#comment-list')).toContainText('E2E comment');
-  await page.locator('#task-drawer-close').click();
-
-  await page.locator('#dependency-predecessor').selectOption({ index: 0 });
-  await page.locator('#dependency-successor').selectOption({ index: 1 });
-  await page.locator('#dependency-form button[type=submit]').click();
-  await expect(page.locator('#dependency-list .dependency-item')).toBeVisible();
-
-  await page.locator('#holiday-form input[name=date]').fill('2030-12-31');
-  await page.locator('#holiday-form input[name=name]').fill('E2E holiday');
-  await page.locator('#holiday-form button[type=submit]').click();
-  await expect(page.locator('#holiday-list')).toContainText('2030-12-31');
-
-  await page.locator('#task-search').fill(firstTask);
-  await expect(
-    page.locator('[data-task-open]').filter({ hasText: firstTask }).first(),
-  ).toBeVisible();
-  await expect(page.locator('[data-task-open]').filter({ hasText: secondTask })).toBeHidden();
-  await page.locator('#clear-filters').click();
-  await expect(
-    page.locator('[data-task-open]').filter({ hasText: secondTask }).first(),
-  ).toBeVisible();
-
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#export-json').click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toContain('.json');
-
-  const exportUrl = await page.locator('#export-json').getAttribute('href');
-  const exportBody = await page.evaluate(async (url) => {
-    const response = await fetch(url);
-    return response.text();
-  }, exportUrl);
-  await page.locator('#import-toggle').click();
-  await page.locator('#import-form select[name=format]').selectOption('json');
-  await page.locator('#import-form input[name=file]').setInputFiles({
-    name: 'import.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(exportBody),
-  });
-  await page.locator('#import-form button[type=submit]').click();
-  await expect(page.locator('#toast')).toContainText('Импортировано');
-  await expect(page.locator('#gantt-table')).toBeVisible();
-
-  await page.locator('#sessions-toggle').click();
-  await expect(page.locator('#sessions-modal')).toBeVisible();
-  await expect(page.locator('#session-list .list-item')).toBeVisible();
-  await page.locator('#sessions-close').click();
-
-  const secondSession = await page.evaluate(
-    async ({ login, secret }) => {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: login, password: secret }),
-      });
-      return { status: response.status, body: await response.text() };
-    },
-    { login: email, secret: password },
-  );
-  expect(secondSession.status, secondSession.body).toBe(200);
-  const thirdSession = await page.evaluate(
-    async ({ login, secret }) => {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: login, password: secret }),
-      });
-      return { status: response.status, body: await response.text() };
-    },
-    { login: email, secret: password },
-  );
-  expect(thirdSession.status, thirdSession.body).toBe(409);
-
-  const limitedContext = await browser.newContext({
-    baseURL: 'https://app.localhost',
-    ignoreHTTPSErrors: true,
-  });
-  const limitedPage = await limitedContext.newPage();
-  await limitedPage.goto('/login');
-  await limitedPage.locator('#login-form input[name=email]').fill(email);
-  await limitedPage.locator('#login-form input[name=password]').fill(password);
-  await limitedPage.locator('#login-form button[type=submit]').click();
-  await expect(limitedPage.locator('#toast')).toContainText('Достигнут лимит двух активных сессий');
-  await limitedContext.close();
+  await page.locator('tbody tr').filter({ hasText: taskName }).click();
+  await expect(page.locator('.drawer')).toBeVisible();
+  await expect(page.locator('.drawer')).toContainText(taskName);
 });

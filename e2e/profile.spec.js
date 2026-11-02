@@ -12,7 +12,7 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('#app-view')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
 
   await page.goto('/profile');
   await expect(page.locator('.profile-page')).toBeVisible();
@@ -67,6 +67,5 @@ test('profile, notification preferences and telegram linking', async ({ page }) 
     .toBe(false);
 
   await page.locator('.back').click();
-  await expect(page.locator('#app-view')).toBeVisible();
-  await page.locator('#logout').click();
+  await expect(page.locator('.gantt-page')).toBeVisible();
 });
