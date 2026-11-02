@@ -1,5 +1,6 @@
 import { verifySyncToken } from '@smart-oati/shared';
 import { createService, loadConfig } from '@smart-oati/service-kit';
+import { Counter, Gauge } from 'prom-client';
 import { WebSocketServer } from 'ws';
 
 const serviceName = 'sync-service';
@@ -36,9 +37,26 @@ export function buildApp({ env = process.env, logger = true } = {}) {
           client.send(JSON.stringify(body));
           delivered += 1;
         }
+        eventsSent.inc(delivered);
         return { delivered };
       });
     },
+  });
+
+  const activeConnections = new Gauge({
+    name: 'sync_ws_connections_active',
+    help: 'Active authenticated sync WebSocket connections',
+    registers: [app.metrics.registry],
+  });
+  const authFailures = new Counter({
+    name: 'sync_ws_auth_failures_total',
+    help: 'Rejected sync WebSocket handshakes',
+    registers: [app.metrics.registry],
+  });
+  const eventsSent = new Counter({
+    name: 'sync_events_sent_total',
+    help: 'Realtime events delivered to clients',
+    registers: [app.metrics.registry],
   });
 
   app.server.on('upgrade', (request, socket, head) => {
@@ -51,6 +69,7 @@ export function buildApp({ env = process.env, logger = true } = {}) {
     }
     const claims = verifySyncToken(token, secret);
     if (!claims) {
+      authFailures.inc();
       rejectUpgrade(socket, 401, 'Unauthorized');
       return;
     }
@@ -63,6 +82,7 @@ export function buildApp({ env = process.env, logger = true } = {}) {
   });
 
   wss.on('connection', (client) => {
+    activeConnections.inc();
     client.send(JSON.stringify({ type: 'connected', service: serviceName }));
     const expiresInMs = Math.max(0, client.tokenExpiresAt * 1000 - Date.now());
     const expiryTimer = setTimeout(() => client.close(4001, 'token_expired'), expiresInMs);
@@ -76,7 +96,10 @@ export function buildApp({ env = process.env, logger = true } = {}) {
         client.send(JSON.stringify({ type: 'error', code: 'invalid_message' }));
       }
     });
-    client.on('close', () => clearTimeout(expiryTimer));
+    client.on('close', () => {
+      activeConnections.dec();
+      clearTimeout(expiryTimer);
+    });
   });
 
   app.addHook('onClose', async () => {

@@ -82,6 +82,11 @@ env:
     value: "sync"
   - name: SYNC_SERVICE_URL
     value: "http://127.0.0.1:8080"
+  - name: SYNC_TOKEN_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: smart-oati-sync
+        key: token
 
 envFrom: []
 externalSecret:
