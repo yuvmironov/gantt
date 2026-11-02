@@ -59,6 +59,7 @@
           <button id="audit-toggle" class="ghost hidden" type="button">Аудит</button>
           <button id="executors-toggle" class="ghost hidden" type="button">Исполнители</button>
           <button id="admin-toggle" class="ghost hidden" type="button">Админ</button>
+          <button id="profile-toggle" class="ghost" type="button">Профиль</button>
           <button id="password-toggle" class="ghost" type="button">Пароль</button>
           <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
           <button id="logout" class="ghost" type="button">Выйти</button>
@@ -409,7 +410,42 @@
           <button id="admin-close" class="ghost" type="button">Закрыть</button>
         </div>
         <input id="admin-user-search" type="search" placeholder="Поиск по email или имени" />
+        <form id="admin-create-form" class="form compact">
+          <label>Email <input name="email" type="email" required /></label>
+          <label>Фамилия <input name="lastName" required /></label>
+          <label>Имя <input name="firstName" required /></label>
+          <label><input name="appAdmin" type="checkbox" /> Администратор</label>
+          <button class="primary" type="submit">Создать пользователя</button>
+        </form>
         <div id="admin-user-list" class="list"></div>
+      </div>
+    </div>
+
+    <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Профиль и уведомления</h2>
+          <button id="profile-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <form id="profile-form" class="form compact">
+          <label>Отображаемое имя <input name="displayName" /></label>
+          <label>Фамилия <input name="lastName" /></label>
+          <label>Имя <input name="firstName" /></label>
+          <label>Должность <input name="position" /></label>
+          <button class="primary" type="submit">Сохранить профиль</button>
+        </form>
+        <form id="preferences-form" class="form compact">
+          <p class="muted">Каналы уведомлений</p>
+          <label><input name="internal" type="checkbox" /> В приложении</label>
+          <label><input name="email" type="checkbox" /> Email</label>
+          <label><input name="telegram" type="checkbox" /> Telegram</label>
+          <button class="primary" type="submit">Сохранить уведомления</button>
+        </form>
+        <div class="inline-fields">
+          <button id="telegram-code" class="ghost" type="button">Получить код Telegram</button>
+          <button id="telegram-unlink" class="ghost" type="button">Отвязать Telegram</button>
+        </div>
+        <p id="telegram-code-value" class="muted"></p>
       </div>
     </div>
 

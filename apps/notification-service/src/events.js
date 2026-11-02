@@ -1,6 +1,28 @@
 import { Kafka, logLevel } from 'kafkajs';
 
-export async function startNotificationConsumer(db, env = process.env) {
+export async function enqueueDeliveries(db, notificationId, userId, eventType) {
+  const prefs = await db.query(
+    `SELECT channel, enabled FROM notify.notification_preferences
+     WHERE user_id = $1 AND event_type = $2`,
+    [userId, eventType],
+  );
+  const configured = new Map(prefs.rows.map((row) => [row.channel, row.enabled]));
+  const channels = [
+    ['internal', configured.has('internal') ? configured.get('internal') : true],
+    ['email', configured.has('email') ? configured.get('email') : true],
+    ['telegram', configured.has('telegram') ? configured.get('telegram') : false],
+  ];
+  for (const [channel, enabled] of channels) {
+    if (!enabled) continue;
+    await db.query(
+      `INSERT INTO delivery.notification_deliveries (notification_id, channel)
+       VALUES ($1, $2) ON CONFLICT (notification_id, channel) DO NOTHING`,
+      [notificationId, channel],
+    );
+  }
+}
+
+export async function startNotificationConsumer(db, userClient, env = process.env) {
   const kafka = new Kafka({
     clientId: 'notification-consumer',
     brokers: String(env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
@@ -24,7 +46,9 @@ export async function startNotificationConsumer(db, env = process.env) {
 
       if (event.event_type === 'task.assignments.changed') {
         for (const assignment of event.payload?.assignments ?? []) {
-          if (!['user', 'ASSIGNEE_TYPE_USER'].includes(assignment.assigneeType)) continue;
+          const assigneeType = assignment.assigneeType ?? assignment.assignee_type;
+          const assigneeId = assignment.assigneeId ?? assignment.assignee_id;
+          if (!['user', 'ASSIGNEE_TYPE_USER'].includes(assigneeType)) continue;
           await db.query(
             `INSERT INTO notify.notifications
                (recipient_user_id, project_id, diagram_id, event_type, title, body,
@@ -34,7 +58,7 @@ export async function startNotificationConsumer(db, env = process.env) {
                      'Проверьте назначение в Gantt-диаграмме', 'task',
                      NULLIF($4, '')::uuid, $5)`,
             [
-              assignment.assigneeId,
+              assigneeId,
               event.project_id,
               event.diagram_id,
               event.entity_id,

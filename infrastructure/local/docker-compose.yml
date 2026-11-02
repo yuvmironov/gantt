@@ -241,6 +241,8 @@ services:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
+      user-service:
+        condition: service_started
     environment:
       NODE_ENV: production
       PORT: "8080"
@@ -249,6 +251,11 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
       KAFKA_CONSUMER_GROUP_NOTIFICATION: notification
+      USER_SERVICE_GRPC: user-service:50051
+      SMTP_URL: smtp://mailpit:1025
+      SMTP_FROM: SMART OATI <no-reply@smart-oati.local>
+      TELEGRAM_API_URL: http://telegram-mock:8080
+      TELEGRAM_BOT_TOKEN: local-test-token
     networks: [smart-oati]
 
   frontend:

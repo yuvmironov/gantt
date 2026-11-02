@@ -1594,6 +1594,7 @@ async function loadAdminUsers() {
                   : `<div class="inline-fields">
                       <button class="ghost small" data-admin-role="${escapeHtml(user.id)}" data-admin-role-value="${isAdmin ? 'false' : 'true'}" type="button">${isAdmin ? 'Снять админа' : 'Сделать админом'}</button>
                       <button class="ghost small" data-admin-block="${escapeHtml(user.id)}" data-admin-block-action="${user.status === 'blocked' ? 'unblock' : 'block'}" type="button">${user.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'}</button>
+                      <button class="ghost small" data-admin-delete="${escapeHtml(user.id)}" type="button">Удалить</button>
                     </div>`
               }
             </div>`;
@@ -1630,6 +1631,143 @@ $('#admin-user-list').addEventListener('click', async (event) => {
       return;
     }
     await loadAdminUsers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#admin-create-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api('/admin/users', {
+      method: 'POST',
+      body: {
+        email: data.get('email'),
+        lastName: data.get('lastName'),
+        firstName: data.get('firstName'),
+        appAdmin: data.get('appAdmin') === 'on',
+      },
+    });
+    form.reset();
+    showToast('Пользователь создан, письмо для установки пароля отправлено.');
+    await loadAdminUsers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#admin-user-list').addEventListener('click', async (event) => {
+  const remove = event.target.closest('[data-admin-delete]');
+  if (!remove) return;
+  if (!window.confirm('Удалить пользователя?')) return;
+  try {
+    await api(`/admin/users/${remove.dataset.adminDelete}`, { method: 'DELETE' });
+    showToast('Пользователь удалён.');
+    await loadAdminUsers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+async function openProfile() {
+  $('#profile-modal').classList.remove('hidden');
+  try {
+    const [user, contacts, preferences] = await Promise.all([
+      api('/users/me'),
+      api('/users/me/contacts'),
+      api('/notifications/preferences'),
+    ]);
+    const profile = $('#profile-form');
+    profile.querySelector('input[name=displayName]').value = user.displayName ?? '';
+    profile.querySelector('input[name=lastName]').value = user.lastName ?? '';
+    profile.querySelector('input[name=firstName]').value = user.firstName ?? '';
+    profile.querySelector('input[name=position]').value = user.position ?? '';
+    const items = preferences.items ?? [];
+    const channels = ['internal', 'email', 'telegram'];
+    for (const channel of channels) {
+      const item = items.find((entry) => entry.channel === channel);
+      $('#preferences-form input[name=' + channel + ']').checked = item
+        ? item.enabled
+        : channel !== 'telegram';
+    }
+    $('#telegram-code-value').textContent = contacts.telegramLinked
+      ? `Telegram привязан: ${contacts.telegramUsername || contacts.telegramUserId}`
+      : 'Telegram не привязан';
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+$('#profile-toggle').addEventListener('click', openProfile);
+$('#profile-close').addEventListener('click', () => $('#profile-modal').classList.add('hidden'));
+
+$('#profile-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try {
+    await api('/users/me', {
+      method: 'PATCH',
+      body: {
+        displayName: data.get('displayName'),
+        lastName: data.get('lastName'),
+        firstName: data.get('firstName'),
+        position: data.get('position'),
+      },
+    });
+    showToast('Профиль сохранён.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#preferences-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const items = [];
+  for (const eventType of ['task.assigned', 'comment.mentioned']) {
+    for (const channel of ['internal', 'email', 'telegram']) {
+      items.push({
+        eventType,
+        channel,
+        enabled: form.querySelector(`input[name=${channel}]`).checked,
+      });
+    }
+  }
+  try {
+    await api('/notifications/preferences', { method: 'PUT', body: { items } });
+    showToast('Настройки уведомлений сохранены.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#telegram-code').addEventListener('click', async () => {
+  try {
+    const response = await api('/users/me/telegram/link-code', { method: 'POST' });
+    $('#telegram-code-value').textContent = `Код: ${response.code} (${response.deep_link})`;
+    const telegramUserId = window.prompt('Telegram user id для локальной привязки:');
+    if (!telegramUserId) return;
+    await api('/users/me/telegram', {
+      method: 'POST',
+      body: {
+        code: response.code,
+        telegramUserId,
+        telegramUsername: 'local_user',
+      },
+    });
+    showToast('Telegram привязан.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#telegram-unlink').addEventListener('click', async () => {
+  try {
+    await api('/users/me/telegram', { method: 'DELETE' });
+    showToast('Telegram отвязан.');
   } catch (error) {
     showToast(error.message);
   }

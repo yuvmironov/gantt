@@ -1,7 +1,7 @@
 import { call } from './user-client.js';
 import { mapExecutor, mapUser, sendProblem } from './auth-routes.js';
 
-function unauthorized(reply, request) {
+export function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
     type: 'https://smart-oati.local/problems/unauthenticated',
     title: 'Unauthorized',
@@ -13,7 +13,7 @@ function unauthorized(reply, request) {
   });
 }
 
-function forbidden(reply, request) {
+export function forbidden(reply, request) {
   return reply.code(403).type('application/problem+json').send({
     type: 'https://smart-oati.local/problems/admin_forbidden',
     title: 'Forbidden',
@@ -25,19 +25,19 @@ function forbidden(reply, request) {
   });
 }
 
-function csrfValid(request) {
+export function csrfValid(request) {
   const cookieToken = request.cookies['__Host-csrf'];
   const headerToken = request.headers['x-csrf-token'];
   return Boolean(cookieToken && headerToken && cookieToken === headerToken);
 }
 
-async function sessionFor(userClient, request) {
+export async function sessionFor(userClient, request) {
   const token = request.cookies['__Host-session'];
   if (!token) return null;
   return call(userClient, 'ValidateSession', { session_token: token, extend_idle: false });
 }
 
-async function requireAdmin(userClient, request, reply) {
+export async function requireAdmin(userClient, request, reply) {
   const session = await sessionFor(userClient, request);
   if (!session) return { denied: unauthorized(reply, request) };
   const roles = await call(userClient, 'GetUserRoles', { user_id: session.user_id });

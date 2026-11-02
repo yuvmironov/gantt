@@ -228,6 +228,22 @@ async function sendMail(mailer, message) {
   await mailer.send(message).catch(() => false);
 }
 
+const telegramCodes = new Map();
+
+function toSettings(row) {
+  return {
+    key: row.key,
+    value: row.value ?? {},
+    description: row.description ?? '',
+    updated_by_user_id: row.updated_by_user_id ?? '',
+    updated_at: toTimestamp(row.updated_at),
+  };
+}
+
+function rolesFromRequest(roles) {
+  return (roles ?? []).filter((role) => role === 'GLOBAL_ROLE_APP_ADMIN').map(() => 'app_admin');
+}
+
 function cookie(name, value, { maxAge, httpOnly = true } = {}) {
   const parts = [`${name}=${value}`, 'Path=/', 'Secure', 'SameSite=Lax'];
   if (httpOnly) parts.push('HttpOnly');
@@ -1581,6 +1597,415 @@ export function createUserImplementation({
           payload: { userId },
         }).catch(() => {});
         callback(null, { unblocked: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async RestoreSession(call, callback) {
+      const rememberToken = String(call.request.remember_token ?? '');
+      if (!rememberToken) {
+        callback(grpcError(status.UNAUTHENTICATED, 'remember_token_required'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const result = await client.query(
+          `SELECT s.*, u.status AS user_status
+           FROM access.user_sessions s
+           JOIN access.users u ON u.id = s.user_id
+           WHERE s.remember_token_hash = $1 AND s.revoked_at IS NULL
+             AND s.remember_absolute_expires_at > now()
+           FOR UPDATE`,
+          [hashToken(rememberToken)],
+        );
+        if (result.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.UNAUTHENTICATED, 'remember_token_invalid'));
+          return;
+        }
+        const session = result.rows[0];
+        if (session.user_status !== 'active') {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.PERMISSION_DENIED, 'account_blocked'));
+          return;
+        }
+        const user = await client.query('SELECT * FROM access.users WHERE id = $1', [
+          session.user_id,
+        ]);
+        const sessionToken = randomToken();
+        const csrfToken = randomToken();
+        const now = Date.now();
+        const absoluteExpiresAt = new Date(now + SESSION_ABSOLUTE_MS);
+        const idleExpiresAt = new Date(now + SESSION_IDLE_MS);
+        await client.query(
+          `UPDATE access.user_sessions SET remember_token_hash = NULL WHERE id = $1`,
+          [session.id],
+        );
+        const created = await client.query(
+          `INSERT INTO access.user_sessions
+             (user_id, session_token_hash, absolute_expires_at, idle_expires_at,
+              remember_token_hash, remember_absolute_expires_at, remember_idle_expires_at,
+              user_agent, ip, last_seen_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+           RETURNING id`,
+          [
+            session.user_id,
+            hashToken(sessionToken),
+            absoluteExpiresAt,
+            idleExpiresAt,
+            hashToken(rememberToken),
+            session.remember_absolute_expires_at,
+            session.remember_idle_expires_at,
+            String(call.request.user_agent ?? '') || null,
+            String(call.request.client_ip ?? '') || null,
+          ],
+        );
+        const roles = await getRoles(client, session.user_id);
+        await client.query('COMMIT');
+        callback(null, {
+          user: toUser(user.rows[0], roles),
+          session_id: created.rows[0].id,
+          set_cookie: loginCookies({
+            sessionToken,
+            rememberToken,
+            csrfToken,
+            remember: true,
+          }),
+          absolute_expires_at: toTimestamp(absoluteExpiresAt),
+          idle_expires_at: toTimestamp(idleExpiresAt),
+          remember_expires_at: toTimestamp(session.remember_absolute_expires_at),
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async GetUser(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      try {
+        const result = await db.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        callback(null, { user: toUser(result.rows[0], await getRoles(db, userId)) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async AdminCreateUser(call, callback) {
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      const email = normalizeEmail(call.request.email);
+      const lastName = String(call.request.last_name ?? '').trim();
+      const firstName = String(call.request.first_name ?? '').trim();
+      const displayName =
+        String(call.request.display_name ?? '').trim() || `${lastName} ${firstName}`.trim();
+      if (!isValidEmail(email) || !lastName || !firstName || !displayName) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'invalid_user'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const temporaryPassword = randomToken();
+        const result = await client.query(
+          `INSERT INTO access.users
+             (email, password_hash, display_name, last_name, first_name, middle_name,
+              position, timezone, locale, email_verified_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+           RETURNING *`,
+          [
+            email,
+            await hashPassword(temporaryPassword),
+            displayName,
+            lastName,
+            firstName,
+            String(call.request.middle_name ?? '').trim() || null,
+            String(call.request.position ?? '').trim() || null,
+            String(call.request.timezone ?? 'Europe/Moscow'),
+            String(call.request.locale ?? 'ru-RU'),
+          ],
+        );
+        const userId = result.rows[0].id;
+        for (const role of call.request.global_roles ?? []) {
+          if (role === 'GLOBAL_ROLE_APP_ADMIN') {
+            await client.query(
+              `INSERT INTO access.user_roles (user_id, role_code) VALUES ($1, 'app_admin')
+               ON CONFLICT DO NOTHING`,
+              [userId],
+            );
+          }
+        }
+        const token = randomToken();
+        await client.query(
+          `INSERT INTO access.password_reset_tokens (user_id, token_hash, expires_at)
+           VALUES ($1, $2, now() + interval '1 hour')`,
+          [userId, hashToken(token)],
+        );
+        await client.query('COMMIT');
+        await sendMail(mailer, {
+          to: email,
+          subject: 'SMART OATI account created',
+          text: `Set your password: ${resetLink(publicAppUrl, token)}`,
+        });
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.created',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId, adminCreated: true },
+        }).catch(() => {});
+        callback(null, {
+          user: toUser(result.rows[0], rolesFromRequest(call.request.global_roles)),
+        });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async DeleteUser(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId)) || userId === actorUserId) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      let client;
+      try {
+        client = await db.connect();
+        await client.query('BEGIN');
+        const result = await client.query(
+          `UPDATE access.users SET status = 'blocked', updated_at = now()
+           WHERE id = $1 RETURNING id`,
+          [userId],
+        );
+        if (result.rowCount === 0) {
+          await client.query('ROLLBACK');
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        await client.query(
+          `UPDATE access.user_sessions SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        await client.query(`DELETE FROM access.user_roles WHERE user_id = $1`, [userId]);
+        await client.query(
+          `UPDATE access.project_memberships SET status = 'revoked', revoked_at = now(),
+             revoked_reason = 'member_removed' WHERE user_id = $1 AND status = 'active'`,
+          [userId],
+        );
+        await client.query('COMMIT');
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.deleted',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId, reason: String(call.request.reason ?? '') },
+        }).catch(() => {});
+        callback(null, { deleted: true });
+      } catch (error) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        callback(mapDbError(error));
+      } finally {
+        client?.release();
+      }
+    },
+
+    async GetRoles(call, callback) {
+      try {
+        const result = await db.query(
+          'SELECT code, scope, name, description FROM access.roles ORDER BY code',
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            code: row.code,
+            scope: row.scope,
+            name: row.name,
+            description: row.description ?? '',
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetPermissions(call, callback) {
+      try {
+        const result = await db.query(
+          'SELECT code, scope, description FROM access.permissions ORDER BY code',
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            code: row.code,
+            scope: row.scope,
+            description: row.description ?? '',
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetProjectAccess(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const projectId = String(call.request.project_id ?? '');
+      try {
+        const membership = await db.query(
+          `SELECT role_code FROM access.project_memberships
+           WHERE user_id = $1 AND project_id = $2 AND status = 'active'`,
+          [userId, projectId],
+        );
+        if (membership.rowCount === 0) {
+          callback(null, {
+            access: {
+              project_id: projectId,
+              role: 'PROJECT_ROLE_UNSPECIFIED',
+              permissions: [],
+              is_accessible: false,
+            },
+          });
+          return;
+        }
+        const role = membership.rows[0].role_code;
+        const permissions = await db.query(
+          'SELECT permission_code FROM access.role_permissions WHERE role_code = $1',
+          [role],
+        );
+        callback(null, {
+          access: {
+            project_id: projectId,
+            role: toProjectRole(role),
+            permissions: permissions.rows.map((row) => row.permission_code),
+            is_accessible: true,
+          },
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetNotificationContacts(call, callback) {
+      const ids = call.request.user_ids ?? [];
+      try {
+        const result = await db.query(
+          `SELECT u.id, u.email, u.email_verified_at, t.telegram_user_id, t.telegram_username
+           FROM access.users u
+           LEFT JOIN access.telegram_links t ON t.user_id = u.id AND t.revoked_at IS NULL
+           WHERE u.id = ANY($1::uuid[])`,
+          [ids],
+        );
+        callback(null, {
+          items: result.rows.map((row) => ({
+            user_id: row.id,
+            email: row.email,
+            email_verified: Boolean(row.email_verified_at),
+            telegram_user_id: Number(row.telegram_user_id ?? 0),
+            telegram_username: row.telegram_username ?? '',
+            telegram_linked: row.telegram_user_id != null,
+          })),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateTelegramLinkCode(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const code = randomToken().slice(0, 16);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      telegramCodes.set(code, { userId, expiresAt });
+      callback(null, {
+        code,
+        deep_link: `https://t.me/smart_oati_local_bot?start=${code}`,
+        expires_at: toTimestamp(expiresAt),
+      });
+    },
+
+    async LinkTelegram(call, callback) {
+      const code = String(call.request.code ?? '');
+      const entry = telegramCodes.get(code);
+      if (!entry || entry.expiresAt <= new Date()) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'telegram_code_invalid'));
+        return;
+      }
+      try {
+        await db.query(
+          `INSERT INTO access.telegram_links (user_id, telegram_user_id, telegram_username)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id) DO UPDATE
+             SET telegram_user_id = $2, telegram_username = $3,
+                 linked_at = now(), revoked_at = NULL`,
+          [entry.userId, call.request.telegram_user_id, call.request.telegram_username || null],
+        );
+        telegramCodes.delete(code);
+        callback(null, { linked: true, user_id: entry.userId });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UnlinkTelegram(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      try {
+        await db.query(
+          `UPDATE access.telegram_links SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        callback(null, { unlinked: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async GetSystemSettings(call, callback) {
+      try {
+        const result = await db.query('SELECT * FROM settings.system_settings ORDER BY key');
+        callback(null, { items: result.rows.map(toSettings) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateSystemSettings(call, callback) {
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      try {
+        for (const item of call.request.items ?? []) {
+          await db.query(
+            `INSERT INTO settings.system_settings (key, value, description, updated_by_user_id)
+             VALUES ($1, $2::jsonb, $3, $4)
+             ON CONFLICT (key) DO UPDATE
+               SET value = $2::jsonb, description = $3, updated_by_user_id = $4,
+                   updated_at = now()`,
+            [item.key, JSON.stringify(item.value ?? {}), item.description ?? '', actorUserId],
+          );
+        }
+        const result = await db.query('SELECT * FROM settings.system_settings ORDER BY key');
+        callback(null, { items: result.rows.map(toSettings) });
       } catch (error) {
         callback(mapDbError(error));
       }

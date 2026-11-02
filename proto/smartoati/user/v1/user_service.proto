@@ -363,6 +363,7 @@ message AdminCreateUserRequest {
   string timezone = 7;
   string locale = 8;
   repeated smartoati.common.v1.GlobalRole global_roles = 9;
+  string actor_user_id = 10;
 }
 
 message AdminCreateUserResponse {
@@ -389,6 +390,7 @@ message UpdateUserProfileRequest {
   optional string position = 6;
   optional string timezone = 7;
   optional string locale = 8;
+  string actor_user_id = 9;
 }
 
 message UpdateUserProfileResponse {
