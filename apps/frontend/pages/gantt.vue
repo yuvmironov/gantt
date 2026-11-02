@@ -11,6 +11,8 @@ const progress = ref(0);
 const status = ref('planned');
 const error = ref('');
 const loading = ref(true);
+const syncConnected = ref(false);
+let syncSocket = null;
 
 function csrfToken() {
   return document.cookie
@@ -57,11 +59,18 @@ async function loadDiagrams(preferredDiagram) {
   await loadSnapshot();
 }
 
-async function loadSnapshot() {
+async function loadSnapshot(preserveTask = false) {
+  const previousId = preserveTask ? selectedTask.value?.id : null;
   snapshot.value = null;
   selectedTask.value = null;
   if (!diagramId.value) return;
   snapshot.value = await api(`/diagrams/${diagramId.value}/snapshot`);
+  const fresh = (snapshot.value?.tasks ?? []).find((task) => task.id === previousId);
+  if (fresh) {
+    selectedTask.value = fresh;
+    progress.value = Number(fresh.progress) || 0;
+    status.value = fresh.status ?? 'planned';
+  }
 }
 
 async function selectTask(task) {
@@ -82,9 +91,7 @@ async function saveProgress() {
         expectedVersion: selectedTask.value.version,
       },
     });
-    await loadSnapshot();
-    const fresh = (snapshot.value?.tasks ?? []).find((item) => item.id === updated.id);
-    if (fresh) await selectTask(fresh);
+    await loadSnapshot(true);
   } catch (reason) {
     error.value = reason.message;
   }
@@ -102,16 +109,45 @@ async function addComment() {
       },
     });
     commentBody.value = '';
-    await selectTask(selectedTask.value);
+    comments.value = (await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)).items ?? [];
   } catch (reason) {
     error.value = reason.message;
   }
 }
 
+async function connectSync() {
+  try {
+    const issued = await api('/sync/token');
+    syncSocket = new WebSocket(`wss://sync.localhost/ws?token=${encodeURIComponent(issued.token)}`);
+    syncSocket.addEventListener('open', () => {
+      syncConnected.value = true;
+    });
+    syncSocket.addEventListener('close', () => {
+      syncConnected.value = false;
+    });
+    syncSocket.addEventListener('message', async (message) => {
+      let payload;
+      try {
+        payload = JSON.parse(message.data);
+      } catch {
+        return;
+      }
+      if (payload.type !== 'diagram.changed' || !payload.event) return;
+      if (payload.event.diagram_id !== diagramId.value) return;
+      await loadSnapshot(true);
+    });
+  } catch {
+    syncConnected.value = false;
+  }
+}
+
+onUnmounted(() => syncSocket?.close());
+
 onMounted(async () => {
   try {
     await api('/auth/session');
     await loadProjects();
+    await connectSync();
   } catch (reason) {
     error.value = reason.message;
   } finally {
@@ -131,9 +167,12 @@ onMounted(async () => {
         <select v-model="projectId" @change="loadDiagrams()">
           <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
         </select>
-        <select v-model="diagramId" @change="loadSnapshot">
+        <select v-model="diagramId" @change="loadSnapshot()">
           <option v-for="diagram in diagrams" :key="diagram.id" :value="diagram.id">{{ diagram.name }}</option>
         </select>
+        <span class="sync-status">{{ syncConnected ? 'Realtime' : 'Offline' }}</span>
+        <a v-if="diagramId" class="export" :href="`/api/v1/diagrams/${diagramId}/export?format=json`">JSON</a>
+        <a v-if="diagramId" class="export" :href="`/api/v1/diagrams/${diagramId}/export?format=csv`">CSV</a>
       </div>
     </header>
 
@@ -178,6 +217,13 @@ onMounted(async () => {
           <input v-model.number="progress" type="number" min="0" max="100" step="5" />
           <button type="button" @click="saveProgress">Сохранить</button>
         </div>
+        <div v-if="selectedTask.assignments?.length" class="assignments">
+          <h3>Назначения</h3>
+          <div v-for="assignment in selectedTask.assignments" :key="assignment.id" class="comment">
+            <strong>{{ assignment.displayName || assignment.assigneeId }}</strong>
+            <span>{{ assignment.role }}</span>
+          </div>
+        </div>
         <h3>Комментарии</h3>
         <div class="comments">
           <div v-for="comment in comments" :key="comment.id" class="comment">
@@ -199,7 +245,9 @@ onMounted(async () => {
 .gantt-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .back { color: #2563eb; text-decoration: none; font-size: 14px; }
 h1 { margin: 4px 0 0; font-size: 28px; }
-.selectors { display: flex; gap: 10px; flex-wrap: wrap; }
+.selectors { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sync-status, .export { font-size: 12px; color: #475569; text-decoration: none; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 7px; }
+.sync-status { color: #047857; }
 .gantt-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
 .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
 .table-card { overflow-x: auto; }
