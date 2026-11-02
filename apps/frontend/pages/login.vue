@@ -150,88 +150,104 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main id="auth-view" class="auth-page">
+  <main id="auth-view" class="auth-layout">
     <section class="auth-brand">
-      <div class="brand">SMART OATI</div>
-      <h1>Планирование, задачи, зависимости и контроль сроков.</h1>
-      <p>Проекты, участники, Gantt и уведомления в одном рабочем пространстве.</p>
+      <div class="brand-lockup">
+        <span class="brand-mark">▥</span>
+        <span>SMART OATI</span>
+      </div>
+      <div class="auth-brand-copy">
+        <p class="eyebrow" style="color:#93c5fd">Планирование без хаоса</p>
+        <h1>Один план.<br />Одна команда.<br />Полная ясность.</h1>
+        <p>Диаграмма Ганта, сроки и зависимости в одном рабочем пространстве с ролями, уведомлениями и аудитом.</p>
+      </div>
+      <div class="auth-points">
+        <div class="auth-point"><span class="check">✓</span><span>Актуальный план для всей команды</span></div>
+        <div class="auth-point"><span class="check">✓</span><span>Контроль сроков и критического пути</span></div>
+        <div class="auth-point"><span class="check">✓</span><span>Безопасный доступ по ролям</span></div>
+      </div>
     </section>
 
-    <section class="auth-card">
-      <div class="tabs">
-        <button id="login-tab" type="button" :class="{ active: tab === 'login' }" @click="tab = 'login'">
-          Вход
-        </button>
-        <button
-          id="register-tab"
-          type="button"
-          :class="{ active: tab === 'register' }"
-          @click="tab = 'register'"
-        >
-          Регистрация
-        </button>
+    <section class="auth-panel">
+      <div class="auth-card">
+        <p class="eyebrow">С возвращением</p>
+        <h2>Войти в систему</h2>
+        <p class="muted">Введите рабочий email и пароль, чтобы продолжить.</p>
+
+        <div class="auth-tabs">
+          <button id="login-tab" type="button" :class="{ active: tab === 'login' }" @click="tab = 'login'">Вход</button>
+          <button id="register-tab" type="button" :class="{ active: tab === 'register' }" @click="tab = 'register'">Регистрация</button>
+        </div>
+
+        <form v-if="tab === 'login'" id="login-form" class="form-stack" @submit.prevent="submitLogin">
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input id="login-email" v-model="email" class="input" name="email" type="email" autocomplete="email" placeholder="name@company.ru" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Пароль</label>
+            <input id="login-password" v-model="password" class="input" name="password" type="password" autocomplete="current-password" required />
+          </div>
+          <div class="auth-row">
+            <label class="checkbox-line"><input type="checkbox" checked /> Запомнить меня</label>
+            <button class="link-button" type="button" @click="requestReset">Забыли пароль?</button>
+          </div>
+          <button class="btn btn-primary btn-lg btn-block auth-submit" type="submit">Войти</button>
+          <button class="link-button centered" type="button" @click="resendVerification">Отправить письмо для подтверждения email</button>
+        </form>
+
+        <form v-else id="register-form" class="form-stack" @submit.prevent="submitRegister">
+          <div class="field">
+            <label>Email</label>
+            <input v-model="email" class="input" name="email" type="email" required />
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Фамилия</label><input v-model="lastName" class="input" name="lastName" required /></div>
+            <div class="field"><label>Имя</label><input v-model="firstName" class="input" name="firstName" required /></div>
+          </div>
+          <div class="field">
+            <label>Пароль</label>
+            <input v-model="password" class="input" name="password" type="password" minlength="8" required />
+          </div>
+          <button class="btn btn-primary btn-lg btn-block auth-submit" type="submit">Создать аккаунт</button>
+        </form>
+
+        <form v-if="showReset" class="form-stack reset-form" @submit.prevent="resetPassword">
+          <div class="field"><label>Токен</label><input v-model="resetToken" class="input" required /></div>
+          <div class="field"><label>Новый пароль</label><input v-model="newPassword" class="input" type="password" minlength="8" required /></div>
+          <button class="btn btn-primary btn-lg btn-block" type="submit">Обновить пароль</button>
+        </form>
+
+        <p v-if="message" class="message">{{ message }}</p>
+        <p v-if="error" id="toast" class="error">{{ error }}</p>
+        <p class="hint">Локальный администратор: admin@smart-oati.local</p>
       </div>
-
-      <form v-if="tab === 'login'" id="login-form" class="form" @submit.prevent="submitLogin">
-        <label>Email <input v-model="email" name="email" type="email" autocomplete="email" required /></label>
-        <label>Пароль <input v-model="password" name="password" type="password" autocomplete="current-password" required /></label>
-        <button class="primary" type="submit">Войти</button>
-        <button type="button" @click="requestReset">Забыли пароль?</button>
-        <button type="button" @click="resendVerification">Отправить подтверждение email</button>
-      </form>
-
-      <form v-else id="register-form" class="form" @submit.prevent="submitRegister">
-        <label>Email <input v-model="email" name="email" type="email" required /></label>
-        <label>Фамилия <input v-model="lastName" name="lastName" required /></label>
-        <label>Имя <input v-model="firstName" name="firstName" required /></label>
-        <label>Пароль <input v-model="password" name="password" type="password" minlength="8" required /></label>
-        <button class="primary" type="submit">Создать аккаунт</button>
-      </form>
-
-      <form v-if="showReset" class="form" @submit.prevent="resetPassword">
-        <label>Токен <input v-model="resetToken" required /></label>
-        <label>Новый пароль <input v-model="newPassword" type="password" minlength="8" required /></label>
-        <button class="primary" type="submit">Сбросить пароль</button>
-      </form>
-
-      <p v-if="message" class="message">{{ message }}</p>
-      <p v-if="error" id="toast" class="error">{{ error }}</p>
-      <p class="hint">Локальный администратор: admin@smart-oati.local</p>
     </section>
   </main>
 </template>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: 48px;
-  align-items: center;
-  padding: 48px;
-  box-sizing: border-box;
-  background: #f8fafc;
-  color: #1f2937;
-  font-family: Inter, system-ui, sans-serif;
-}
-.auth-brand { max-width: 620px; }
-.brand { font-size: 14px; font-weight: 700; letter-spacing: 0.14em; color: #2563eb; }
-h1 { margin: 18px 0; font-size: clamp(32px, 5vw, 58px); line-height: 1.05; }
-.auth-brand p { color: #64748b; font-size: 18px; }
-.auth-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgb(15 23 42 / 8%); }
-.tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-.tabs button { flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
-.tabs button.active { background: #111827; color: #fff; border-color: #111827; }
-.form { display: grid; gap: 12px; }
-label { display: grid; gap: 6px; font-size: 13px; color: #475569; }
-input, button { font: inherit; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 9px; }
-button { background: #f1f5f9; color: #334155; cursor: pointer; }
-button.primary { background: #111827; color: #fff; border-color: #111827; }
-.error { color: #b91c1c; }
-.message { color: #047857; }
-.hint { color: #94a3b8; font-size: 12px; }
+.auth-layout { min-height: 100vh; }
+.auth-layout .auth-brand { padding: 64px clamp(32px, 6vw, 96px); }
+.auth-brand-copy h1 { margin: 18px 0 20px; }
+.auth-brand-copy p { max-width: 560px; }
+.brand-mark { display: inline-grid; place-items: center; }
+.auth-panel { padding: 64px clamp(32px, 6vw, 96px); }
+.auth-card { width: min(460px, 100%); }
+.auth-tabs { display: inline-flex; gap: 4px; padding: 4px; margin: 22px 0 18px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface-subtle); }
+.auth-tabs button { border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-muted); padding: 7px 14px; }
+.auth-tabs button.active { background: var(--color-primary); color: #fff; }
+.auth-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.link-button { border: 0; background: transparent; color: var(--color-primary); padding: 0; font-size: var(--text-sm); }
+.link-button.centered { justify-self: center; }
+.reset-form { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--color-border); }
+.check:before { content: none; }
+.auth-point .check { color: #fff; font-weight: 700; }
+.message, .error { margin-top: 16px; }
+.hint { margin-top: 18px; }
 @media (max-width: 900px) {
-  .auth-page { grid-template-columns: 1fr; padding: 24px; gap: 24px; }
-  .auth-brand h1 { font-size: 36px; }
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-layout .auth-brand, .auth-panel { padding: 32px 24px; }
+  .auth-brand-copy h1 { font-size: 38px; }
 }
 </style>

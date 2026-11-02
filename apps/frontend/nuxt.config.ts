@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: "SMART OATI",
-      link: [{ rel: "stylesheet", href: "/styles.css" }],
+      link: [{ rel: "stylesheet", href: "/design-system.css" }],
     },
   },
 });

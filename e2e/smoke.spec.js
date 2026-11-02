@@ -33,9 +33,9 @@ test('local Vue MVP workflow', async ({ page }) => {
   await page.locator('.task-direction').selectOption(directionValue);
   await page.locator('.manage input[placeholder="Название задачи"]').fill(taskName);
   await page.locator('.manage button').filter({ hasText: 'Создать задачу' }).click();
-  await expect(page.locator('tbody')).toContainText(taskName);
+  await expect(page.locator('.gantt-labels')).toContainText(taskName);
 
-  await page.locator('tbody tr').filter({ hasText: taskName }).click();
+  await page.locator('.gantt-row-label').filter({ hasText: taskName }).click();
   await expect(page.locator('.drawer')).toBeVisible();
   await expect(page.locator('.drawer')).toContainText(taskName);
 });
