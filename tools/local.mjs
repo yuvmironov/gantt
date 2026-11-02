@@ -40,6 +40,23 @@ if (command === 'up') {
   compose(['--profile', 'infra', '--profile', 'apps', 'down']);
 } else if (command === 'reset') {
   compose(['--profile', 'infra', '--profile', 'apps', 'down', '-v']);
+} else if (command === 'health') {
+  const checks = [
+    ['app', 'https://app.localhost/api/v1/health'],
+    ['sync', 'https://sync.localhost/health/live'],
+    ['mail', 'https://mail.localhost/api/v1/messages'],
+  ];
+  let failed = false;
+  for (const [name, url] of checks) {
+    const result = spawnSync(
+      'curl',
+      ['-kfsS', url, '-o', process.platform === 'win32' ? 'NUL' : '/dev/null'],
+      { cwd: root, shell: process.platform === 'win32' },
+    );
+    console.log(name, result.status === 0 ? 'ok' : 'FAILED');
+    failed ||= result.status !== 0;
+  }
+  if (failed) process.exit(1);
 } else if (command === 'status') {
   compose(['--profile', 'infra', '--profile', 'apps', 'ps']);
 } else if (command === 'logs') {

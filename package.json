@@ -18,6 +18,8 @@
     "local:down": "node tools/local.mjs down",
     "local:reset": "node tools/local.mjs reset",
     "local:status": "node tools/local.mjs status",
+    "local:health": "node tools/local.mjs health",
+    "local:demo": "node tools/demo.mjs",
     "local:logs": "node tools/local.mjs logs",
     "local:backup": "node tools/local.mjs backup",
     "local:restore": "node tools/local.mjs restore",

@@ -111,6 +111,72 @@ export function buildApp({ env = process.env, logger = true, db }) {
         return { updated: result.rowCount };
       });
 
+      app.get('/internal/deliveries', async (request) => {
+        const limit = Math.min(Math.max(Number(request.query.limit ?? 50), 1), 200);
+        const offset = Math.max(Number(request.query.offset ?? 0), 0);
+        const channel = String(request.query.channel ?? '');
+        const status = String(request.query.status ?? '');
+        const from = String(request.query.from ?? '');
+        const to = String(request.query.to ?? '');
+        const result = await db.query(
+          `SELECT d.*, n.title, n.recipient_user_id, n.event_type
+           FROM delivery.notification_deliveries d
+           JOIN notify.notifications n ON n.id = d.notification_id
+           WHERE ($1 = '' OR d.channel = $1)
+             AND ($2 = '' OR d.status = $2)
+             AND ($3 = '' OR d.created_at >= $3::timestamptz)
+             AND ($4 = '' OR d.created_at <= $4::timestamptz)
+           ORDER BY d.created_at DESC LIMIT $5 OFFSET $6`,
+          [channel, status, from, to, limit, offset],
+        );
+        const count = await db.query(
+          `SELECT count(*)::int AS total FROM delivery.notification_deliveries d
+           WHERE ($1 = '' OR d.channel = $1)
+             AND ($2 = '' OR d.status = $2)
+             AND ($3 = '' OR d.created_at >= $3::timestamptz)
+             AND ($4 = '' OR d.created_at <= $4::timestamptz)`,
+          [channel, status, from, to],
+        );
+        return {
+          items: result.rows.map((row) => ({
+            id: row.id,
+            notificationId: row.notification_id,
+            recipientUserId: row.recipient_user_id,
+            eventType: row.event_type,
+            title: row.title,
+            channel: row.channel,
+            status: row.status,
+            attemptCount: row.attempt_count,
+            lastError: row.last_error,
+            sentAt: row.sent_at,
+            createdAt: row.created_at,
+          })),
+          page: { total: count.rows[0].total, limit, offset },
+        };
+      });
+
+      app.get('/internal/deliveries/stats', async (request) => {
+        const from = String(request.query.from ?? '');
+        const to = String(request.query.to ?? '');
+        const result = await db.query(
+          `SELECT channel, status, count(*)::int AS total
+           FROM delivery.notification_deliveries
+           WHERE ($1 = '' OR created_at >= $1::timestamptz)
+             AND ($2 = '' OR created_at <= $2::timestamptz)
+           GROUP BY channel, status`,
+          [from, to],
+        );
+        const byChannel = {};
+        const byStatus = {};
+        let total = 0;
+        for (const row of result.rows) {
+          byChannel[row.channel] = (byChannel[row.channel] ?? 0) + row.total;
+          byStatus[row.status] = (byStatus[row.status] ?? 0) + row.total;
+          total += row.total;
+        }
+        return { total, byChannel, byStatus };
+      });
+
       app.get('/internal/notifications/preferences', async (request) => {
         const userId = String(request.headers['x-user-id'] ?? '');
         const result = await db.query(

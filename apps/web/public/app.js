@@ -1773,5 +1773,33 @@ $('#telegram-unlink').addEventListener('click', async () => {
   }
 });
 
+$('#delivery-log-toggle').addEventListener('click', async () => {
+  const container = $('#delivery-log-list');
+  container.innerHTML = '<p class="empty">Loading...</p>';
+  try {
+    const [log, stats] = await Promise.all([
+      api('/notifications/delivery-log?limit=50'),
+      api('/notifications/delivery-stats'),
+    ]);
+    const summary = Object.entries(stats.byStatus ?? {})
+      .map(([status, count]) => `${status}: ${count}`)
+      .join(' | ');
+    container.innerHTML =
+      `<p class="muted">${escapeHtml(summary)}</p>` +
+      ((log.items ?? [])
+        .map(
+          (item) => `
+            <div class="list-item">
+              <span class="item-title">${escapeHtml(item.title || item.eventType)}</span>
+              <span class="item-meta">${escapeHtml(item.channel)} / ${escapeHtml(item.status)} / attempts ${escapeHtml(item.attemptCount)}${item.lastError ? ' / ' + escapeHtml(item.lastError) : ''}</span>
+            </div>`,
+        )
+        .join('') || '<p class="empty">No deliveries.</p>');
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Failed to load deliveries.</p>';
+    showToast(error.message);
+  }
+});
+
 window.__smartOatiReady = true;
 boot();

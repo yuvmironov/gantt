@@ -1,4 +1,5 @@
 import { csrfValid } from './auth-routes.js';
+import { requireAdmin } from './admin-routes.js';
 
 function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
@@ -98,6 +99,43 @@ export async function notificationRoutes(app, { userClient, notificationClient }
         await notificationClient.request('/internal/notifications/read-all', current, {
           method: 'POST',
         }),
+      );
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(502).send({ detail: 'Notification service unavailable' });
+    }
+  });
+
+  app.get('/api/v1/notifications/delivery-log', async (request, reply) => {
+    const access = await requireAdmin(userClient, request, reply);
+    if (access.denied) return access.denied;
+    try {
+      const query = new URLSearchParams();
+      for (const key of ['limit', 'offset', 'channel', 'status', 'from', 'to']) {
+        if (request.query[key] !== undefined) query.set(key, String(request.query[key]));
+      }
+      return reply.send(
+        await notificationClient.request(`/internal/deliveries?${query}`, access.session.user_id),
+      );
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(502).send({ detail: 'Notification service unavailable' });
+    }
+  });
+
+  app.get('/api/v1/notifications/delivery-stats', async (request, reply) => {
+    const access = await requireAdmin(userClient, request, reply);
+    if (access.denied) return access.denied;
+    try {
+      const query = new URLSearchParams();
+      for (const key of ['from', 'to']) {
+        if (request.query[key] !== undefined) query.set(key, String(request.query[key]));
+      }
+      return reply.send(
+        await notificationClient.request(
+          `/internal/deliveries/stats?${query}`,
+          access.session.user_id,
+        ),
       );
     } catch (error) {
       request.log.error(error);
