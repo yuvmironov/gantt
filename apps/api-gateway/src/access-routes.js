@@ -119,7 +119,7 @@ export async function accessRoutes(app, { userClient }) {
         project_id: request.params.projectId,
         page: { limit, offset },
       });
-      return reply.send({ items: response.items.map(mapMembership), page: response.page });
+      return reply.send({ items: (response.items ?? []).map(mapMembership), page: response.page });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
@@ -198,7 +198,7 @@ export async function accessRoutes(app, { userClient }) {
         project_id: request.params.projectId,
         page: { limit, offset },
       });
-      return reply.send({ items: response.items.map(mapInvitation), page: response.page });
+      return reply.send({ items: (response.items ?? []).map(mapInvitation), page: response.page });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
