@@ -365,7 +365,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         page: { limit, offset },
       });
       return reply.send({
-        items: response.items.map(mapProject),
+        items: (response.items ?? []).map(mapProject),
         page: response.page,
       });
     } catch (error) {
@@ -503,7 +503,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.send({
-        items: response.items.map(mapDiagram),
+        items: (response.items ?? []).map(mapDiagram),
         page: response.page,
       });
     } catch (error) {
@@ -679,7 +679,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         },
         actorMetadata(current.user_id),
       );
-      return reply.send({ items: response.items.map(mapDirection) });
+      return reply.send({ items: (response.items ?? []).map(mapDirection) });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
@@ -909,7 +909,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.send({
-        items: response.items.map(mapDependency),
+        items: (response.items ?? []).map(mapDependency),
         page: response.page,
       });
     } catch (error) {
@@ -1002,7 +1002,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         actorMetadata(current.user_id),
       );
       return reply.send({
-        items: response.items.map(mapComment),
+        items: (response.items ?? []).map(mapComment),
         page: response.page,
       });
     } catch (error) {
@@ -1175,7 +1175,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         { diagram_id: request.params.diagramId },
         actorMetadata(current.user_id),
       );
-      return reply.send({ items: response.items.map(mapHoliday) });
+      return reply.send({ items: (response.items ?? []).map(mapHoliday) });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
@@ -1199,7 +1199,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
         },
         actorMetadata(current.user_id),
       );
-      return reply.send({ items: response.items.map(mapHoliday) });
+      return reply.send({ items: (response.items ?? []).map(mapHoliday) });
     } catch (error) {
       return sendProblem(reply, request, error);
     }
