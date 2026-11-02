@@ -14,7 +14,9 @@ const state = {
   invitations: [],
   pendingInvitation: null,
   syncSocket: null,
+  syncConnecting: false,
   syncTimer: null,
+  syncReconnect: null,
   filters: { query: '', status: '' },
 };
 
@@ -124,10 +126,10 @@ function showApp() {
   authView.classList.add('hidden');
   appView.classList.remove('hidden');
   $('#current-user').textContent = state.user?.displayName ?? state.user?.email ?? '';
-  $('#audit-toggle').classList.toggle(
-    'hidden',
-    !(state.user?.globalRoles ?? []).includes('app_admin'),
-  );
+  const isAdmin = (state.user?.globalRoles ?? []).includes('app_admin');
+  $('#audit-toggle').classList.toggle('hidden', !isAdmin);
+  $('#admin-toggle').classList.toggle('hidden', !isAdmin);
+  $('#executors-toggle').classList.toggle('hidden', !isAdmin);
   window.clearInterval(unreadTimer);
   loadUnreadCount();
   unreadTimer = window.setInterval(loadUnreadCount, 60_000);
@@ -1383,12 +1385,15 @@ function syncUrl() {
   return `${protocol}//sync.localhost/ws`;
 }
 
-function connectSync() {
-  if (!state.user || state.syncSocket || !window.WebSocket) return;
+async function connectSync() {
+  if (!state.user || state.syncSocket || state.syncConnecting || !window.WebSocket) return;
+  state.syncConnecting = true;
+  window.__syncConnected = false;
   try {
-    const socket = new window.WebSocket(syncUrl());
+    const issued = await api('/sync/token');
+    if (!state.user) return;
+    const socket = new window.WebSocket(`${syncUrl()}?token=${encodeURIComponent(issued.token)}`);
     state.syncSocket = socket;
-    window.__syncConnected = false;
     socket.addEventListener('open', () => {
       window.__syncConnected = true;
     });
@@ -1418,14 +1423,21 @@ function connectSync() {
       state.syncSocket = null;
       if (state.user) window.setTimeout(connectSync, 3000);
     });
+    const refreshIn = Math.max(30_000, (Number(issued.expiresIn ?? 300) - 30) * 1000);
+    window.clearTimeout(state.syncReconnect);
+    state.syncReconnect = window.setTimeout(() => socket.close(4001, 'token_refresh'), refreshIn);
   } catch {
     state.syncSocket = null;
+    if (state.user) window.setTimeout(connectSync, 5000);
+  } finally {
+    state.syncConnecting = false;
   }
 }
 
 function disconnectSync() {
   window.__syncConnected = false;
   window.clearTimeout(state.syncTimer);
+  window.clearTimeout(state.syncReconnect);
   if (state.syncSocket) {
     state.syncSocket.onclose = null;
     state.syncSocket.close();
@@ -1434,6 +1446,194 @@ function disconnectSync() {
 }
 
 window.addEventListener('beforeunload', disconnectSync);
+
+async function openExecutors() {
+  $('#executors-modal').classList.remove('hidden');
+  $('#executor-form').reset();
+  $('#executor-form input[name=executorId]').value = '';
+  await refreshExecutors();
+}
+
+async function refreshExecutors() {
+  const container = $('#executor-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  try {
+    const [executors, users] = await Promise.all([
+      api('/executors?limit=200'),
+      api('/users?limit=200'),
+    ]);
+    state.executors = executors.items ?? [];
+    state.users = users.items ?? [];
+    renderExecutors();
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить исполнителей.</p>';
+    showToast(error.message);
+  }
+}
+
+function renderExecutors() {
+  const container = $('#executor-list');
+  container.innerHTML =
+    (state.executors ?? [])
+      .map((executor) => {
+        const userOptions = (state.users ?? [])
+          .map(
+            (user) =>
+              `<option value="${escapeHtml(user.id)}" ${executor.linkedUserId === user.id ? 'selected' : ''}>${escapeHtml(user.displayName || user.email)}</option>`,
+          )
+          .join('');
+        return `
+          <div class="list-item">
+            <span class="item-title">${escapeHtml(executor.fullName)}</span>
+            <span class="item-meta">${escapeHtml(executor.position || '')}${executor.linkedUserId ? ' · связан с пользователем' : ''}</span>
+            <div class="inline-fields">
+              <select data-executor-user="${escapeHtml(executor.id)}">
+                <option value="">Без пользователя</option>
+                ${userOptions}
+              </select>
+              <button class="ghost small" data-executor-link="${escapeHtml(executor.id)}" type="button">Связать</button>
+              <button class="ghost small" data-executor-edit="${escapeHtml(executor.id)}" type="button">Изменить</button>
+              <button class="ghost small" data-executor-delete="${escapeHtml(executor.id)}" type="button">Удалить</button>
+            </div>
+          </div>`;
+      })
+      .join('') || '<p class="empty">Исполнителей пока нет.</p>';
+}
+
+$('#executors-toggle').addEventListener('click', openExecutors);
+$('#executors-close').addEventListener('click', () =>
+  $('#executors-modal').classList.add('hidden'),
+);
+
+$('#executor-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const executorId = data.get('executorId');
+  const body = {
+    lastName: data.get('lastName'),
+    firstName: data.get('firstName'),
+    middleName: data.get('middleName'),
+    position: data.get('position'),
+  };
+  try {
+    if (executorId) {
+      await api(`/executors/${executorId}`, { method: 'PATCH', body });
+    } else {
+      await api('/executors', { method: 'POST', body });
+    }
+    form.reset();
+    form.querySelector('input[name=executorId]').value = '';
+    await refreshExecutors();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#executor-list').addEventListener('click', async (event) => {
+  const edit = event.target.closest('[data-executor-edit]');
+  const remove = event.target.closest('[data-executor-delete]');
+  const link = event.target.closest('[data-executor-link]');
+  const executor = state.executors?.find(
+    (item) =>
+      item.id ===
+      (edit?.dataset.executorEdit || remove?.dataset.executorDelete || link?.dataset.executorLink),
+  );
+  try {
+    if (edit) {
+      const form = $('#executor-form');
+      form.querySelector('input[name=executorId]').value = executor.id;
+      form.querySelector('input[name=lastName]').value = executor.lastName ?? '';
+      form.querySelector('input[name=firstName]').value = executor.firstName ?? '';
+      form.querySelector('input[name=middleName]').value = executor.middleName ?? '';
+      form.querySelector('input[name=position]').value = executor.position ?? '';
+    } else if (remove) {
+      if (!window.confirm('Удалить исполнителя?')) return;
+      await api(`/executors/${executor.id}`, { method: 'DELETE' });
+      await refreshExecutors();
+    } else if (link) {
+      const select = document.querySelector(`[data-executor-user="${executor.id}"]`);
+      if (select.value) {
+        await api(`/executors/${executor.id}/link`, {
+          method: 'POST',
+          body: { userId: select.value },
+        });
+      } else {
+        await api(`/executors/${executor.id}/link`, { method: 'DELETE' });
+      }
+      await refreshExecutors();
+    }
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+async function openAdmin() {
+  $('#admin-modal').classList.remove('hidden');
+  await loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+  const query = $('#admin-user-search').value.trim();
+  const container = $('#admin-user-list');
+  container.innerHTML = '<p class="empty">Загрузка...</p>';
+  try {
+    const users = await api(`/users?limit=200&query=${encodeURIComponent(query)}`);
+    container.innerHTML =
+      (users.items ?? [])
+        .map((user) => {
+          const isAdmin = (user.globalRoles ?? []).includes('app_admin');
+          const isSelf = user.id === state.user?.id;
+          return `
+            <div class="list-item">
+              <span class="item-title">${escapeHtml(user.displayName || user.email)}</span>
+              <span class="item-meta">${escapeHtml(user.email)} · ${user.status === 'blocked' ? 'заблокирован' : 'активен'}${isAdmin ? ' · администратор' : ''}</span>
+              ${
+                isSelf
+                  ? ''
+                  : `<div class="inline-fields">
+                      <button class="ghost small" data-admin-role="${escapeHtml(user.id)}" data-admin-role-value="${isAdmin ? 'false' : 'true'}" type="button">${isAdmin ? 'Снять админа' : 'Сделать админом'}</button>
+                      <button class="ghost small" data-admin-block="${escapeHtml(user.id)}" data-admin-block-action="${user.status === 'blocked' ? 'unblock' : 'block'}" type="button">${user.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'}</button>
+                    </div>`
+              }
+            </div>`;
+        })
+        .join('') || '<p class="empty">Пользователи не найдены.</p>';
+  } catch (error) {
+    container.innerHTML = '<p class="empty">Не удалось загрузить пользователей.</p>';
+    showToast(error.message);
+  }
+}
+
+$('#admin-toggle').addEventListener('click', openAdmin);
+$('#admin-close').addEventListener('click', () => $('#admin-modal').classList.add('hidden'));
+$('#admin-user-search').addEventListener('input', () => {
+  window.clearTimeout(loadAdminUsers.timer);
+  loadAdminUsers.timer = window.setTimeout(loadAdminUsers, 300);
+});
+
+$('#admin-user-list').addEventListener('click', async (event) => {
+  const role = event.target.closest('[data-admin-role]');
+  const block = event.target.closest('[data-admin-block]');
+  try {
+    if (role) {
+      await api(`/admin/users/${role.dataset.adminRole}/roles`, {
+        method: 'PATCH',
+        body: { appAdmin: role.dataset.adminRoleValue === 'true' },
+      });
+    } else if (block) {
+      await api(`/admin/users/${block.dataset.adminBlock}/${block.dataset.adminBlockAction}`, {
+        method: 'PATCH',
+        body: {},
+      });
+    } else {
+      return;
+    }
+    await loadAdminUsers();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
 
 window.__smartOatiReady = true;
 boot();

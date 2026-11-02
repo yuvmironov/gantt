@@ -57,6 +57,8 @@
             Уведомления <span id="unread-count">0</span>
           </button>
           <button id="audit-toggle" class="ghost hidden" type="button">Аудит</button>
+          <button id="executors-toggle" class="ghost hidden" type="button">Исполнители</button>
+          <button id="admin-toggle" class="ghost hidden" type="button">Админ</button>
           <button id="password-toggle" class="ghost" type="button">Пароль</button>
           <button id="sessions-toggle" class="ghost" type="button">Сессии</button>
           <button id="logout" class="ghost" type="button">Выйти</button>
@@ -379,6 +381,35 @@
           </label>
           <button class="primary" type="submit">Сбросить пароль</button>
         </form>
+      </div>
+    </div>
+
+    <div id="executors-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Исполнители</h2>
+          <button id="executors-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <form id="executor-form" class="form compact">
+          <input type="hidden" name="executorId" />
+          <label>Фамилия <input name="lastName" required /></label>
+          <label>Имя <input name="firstName" required /></label>
+          <label>Отчество <input name="middleName" /></label>
+          <label>Должность <input name="position" /></label>
+          <button class="primary" type="submit">Сохранить</button>
+        </form>
+        <div id="executor-list" class="list"></div>
+      </div>
+    </div>
+
+    <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="panel-head">
+          <h2>Администрирование пользователей</h2>
+          <button id="admin-close" class="ghost" type="button">Закрыть</button>
+        </div>
+        <input id="admin-user-search" type="search" placeholder="Поиск по email или имени" />
+        <div id="admin-user-list" class="list"></div>
       </div>
     </div>
 

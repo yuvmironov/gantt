@@ -177,6 +177,7 @@ services:
       PROJECT_SERVICE_GRPC: project-service:50051
       NOTIFICATION_SERVICE_URL: http://notification-service:8080
       AUDIT_SERVICE_URL: http://audit-service:8080
+      SYNC_TOKEN_SECRET: ${SYNC_TOKEN_SECRET:-local-sync-secret}
     networks: [smart-oati]
 
   sync-service:
@@ -199,6 +200,7 @@ services:
       KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
       KAFKA_CONSUMER_GROUP_SYNC: sync
       SYNC_SERVICE_URL: http://127.0.0.1:8080
+      SYNC_TOKEN_SECRET: ${SYNC_TOKEN_SECRET:-local-sync-secret}
     networks: [smart-oati]
 
   audit-service:

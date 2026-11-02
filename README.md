@@ -141,6 +141,8 @@ tools/                 # проверки контрактов
 - [x] Project members, invitations, password reset/change and resend verification.
 - [x] Real-time Gantt synchronization through `sync-service`.
 - [x] Multi-user Playwright E2E with invitation and real-time updates.
+- [x] Project-scoped real-time sync tokens and authenticated WebSocket.
+- [x] Executor CRUD, user linking, admin user roles and blocking.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
 - [x] Prometheus metrics, local Grafana dashboards and alerts.
 - [ ] Production staging deploy and real-cluster verification.

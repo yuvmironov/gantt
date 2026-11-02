@@ -23,6 +23,9 @@ function grpcError(code, message) {
 
 function mapDbError(error) {
   if (error.code === '23505') {
+    if (String(error.constraint ?? '').includes('executor')) {
+      return grpcError(status.ALREADY_EXISTS, 'executor_conflict');
+    }
     return grpcError(status.ALREADY_EXISTS, 'email_taken');
   }
   if (error.message === 'session_limit_reached') {
@@ -186,6 +189,28 @@ async function canManageProject(db, projectId, userId) {
   return result.rowCount > 0;
 }
 
+async function canManageExecutors(db, userId) {
+  if (!userId) return false;
+  const result = await db.query(
+    `SELECT 1 FROM access.user_roles WHERE user_id = $1 AND role_code = 'app_admin'
+     UNION ALL
+     SELECT 1 FROM access.project_memberships
+     WHERE user_id = $1 AND role_code = 'project_owner' AND status = 'active'
+     LIMIT 1`,
+    [userId],
+  );
+  return result.rowCount > 0;
+}
+
+async function isAdmin(db, userId) {
+  if (!userId) return false;
+  const result = await db.query(
+    `SELECT 1 FROM access.user_roles WHERE user_id = $1 AND role_code = 'app_admin'`,
+    [userId],
+  );
+  return result.rowCount > 0;
+}
+
 async function findUserByEmail(db, email) {
   const result = await db.query('SELECT * FROM access.users WHERE email = $1', [email]);
   return result.rows[0] ?? null;
@@ -256,10 +281,10 @@ export async function ensureDevAdmin(db, env = process.env) {
 
   const lastName =
     String(env.DEV_ADMIN_LAST_NAME ?? '').trim() ||
-    'Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРІвЂћСћР В Р’В Р вЂ™Р’В Р В РЎС›Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’В Р В Р Р‹Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В¦Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р В Р вЂ№Р В Р’В Р РЋРІР‚СљР В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р В Р вЂ№Р В Р’В Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС›Р В Р’В Р В Р вЂ№Р В Р’В Р Р†Р вЂљРЎв„ў';
+    'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р РЋРЎвЂєР В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС™Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’В°Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂєР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћ';
   const firstName =
     String(env.DEV_ADMIN_FIRST_NAME ?? '').trim() ||
-    'Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљР’ВР В Р’В Р В Р вЂ№Р В Р’В Р РЋРІР‚СљР В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В Р Р‹Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљР’В¦Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р Р†РІР‚С›РІР‚вЂњР В Р’В Р вЂ™Р’В Р В Р вЂ Р Р†Р вЂљРЎвЂєР Р†Р вЂљРІР‚Сљ';
+    'Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В Р вЂ Р В РІР‚С™Р вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р вЂ™Р’В Р В Р Р‹Р Р†Р вЂљРЎС™Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†РІР‚С›РЎС›Р В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р Р†Р вЂљРІвЂћСћР В РІР‚в„ўР вЂ™Р’ВµР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В Р вЂ№Р В РІР‚в„ўР вЂ™Р’ВР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р вЂ™Р’В Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В¦Р В Р’В Р вЂ™Р’В Р В Р’В Р В РІР‚в„–Р В Р’В Р В РІР‚В Р В Р’В Р Р†Р вЂљРЎв„ўР В Р вЂ Р Р†Р вЂљРЎвЂєР Р†Р вЂљРІР‚СљР В Р’В Р вЂ™Р’В Р В РІР‚в„ўР вЂ™Р’В Р В Р’В Р В РІР‚В Р В Р вЂ Р В РІР‚С™Р РЋРІР‚С”Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎС™';
   const middleName = String(env.DEV_ADMIN_MIDDLE_NAME ?? '').trim() || null;
   const displayName = `${lastName} ${firstName}`.trim();
   const passwordHash = await hashPassword(password);
@@ -1377,6 +1402,190 @@ export function createUserImplementation({
       }
     },
 
+    async GetUserRoles(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      try {
+        const roles = await getRoles(db, userId);
+        callback(null, {
+          global_roles: roles
+            .filter((role) => role === 'app_admin')
+            .map(() => 'GLOBAL_ROLE_APP_ADMIN'),
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async SetUserGlobalRoles(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+      try {
+        const user = await db.query('SELECT * FROM access.users WHERE id = $1', [userId]);
+        if (user.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        const roles = (call.request.roles ?? []).includes('GLOBAL_ROLE_APP_ADMIN');
+        await db.query(
+          `DELETE FROM access.user_roles WHERE user_id = $1 AND role_code = 'app_admin'`,
+          [userId],
+        );
+        if (roles) {
+          await db.query(
+            `INSERT INTO access.user_roles (user_id, role_code) VALUES ($1, 'app_admin')
+             ON CONFLICT DO NOTHING`,
+            [userId],
+          );
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.roles.updated',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId, appAdmin: roles },
+        }).catch(() => {});
+        callback(null, {
+          user: toUser(user.rows[0], roles ? ['app_admin'] : []),
+          roles: roles ? ['GLOBAL_ROLE_APP_ADMIN'] : [],
+        });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateUserProfile(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!userId) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'user_id_required'));
+        return;
+      }
+      if (actorUserId && actorUserId !== userId && !(await isAdmin(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.users SET
+             display_name = COALESCE($2, display_name),
+             last_name = COALESCE($3, last_name),
+             first_name = COALESCE($4, first_name),
+             middle_name = COALESCE($5, middle_name),
+             position = COALESCE($6, position),
+             timezone = COALESCE($7, timezone),
+             locale = COALESCE($8, locale),
+             updated_at = now()
+           WHERE id = $1 RETURNING *`,
+          [
+            userId,
+            call.request.display_name ?? null,
+            call.request.last_name ?? null,
+            call.request.first_name ?? null,
+            call.request.middle_name ?? null,
+            call.request.position ?? null,
+            call.request.timezone ?? null,
+            call.request.locale ?? null,
+          ],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.updated',
+          actorUserId: actorUserId || userId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId },
+        }).catch(() => {});
+        callback(null, { user: toUser(result.rows[0], await getRoles(db, userId)) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async BlockUser(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId)) || userId === actorUserId) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.users SET status = 'blocked', updated_at = now()
+           WHERE id = $1 RETURNING id`,
+          [userId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        await db.query(
+          `UPDATE access.user_sessions SET revoked_at = now()
+           WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.blocked',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId, reason: String(call.request.reason ?? '') },
+        }).catch(() => {});
+        callback(null, { blocked: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UnblockUser(call, callback) {
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await isAdmin(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'admin_forbidden'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.users SET status = 'active', failed_login_attempts = 0,
+             lockout_level = 0, locked_until = NULL, updated_at = now()
+           WHERE id = $1 RETURNING id`,
+          [userId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'user',
+          aggregateId: userId,
+          eventType: 'user.unblocked',
+          actorUserId,
+          entityType: 'user',
+          entityId: userId,
+          payload: { userId },
+        }).catch(() => {});
+        callback(null, { unblocked: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
     async GetCurrentUser(call, callback) {
       const userId = String(call.request.user_id ?? '');
       if (!userId) {
@@ -1392,6 +1601,193 @@ export function createUserImplementation({
         }
         const roles = await getRoles(db, userId);
         callback(null, { user: toUser(result.rows[0], roles) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async CreateExecutor(call, callback) {
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      const lastName = String(call.request.last_name ?? '').trim();
+      const firstName = String(call.request.first_name ?? '').trim();
+      const middleName = String(call.request.middle_name ?? '').trim();
+      const position = String(call.request.position ?? '').trim();
+      if (!lastName || !firstName) {
+        callback(grpcError(status.INVALID_ARGUMENT, 'executor_name_required'));
+        return;
+      }
+      if (!(await canManageExecutors(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'executor_manage_forbidden'));
+        return;
+      }
+      try {
+        const fullName = [lastName, firstName, middleName].filter(Boolean).join(' ');
+        const result = await db.query(
+          `INSERT INTO access.executors (last_name, first_name, middle_name, full_name, position)
+           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+          [lastName, firstName, middleName || null, fullName, position || null],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'executor',
+          aggregateId: result.rows[0].id,
+          eventType: 'executor.created',
+          actorUserId,
+          entityType: 'executor',
+          entityId: result.rows[0].id,
+          payload: { executorId: result.rows[0].id },
+        }).catch(() => {});
+        callback(null, { executor: toExecutor(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UpdateExecutor(call, callback) {
+      const executorId = String(call.request.executor_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await canManageExecutors(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'executor_manage_forbidden'));
+        return;
+      }
+      try {
+        const current = await db.query(
+          'SELECT * FROM access.executors WHERE id = $1 AND deleted_at IS NULL',
+          [executorId],
+        );
+        if (current.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'executor_not_found'));
+          return;
+        }
+        const row = current.rows[0];
+        const lastName = String(call.request.last_name ?? row.last_name).trim();
+        const firstName = String(call.request.first_name ?? row.first_name).trim();
+        const middleName = String(call.request.middle_name ?? row.middle_name ?? '').trim();
+        const position = String(call.request.position ?? row.position ?? '').trim();
+        if (!lastName || !firstName) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'executor_name_required'));
+          return;
+        }
+        const fullName = [lastName, firstName, middleName].filter(Boolean).join(' ');
+        const result = await db.query(
+          `UPDATE access.executors
+           SET last_name = $2, first_name = $3, middle_name = $4, full_name = $5,
+               position = $6, updated_at = now()
+           WHERE id = $1 RETURNING *`,
+          [executorId, lastName, firstName, middleName || null, fullName, position || null],
+        );
+        await queueUserEvent(db, {
+          aggregateType: 'executor',
+          aggregateId: executorId,
+          eventType: 'executor.updated',
+          actorUserId,
+          entityType: 'executor',
+          entityId: executorId,
+          payload: { executorId },
+        }).catch(() => {});
+        callback(null, { executor: toExecutor(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async DeleteExecutor(call, callback) {
+      const executorId = String(call.request.executor_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await canManageExecutors(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'executor_manage_forbidden'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.executors
+           SET deleted_at = now(), is_active = false, linked_user_id = NULL, updated_at = now()
+           WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+          [executorId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'executor_not_found'));
+          return;
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'executor',
+          aggregateId: executorId,
+          eventType: 'executor.deleted',
+          actorUserId,
+          entityType: 'executor',
+          entityId: executorId,
+          payload: { executorId },
+        }).catch(() => {});
+        callback(null, { deleted: true });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async LinkExecutorUser(call, callback) {
+      const executorId = String(call.request.executor_id ?? '');
+      const userId = String(call.request.user_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await canManageExecutors(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'executor_manage_forbidden'));
+        return;
+      }
+      try {
+        const user = await db.query('SELECT id FROM access.users WHERE id = $1', [userId]);
+        if (user.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'user_not_found'));
+          return;
+        }
+        const result = await db.query(
+          `UPDATE access.executors SET linked_user_id = $2, updated_at = now()
+           WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+          [executorId, userId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'executor_not_found'));
+          return;
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'executor',
+          aggregateId: executorId,
+          eventType: 'executor.linked',
+          actorUserId,
+          entityType: 'executor',
+          entityId: executorId,
+          payload: { executorId, userId },
+        }).catch(() => {});
+        callback(null, { executor: toExecutor(result.rows[0]) });
+      } catch (error) {
+        callback(mapDbError(error));
+      }
+    },
+
+    async UnlinkExecutorUser(call, callback) {
+      const executorId = String(call.request.executor_id ?? '');
+      const actorUserId = String(call.request.actor_user_id ?? '');
+      if (!(await canManageExecutors(db, actorUserId))) {
+        callback(grpcError(status.PERMISSION_DENIED, 'executor_manage_forbidden'));
+        return;
+      }
+      try {
+        const result = await db.query(
+          `UPDATE access.executors SET linked_user_id = NULL, updated_at = now()
+           WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+          [executorId],
+        );
+        if (result.rowCount === 0) {
+          callback(grpcError(status.NOT_FOUND, 'executor_not_found'));
+          return;
+        }
+        await queueUserEvent(db, {
+          aggregateType: 'executor',
+          aggregateId: executorId,
+          eventType: 'executor.unlinked',
+          actorUserId,
+          entityType: 'executor',
+          entityId: executorId,
+          payload: { executorId },
+        }).catch(() => {});
+        callback(null, { executor: toExecutor(result.rows[0]) });
       } catch (error) {
         callback(mapDbError(error));
       }

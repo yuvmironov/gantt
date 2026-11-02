@@ -13,6 +13,7 @@
     "@fastify/helmet": "13.0.2",
     "@fastify/multipart": "9.0.3",
     "@fastify/rate-limit": "10.2.0",
-    "@smart-oati/service-kit": "workspace:*"
+    "@smart-oati/service-kit": "workspace:*",
+    "@smart-oati/shared": "workspace:*"
   }
 }
