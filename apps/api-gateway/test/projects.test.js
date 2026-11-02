@@ -129,6 +129,26 @@ describe('api-gateway project routes', () => {
     expect(listed.json()).toMatchObject({ items: [{ id: 'diagram-1' }] });
   });
 
+  it('lists an empty diagram collection when gRPC omits items', async () => {
+    const app = build(sessionUser, {
+      ListDiagrams(_request, _metadata, callback) {
+        callback(null, { page: { total: 0, limit: 50, offset: 0 } });
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/project-1/diagrams',
+      cookies: { '__Host-session': 'token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      items: [],
+      page: { total: 0, limit: 50, offset: 0 },
+    });
+  });
+
   it('loads, updates and deletes a diagram', async () => {
     const diagram = {
       id: 'diagram-1',
