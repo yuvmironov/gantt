@@ -123,7 +123,16 @@ export async function extraRoutes(app, { userClient }) {
       const response = await call(userClient, 'GetNotificationContacts', {
         user_ids: [access.session.user_id],
       });
-      return reply.send(response.items[0] ?? {});
+      const item = response.items[0];
+      if (!item) return reply.send({});
+      return reply.send({
+        userId: item.user_id,
+        email: item.email,
+        emailVerified: item.email_verified,
+        telegramUserId: Number(item.telegram_user_id ?? 0),
+        telegramUsername: item.telegram_username,
+        telegramLinked: item.telegram_linked,
+      });
     } catch (error) {
       return sendProblem(reply, request, error);
     }

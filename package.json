@@ -23,6 +23,7 @@
     "local:logs": "node tools/local.mjs logs",
     "local:backup": "node tools/local.mjs backup",
     "local:restore": "node tools/local.mjs restore",
+    "local:verify-restore": "node tools/restore-drill.mjs",
     "start:api-gateway": "node apps/api-gateway/src/index.js",
     "start:user-service": "node apps/user-service/src/index.js",
     "start:project-service": "node apps/project-service/src/index.js",
