@@ -129,6 +129,7 @@ function showApp() {
   const isAdmin = (state.user?.globalRoles ?? []).includes('app_admin');
   $('#audit-toggle').classList.toggle('hidden', !isAdmin);
   $('#admin-toggle').classList.toggle('hidden', !isAdmin);
+  $('#settings-toggle').classList.toggle('hidden', !isAdmin);
   $('#executors-toggle').classList.toggle('hidden', !isAdmin);
   window.clearInterval(unreadTimer);
   loadUnreadCount();
@@ -1001,7 +1002,12 @@ async function openAudit() {
   const container = $('#audit-list');
   container.innerHTML = '<p class="empty">Загрузка...</p>';
   try {
-    const response = await api('/audit/events?limit=50');
+    const query = new URLSearchParams({ limit: '50' });
+    const action = $('#audit-filter-action').value.trim();
+    const actor = $('#audit-filter-actor').value.trim();
+    if (action) query.set('actionCode', action);
+    if (actor) query.set('actorUserId', actor);
+    const response = await api(`/audit/events?${query}`);
     const items = response.items ?? [];
     container.innerHTML =
       items
@@ -1020,7 +1026,28 @@ async function openAudit() {
 }
 
 $('#audit-toggle').addEventListener('click', openAudit);
+$('#audit-filter-apply').addEventListener('click', openAudit);
 $('#audit-close').addEventListener('click', () => $('#audit-modal').classList.add('hidden'));
+
+$('#settings-toggle').addEventListener('click', async () => {
+  $('#settings-modal').classList.remove('hidden');
+  try {
+    const response = await api('/settings');
+    $('#settings-json').value = JSON.stringify(response.items ?? [], null, 2);
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+$('#settings-close').addEventListener('click', () => $('#settings-modal').classList.add('hidden'));
+$('#settings-save').addEventListener('click', async () => {
+  try {
+    const items = JSON.parse($('#settings-json').value);
+    await api('/settings', { method: 'PUT', body: { items } });
+    showToast('Настройки сохранены.');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
 
 async function loadUnreadCount() {
   try {
