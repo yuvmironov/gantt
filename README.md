@@ -76,6 +76,7 @@ pnpm local:down     # остановка
 pnpm local:reset    # остановка с удалением volumes
 pnpm local:backup   # дамп всех БД в backups/
 pnpm local:restore -- backups/<file>.sql
+pnpm local:verify-restore  # restore-drill в отдельном контейнере
 ```
 
 ## HTTPS
