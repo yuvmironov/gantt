@@ -17,6 +17,14 @@ const holidayDate = ref('');
 const holidayName = ref('');
 const importJob = ref(null);
 const importing = ref(false);
+const members = ref([]);
+const selectedIds = ref([]);
+const bulkStatus = ref('planned');
+const bulkProgress = ref(0);
+const assignmentForm = reactive({ responsible: '', executor: '', coExecutor: '' });
+const projectForm = reactive({ name: '' });
+const diagramForm = reactive({ name: '' });
+const directionForm = reactive({ name: '' });
 const taskForm = reactive({ name: '', directionId: '' });
 const taskEdit = reactive({
   name: '',
@@ -64,7 +72,19 @@ async function loadProjects() {
   projects.value = (await api('/projects?limit=100')).items ?? [];
   const query = new URLSearchParams(window.location.search);
   projectId.value = query.get('project') || projects.value[0]?.id || '';
+  members.value = (await api(`/projects/${projectId.value}/members?limit=200`)).items ?? [];
   await loadDiagrams(query.get('diagram'));
+}
+
+async function createProject() {
+  if (!projectForm.name.trim()) return;
+  try {
+    await api('/projects', { method: 'POST', body: { name: projectForm.name, description: '' } });
+    projectForm.name = '';
+    await loadProjects();
+  } catch (reason) {
+    error.value = reason.message;
+  }
 }
 
 async function loadDiagrams(preferredDiagram) {
@@ -85,6 +105,62 @@ async function loadSnapshot(preserveTask = false) {
     progress.value = Number(fresh.progress) || 0;
     status.value = fresh.status ?? 'planned';
     fillTaskEdit(fresh);
+    fillAssignments(fresh);
+  }
+}
+
+function fillAssignments(task) {
+  const userAssignment = (role) =>
+    (task.assignments ?? []).find((item) => item.role === role && item.assigneeType === 'user')
+      ?.assigneeId ?? '';
+  assignmentForm.responsible = userAssignment('responsible');
+  assignmentForm.executor = userAssignment('executor');
+  assignmentForm.coExecutor = userAssignment('co_executor');
+}
+
+async function saveAssignments() {
+  if (!selectedTask.value) return;
+  const preserved = (selectedTask.value.assignments ?? [])
+    .filter((item) => item.assigneeType !== 'user')
+    .map((item) => ({ role: item.role, assigneeType: item.assigneeType, assigneeId: item.assigneeId }));
+  const users = [
+    ['responsible', assignmentForm.responsible],
+    ['executor', assignmentForm.executor],
+    ['co_executor', assignmentForm.coExecutor],
+  ]
+    .filter(([, id]) => id)
+    .map(([role, assigneeId]) => ({ role, assigneeType: 'user', assigneeId }));
+  try {
+    await api(`/tasks/${selectedTask.value.id}/assignments`, {
+      method: 'PUT',
+      body: {
+        assignments: [...preserved, ...users],
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+      },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function applyBulk() {
+  const tasks = (snapshot.value?.tasks ?? []).filter((task) => selectedIds.value.includes(task.id));
+  try {
+    for (const task of tasks) {
+      await api(`/tasks/${task.id}/progress`, {
+        method: 'PATCH',
+        body: {
+          status: bulkStatus.value,
+          progress: Number(bulkProgress.value),
+          expectedVersion: task.version,
+        },
+      });
+    }
+    selectedIds.value = [];
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
   }
 }
 
@@ -102,7 +178,36 @@ async function selectTask(task) {
   progress.value = Number(task.progress) || 0;
   status.value = task.status ?? 'planned';
   fillTaskEdit(task);
+  fillAssignments(task);
   comments.value = (await api(`/comments?entityType=task&entityId=${task.id}`)).items ?? [];
+}
+
+async function createDiagram() {
+  if (!diagramForm.name.trim() || !projectId.value) return;
+  try {
+    const diagram = await api(`/projects/${projectId.value}/diagrams`, {
+      method: 'POST',
+      body: { name: diagramForm.name, dayMode: 'working' },
+    });
+    diagramForm.name = '';
+    await loadDiagrams(diagram.id);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function createDirection() {
+  if (!directionForm.name.trim() || !diagramId.value) return;
+  try {
+    await api(`/diagrams/${diagramId.value}/directions`, {
+      method: 'POST',
+      body: { name: directionForm.name },
+    });
+    directionForm.name = '';
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
 }
 
 async function createTask() {
@@ -345,8 +450,13 @@ onMounted(async () => {
   <main class="gantt-page">
     <header class="gantt-header">
       <div>
-        <a href="/" class="back">← Legacy Gantt</a>
         <h1>Gantt</h1>
+        <nav class="nav">
+          <a href="/members">Участники</a>
+          <a href="/notifications">Уведомления</a>
+          <a href="/profile">Профиль</a>
+          <a href="/admin">Администрирование</a>
+        </nav>
       </div>
       <div class="selectors">
         <select v-model="projectId" @change="loadDiagrams()">
@@ -364,11 +474,40 @@ onMounted(async () => {
     <p v-if="loading">Загрузка...</p>
     <p v-if="error" class="error">{{ error }}</p>
 
-    <div class="gantt-layout">
+    <section v-if="!loading && !projects.length" class="card empty-project">
+      <h2>Создайте первый проект</h2>
+      <form class="stack" @submit.prevent="createProject">
+        <input v-model="projectForm.name" placeholder="Название проекта" required />
+        <button type="submit">Создать проект</button>
+      </form>
+    </section>
+
+    <section v-if="!loading && projectId && !snapshot" class="card empty-project">
+      <h2>Создайте первую диаграмму</h2>
+      <form class="stack" @submit.prevent="createDiagram">
+        <input v-model="diagramForm.name" placeholder="Название диаграммы" required />
+        <button type="submit">Создать диаграмму</button>
+      </form>
+    </section>
+
+    <div v-if="snapshot" class="gantt-layout">
       <section class="card table-card">
+        <div v-if="snapshot" class="bulk">
+          <strong>Массово</strong>
+          <select v-model="bulkStatus">
+            <option value="planned">Планируется</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Готово</option>
+            <option value="blocked">Блокировано</option>
+          </select>
+          <input v-model.number="bulkProgress" type="number" min="0" max="100" step="5" />
+          <button type="button" :disabled="!selectedIds.length" @click="applyBulk">
+            Применить к {{ selectedIds.length }}
+          </button>
+        </div>
         <table v-if="snapshot">
           <thead>
-            <tr><th>WBS</th><th>Задача</th><th>Статус</th><th>Прогресс</th></tr>
+            <tr><th></th><th>WBS</th><th>Задача</th><th>Статус</th><th>Прогресс</th></tr>
           </thead>
           <tbody>
             <tr
@@ -377,6 +516,7 @@ onMounted(async () => {
               :class="{ selected: selectedTask?.id === task.id }"
               @click="selectTask(task)"
             >
+              <td @click.stop><input v-model="selectedIds" type="checkbox" :value="task.id" /></td>
               <td>{{ task.wbsCode }}</td>
               <td>{{ task.name }}</td>
               <td>{{ statusLabel(task.status) }}</td>
@@ -420,12 +560,27 @@ onMounted(async () => {
           <button type="button" @click="saveTask">Сохранить задачу</button>
           <button type="button" class="danger" @click="deleteTask">Удалить задачу</button>
         </div>
-        <div v-if="selectedTask.assignments?.length" class="assignments">
-          <h3>Назначения</h3>
-          <div v-for="assignment in selectedTask.assignments" :key="assignment.id" class="comment">
-            <strong>{{ assignment.displayName || assignment.assigneeId }}</strong>
-            <span>{{ assignment.role }}</span>
-          </div>
+        <h3>Назначения</h3>
+        <div class="stack">
+          <select v-model="assignmentForm.responsible">
+            <option value="">Ответственный не назначен</option>
+            <option v-for="member in members" :key="member.userId" :value="member.userId">
+              {{ member.user?.displayName || member.user?.email || member.userId }}
+            </option>
+          </select>
+          <select v-model="assignmentForm.executor">
+            <option value="">Исполнитель не назначен</option>
+            <option v-for="member in members" :key="member.userId" :value="member.userId">
+              {{ member.user?.displayName || member.user?.email || member.userId }}
+            </option>
+          </select>
+          <select v-model="assignmentForm.coExecutor">
+            <option value="">Соисполнитель не назначен</option>
+            <option v-for="member in members" :key="member.userId" :value="member.userId">
+              {{ member.user?.displayName || member.user?.email || member.userId }}
+            </option>
+          </select>
+          <button type="button" @click="saveAssignments">Сохранить назначения</button>
         </div>
         <h3>Комментарии</h3>
         <div class="comments">
@@ -441,6 +596,18 @@ onMounted(async () => {
       </aside>
 
       <section v-if="snapshot" class="card manage">
+        <h3>Новая диаграмма</h3>
+        <form class="stack" @submit.prevent="createDiagram">
+          <input v-model="diagramForm.name" placeholder="Название диаграммы" required />
+          <button type="submit">Создать диаграмму</button>
+        </form>
+
+        <h3>Новое направление</h3>
+        <form class="stack" @submit.prevent="createDirection">
+          <input v-model="directionForm.name" placeholder="Название направления" required />
+          <button type="submit">Создать направление</button>
+        </form>
+
         <h3>Новая задача</h3>
         <form class="stack" @submit.prevent="createTask">
           <select v-model="taskForm.directionId" class="task-direction" required>
@@ -507,7 +674,9 @@ onMounted(async () => {
 <style scoped>
 .gantt-page { max-width: 1400px; margin: 0 auto; padding: 24px; color: #1f2937; font-family: Inter, system-ui, sans-serif; }
 .gantt-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-.back { color: #2563eb; text-decoration: none; font-size: 14px; }
+.nav { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.nav a { color: #2563eb; text-decoration: none; font-size: 13px; }
+.empty-project { max-width: 420px; margin: 40px auto; }
 h1 { margin: 4px 0 0; font-size: 28px; }
 .selectors { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .sync-status, .export { font-size: 12px; color: #475569; text-decoration: none; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 7px; }
@@ -515,6 +684,8 @@ h1 { margin: 4px 0 0; font-size: 28px; }
 .gantt-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
 .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
 .table-card { overflow-x: auto; }
+.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.bulk input[type=number] { width: 90px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid #e5e7eb; }
 tbody tr { cursor: pointer; }

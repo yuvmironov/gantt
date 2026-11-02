@@ -149,7 +149,8 @@ tools/                 # проверки контрактов
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import.
 - [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
 - [x] Nuxt frontend shell with the existing Gantt SPA.
-- [x] Componentized Nuxt pages: /login, /admin, /profile, /notifications, /members and /gantt.
+- [x] Componentized Nuxt pages: /gantt (root), /login, /admin, /profile, /notifications and /members.
+- [x] Vue Gantt MVP: task CRUD, assignments, progress, comments, dependencies, calendar, import/export, realtime, bulk updates and project/diagram/direction creation.
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.
 - [x] Playwright smoke E2E.

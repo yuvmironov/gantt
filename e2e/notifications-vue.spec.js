@@ -12,12 +12,11 @@ test('nuxt notifications page renders', async ({ page }) => {
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('#app-view')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
 
   await page.goto('/notifications');
   await expect(page.locator('.notifications-page')).toBeVisible();
   await expect(page.locator('.notifications-page .empty')).toBeVisible();
   await page.locator('.back').click();
-  await expect(page.locator('#app-view')).toBeVisible();
-  await page.locator('#logout').click();
+  await expect(page.locator('.gantt-page')).toBeVisible();
 });
