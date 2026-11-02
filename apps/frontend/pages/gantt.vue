@@ -70,7 +70,7 @@ function statusLabel(value) {
 }
 
 async function loadProjects() {
-  projects.value = (await api('/projects?limit=100')).items ?? [];
+  projects.value = (await api('/projects?limit=200')).items ?? [];
   const query = new URLSearchParams(window.location.search);
   projectId.value = query.get('project') || projects.value[0]?.id || '';
   members.value = (await api(`/projects/${projectId.value}/members?limit=200`)).items ?? [];
@@ -94,7 +94,7 @@ async function createProject() {
 }
 
 async function loadDiagrams(preferredDiagram) {
-  diagrams.value = (await api(`/projects/${projectId.value}/diagrams?limit=100`)).items ?? [];
+  diagrams.value = (await api(`/projects/${projectId.value}/diagrams?limit=200`)).items ?? [];
   diagramId.value = preferredDiagram || diagrams.value[0]?.id || '';
   await loadSnapshot();
 }
@@ -517,6 +517,21 @@ onMounted(async () => {
     <main class="page gantt-page">
       <div class="breadcrumbs"><a href="/gantt">Рабочее пространство</a><span class="sep">/</span><span>{{ projectName }}</span><span class="sep">/</span><strong>{{ snapshot?.diagram?.name || 'Gantt' }}</strong></div>
 
+      <div v-if="projects.length" class="project-bar">
+        <label>
+          <span>Проект</span>
+          <select v-model="projectId" class="input" @change="loadDiagrams()">
+            <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+          </select>
+        </label>
+        <label v-if="diagrams.length">
+          <span>Диаграмма</span>
+          <select v-model="diagramId" class="input" @change="loadSnapshot()">
+            <option v-for="diagram in diagrams" :key="diagram.id" :value="diagram.id">{{ diagram.name }}</option>
+          </select>
+        </label>
+      </div>
+
       <div v-if="snapshot" class="gantt-topline">
         <div class="gantt-title-row">
           <div>
@@ -729,6 +744,9 @@ onMounted(async () => {
 .brand-mark { display: inline-grid; place-items: center; }
 .sync-status { font-size: 12px; color: var(--color-text-muted); }
 .sync-status.online { color: var(--color-success); }
+.project-bar { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 16px; }
+.project-bar label { display: grid; gap: 5px; min-width: 240px; }
+.project-bar label span { color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .gantt-topline { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 18px; }
 .gantt-title-row { display: flex; gap: 12px; align-items: center; }
 .title-line { display: flex; gap: 10px; align-items: center; }
