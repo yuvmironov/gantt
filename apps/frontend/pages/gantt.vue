@@ -12,6 +12,11 @@ const status = ref('planned');
 const error = ref('');
 const loading = ref(true);
 const syncConnected = ref(false);
+const dependencyForm = reactive({ predecessorId: '', successorId: '' });
+const holidayDate = ref('');
+const holidayName = ref('');
+const importJob = ref(null);
+const importing = ref(false);
 let syncSocket = null;
 
 function csrfToken() {
@@ -84,7 +89,7 @@ async function saveProgress() {
   if (!selectedTask.value) return;
   try {
     const updated = await api(`/tasks/${selectedTask.value.id}/progress`, {
-      method: 'POST',
+      method: 'PATCH',
       body: {
         status: status.value,
         progress: Number(progress.value),
@@ -112,6 +117,112 @@ async function addComment() {
     comments.value = (await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)).items ?? [];
   } catch (reason) {
     error.value = reason.message;
+  }
+}
+
+function taskLabel(taskId) {
+  const task = (snapshot.value?.tasks ?? []).find((item) => item.id === taskId);
+  return task ? `${task.wbsCode} ${task.name}` : taskId;
+}
+
+async function addDependency() {
+  if (!dependencyForm.predecessorId || !dependencyForm.successorId) return;
+  try {
+    await api(`/diagrams/${diagramId.value}/dependencies`, {
+      method: 'POST',
+      body: {
+        predecessorType: 'task',
+        predecessorId: dependencyForm.predecessorId,
+        successorType: 'task',
+        successorId: dependencyForm.successorId,
+      },
+    });
+    dependencyForm.predecessorId = '';
+    dependencyForm.successorId = '';
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function deleteDependency(dependencyId) {
+  try {
+    await api(`/dependencies/${dependencyId}`, { method: 'DELETE' });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function saveHolidays(items) {
+  try {
+    await api(`/diagrams/${diagramId.value}/holidays`, {
+      method: 'PUT',
+      body: { items, baseRevision: snapshot.value?.currentRevision ?? 0 },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function addHoliday() {
+  if (!holidayDate.value) return;
+  const existing = (snapshot.value?.holidays ?? []).map((holiday) => ({
+    holidayDate: holiday.holidayDate,
+    name: holiday.name ?? '',
+  }));
+  if (existing.some((holiday) => holiday.holidayDate === holidayDate.value)) return;
+  existing.push({ holidayDate: holidayDate.value, name: holidayName.value });
+  await saveHolidays(existing);
+  holidayDate.value = '';
+  holidayName.value = '';
+}
+
+async function deleteHoliday(date) {
+  const items = (snapshot.value?.holidays ?? [])
+    .filter((holiday) => holiday.holidayDate !== date)
+    .map((holiday) => ({ holidayDate: holiday.holidayDate, name: holiday.name ?? '' }));
+  await saveHolidays(items);
+}
+
+async function importFile(event) {
+  const file = event.target.files?.[0];
+  if (!file || !diagramId.value) return;
+  importing.value = true;
+  importJob.value = null;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('format', file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json');
+    const response = await fetch(`/api/v1/diagrams/${diagramId.value}/import`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRF-Token': csrfToken() ?? '' },
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error((await response.json().catch(() => ({}))).detail ?? response.statusText);
+    }
+    importJob.value = await response.json();
+    await pollImport(importJob.value.id);
+  } catch (reason) {
+    error.value = reason.message;
+  } finally {
+    importing.value = false;
+    event.target.value = '';
+  }
+}
+
+async function pollImport(jobId) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    importJob.value = await api(`/import-jobs/${jobId}`);
+    if (importJob.value.status === 'completed') {
+      await loadSnapshot(true);
+      return;
+    }
+    if (importJob.value.status === 'failed' || importJob.value.status === 'cancelled') return;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 
@@ -202,7 +313,8 @@ onMounted(async () => {
         <p v-else-if="!loading">Выберите диаграмму.</p>
       </section>
 
-      <aside v-if="selectedTask" class="card drawer">
+      <div class="side">
+        <aside v-if="selectedTask" class="card drawer">
         <div class="drawer-head">
           <h2>{{ selectedTask.name }}</h2>
           <button type="button" @click="selectedTask = null">Закрыть</button>
@@ -236,6 +348,55 @@ onMounted(async () => {
           <button type="submit">Добавить</button>
         </form>
       </aside>
+
+      <section v-if="snapshot" class="card manage">
+        <h3>Зависимости</h3>
+        <div class="manage-list">
+          <div v-for="dependency in snapshot.dependencies" :key="dependency.id" class="manage-item">
+            <span>{{ taskLabel(dependency.predecessorId) }} → {{ taskLabel(dependency.successorId) }}</span>
+            <button type="button" class="danger" @click="deleteDependency(dependency.id)">Удалить</button>
+          </div>
+          <p v-if="!snapshot.dependencies?.length" class="empty">Связей пока нет.</p>
+        </div>
+        <form class="stack" @submit.prevent="addDependency">
+          <select v-model="dependencyForm.predecessorId" required>
+            <option value="" disabled>Предшественник</option>
+            <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
+          </select>
+          <select v-model="dependencyForm.successorId" required>
+            <option value="" disabled>Последователь</option>
+            <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
+          </select>
+          <button type="submit">Добавить связь</button>
+        </form>
+
+        <h3>Производственный календарь</h3>
+        <div class="manage-list">
+          <div v-for="holiday in snapshot.holidays" :key="holiday.id" class="manage-item">
+            <span>{{ holiday.holidayDate }} — {{ holiday.name || 'Праздник' }}</span>
+            <button type="button" class="danger" @click="deleteHoliday(holiday.holidayDate)">Удалить</button>
+          </div>
+          <p v-if="!snapshot.holidays?.length" class="empty">Праздников пока нет.</p>
+        </div>
+        <form class="stack" @submit.prevent="addHoliday">
+          <input v-model="holidayDate" type="date" required />
+          <input v-model="holidayName" placeholder="Название" />
+          <button type="submit">Добавить праздник</button>
+        </form>
+
+        <h3>Импорт</h3>
+        <input type="file" accept=".json,.csv" :disabled="importing" @change="importFile" />
+        <p v-if="importing" class="empty">Импорт выполняется...</p>
+        <p v-else-if="importJob" class="empty">
+          {{ importJob.fileName }}: {{ importJob.status }}
+          <span v-if="importJob.errorMessage"> — {{ importJob.errorMessage }}</span>
+        </p>
+        <p v-if="importJob?.report" class="empty">
+          Направления: {{ importJob.report.directionsCount }}, задачи: {{ importJob.report.tasksCount }},
+          назначения: {{ importJob.report.assignmentsCount }}.
+        </p>
+      </section>
+      </div>
     </div>
   </main>
 </template>
@@ -255,8 +416,18 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid #e5e7eb; }
 tbody tr { cursor: pointer; }
 tbody tr:hover, tbody tr.selected { background: #eff6ff; }
-.drawer { position: sticky; top: 20px; }
+.side { display: grid; gap: 16px; }
+.side .drawer { position: static; z-index: auto; width: auto; height: auto; overflow: visible; box-shadow: none; }
 .drawer-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.manage { max-height: calc(100vh - 40px); overflow: auto; }
+.manage-list { display: grid; gap: 8px; }
+.manage-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 8px; font-size: 13px; }
+.manage-item span { overflow-wrap: anywhere; }
+.stack { display: grid; gap: 8px; margin-top: 10px; }
+.stack button, .danger { background: #fff; color: #b91c1c; border-color: #fecaca; }
+.stack button { background: #111827; color: #fff; border-color: #111827; }
+.danger { padding: 5px 8px; font-size: 12px; }
+.empty { color: #6b7280; font-size: 13px; margin: 0; }
 h2 { margin: 0; font-size: 18px; }
 h3 { margin: 18px 0 10px; font-size: 15px; }
 .inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
@@ -270,6 +441,7 @@ button { background: #111827; color: #fff; border-color: #111827; cursor: pointe
 @media (max-width: 900px) {
   .gantt-page { padding: 14px; }
   .gantt-header, .gantt-layout { grid-template-columns: 1fr; flex-direction: column; }
-  .drawer { position: static; }
+  .drawer, .side { position: static; }
+  .manage { max-height: none; }
 }
 </style>
