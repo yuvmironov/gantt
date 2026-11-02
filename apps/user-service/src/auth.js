@@ -230,10 +230,27 @@ async function sendMail(mailer, message) {
 
 const telegramCodes = new Map();
 
+function settingsStructValue(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : { value };
+}
+
+function storedSettingsValue(value) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 1 &&
+    'value' in value
+  ) {
+    return value.value;
+  }
+  return value ?? {};
+}
+
 function toSettings(row) {
   return {
     key: row.key,
-    value: row.value ?? {},
+    value: settingsStructValue(row.value),
     description: row.description ?? '',
     updated_by_user_id: row.updated_by_user_id ?? '',
     updated_at: toTimestamp(row.updated_at),
@@ -2001,7 +2018,12 @@ export function createUserImplementation({
              ON CONFLICT (key) DO UPDATE
                SET value = $2::jsonb, description = $3, updated_by_user_id = $4,
                    updated_at = now()`,
-            [item.key, JSON.stringify(item.value ?? {}), item.description ?? '', actorUserId],
+            [
+              item.key,
+              JSON.stringify(storedSettingsValue(item.value)),
+              item.description ?? '',
+              actorUserId,
+            ],
           );
         }
         const result = await db.query('SELECT * FROM settings.system_settings ORDER BY key');
