@@ -18,7 +18,7 @@ test('admin manages executors and blocked users', async ({ page, browser }) => {
   const realtimeRejected = await page.evaluate(
     () =>
       new Promise((resolve) => {
-        const socket = new WebSocket('wss://sync.localhost/ws');
+        const socket = new window.WebSocket('wss://sync.localhost/ws');
         const timer = setTimeout(() => resolve(false), 5000);
         socket.addEventListener('open', () => {
           clearTimeout(timer);
