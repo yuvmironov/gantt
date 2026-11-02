@@ -40,18 +40,37 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
       name,
       priority: 'medium',
     });
-    return { projectId: project.id, diagramId: diagram.id, taskId: task.id };
+    const successor = await post(`/diagrams/${diagram.id}/tasks`, {
+      directionId: direction.id,
+      name: `${name} successor`,
+      priority: 'medium',
+    });
+    return {
+      projectId: project.id,
+      diagramId: diagram.id,
+      taskId: task.id,
+      successorId: successor.id,
+    };
   }, taskName);
 
   await page.goto(`/gantt?project=${ids.projectId}&diagram=${ids.diagramId}`);
   await expect(page.locator('.gantt-page')).toBeVisible();
-  await page.locator('.gantt-page tbody tr').filter({ hasText: taskName }).click();
+  await page.locator('.gantt-page tbody tr').filter({ hasText: taskName }).first().click();
   await expect(page.locator('.drawer')).toBeVisible();
   await page.locator('.drawer input[type=number]').fill('25');
   await page.locator('.drawer button').filter({ hasText: 'Сохранить' }).click();
+  await expect(page.locator('.drawer input[type=number]')).toHaveValue('25');
   await page.locator('.comment-form textarea').fill('Vue comment');
   await page.locator('.comment-form button').click();
   await expect(page.locator('.comments')).toContainText('Vue comment');
+  await page.locator('.manage select').nth(0).selectOption(ids.taskId);
+  await page.locator('.manage select').nth(1).selectOption(ids.successorId);
+  await page.locator('.manage button').filter({ hasText: 'Добавить связь' }).click();
+  await expect(page.locator('.manage')).toContainText('→');
+  await page.locator('.manage input[type=date]').fill('2026-01-02');
+  await page.locator('.manage input[placeholder=Название]').fill('E2E holiday');
+  await page.locator('.manage button').filter({ hasText: 'Добавить праздник' }).click();
+  await expect(page.locator('.manage')).toContainText('E2E holiday');
   await page.locator('.back').click();
   await expect(page.locator('#app-view')).toBeVisible();
   await page.locator('#logout').click();
