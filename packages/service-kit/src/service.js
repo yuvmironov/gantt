@@ -36,7 +36,9 @@ export function createService({
   app.setErrorHandler(problemHandler);
   app.setNotFoundHandler(notFoundHandler);
   registerHealthRoutes(app, { service: name, version });
-  registerMetrics(app, createMetrics());
+  const metrics = createMetrics();
+  registerMetrics(app, metrics);
+  app.decorate('metrics', metrics);
 
   if (routes) app.register(routes);
 

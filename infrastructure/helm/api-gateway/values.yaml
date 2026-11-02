@@ -70,6 +70,11 @@ env:
     value: "8080"
   - name: LOG_LEVEL
     value: info
+  - name: SYNC_TOKEN_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: smart-oati-sync
+        key: token
 
 envFrom: []
 

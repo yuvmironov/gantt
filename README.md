@@ -151,6 +151,8 @@ tools/                 # проверки контрактов
 
 All Fastify services expose Prometheus metrics at `/metrics`: request count, request duration, process metrics and the service target status. Helm pods carry `prometheus.io/*` scrape annotations.
 
+`sync-service` additionally exposes `sync_ws_connections_active`, `sync_ws_auth_failures_total` and `sync_events_sent_total`. Sync tokens are signed with `SYNC_TOKEN_SECRET`; local Compose defaults to a development value, Kubernetes expects a `smart-oati-sync` Secret with key `token`.
+
 Local monitoring:
 
 ```bash
