@@ -19,6 +19,8 @@ const holidayName = ref('');
 const importJob = ref(null);
 const importing = ref(false);
 const importFormat = ref('json');
+const pendingImportFile = ref(null);
+const importPreview = ref(null);
 const members = ref([]);
 const executors = ref([]);
 const unreadCount = ref(0);
@@ -33,7 +35,7 @@ const projectForm = reactive({ name: '', description: '' });
 const showProjectForm = ref(false);
 const diagramForm = reactive({ name: '', description: '', dayMode: 'working' });
 const directionForm = reactive({ name: '' });
-const taskForm = reactive({ name: '', directionId: '' });
+const taskForm = reactive({ name: '', directionId: '', parentTaskId: '' });
 const moveForm = reactive({ directionId: '', sortOrder: 0 });
 const taskEdit = reactive({
   name: '',
@@ -42,7 +44,18 @@ const taskEdit = reactive({
   jiraNumber: '',
   startDate: '',
   endDate: '',
+  actualEndDate: '',
+  bpFlag: false,
+  spFlag: false,
 });
+const collapsed = ref([]);
+const showDependencies = ref(true);
+const zoom = ref(1);
+const labelWidth = ref(420);
+const linkMode = ref(false);
+const linkFrom = ref('');
+const selectedOwner = ref('');
+const dragTaskId = ref('');
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -142,6 +155,12 @@ async function createProject() {
 }
 
 async function loadDiagrams(preferredDiagram) {
+  if (!projectId.value) {
+    diagrams.value = [];
+    diagramId.value = '';
+    snapshot.value = null;
+    return;
+  }
   diagrams.value = (await api(`/projects/${projectId.value}/diagrams?limit=200`)).items ?? [];
   diagramId.value = preferredDiagram || diagrams.value[0]?.id || '';
   await loadSnapshot();
@@ -256,6 +275,9 @@ function fillTaskEdit(task) {
   taskEdit.jiraNumber = task.jiraNumber ?? '';
   taskEdit.startDate = task.startDate ? task.startDate.slice(0, 10) : '';
   taskEdit.endDate = task.endDate ? task.endDate.slice(0, 10) : '';
+  taskEdit.actualEndDate = task.actualEndDate ? task.actualEndDate.slice(0, 10) : '';
+  taskEdit.bpFlag = Boolean(task.bpFlag);
+  taskEdit.spFlag = Boolean(task.spFlag);
 }
 
 async function selectTask(task) {
@@ -307,11 +329,13 @@ async function createTask() {
       method: 'POST',
       body: {
         directionId: taskForm.directionId,
+        parentTaskId: taskForm.parentTaskId || null,
         name: taskForm.name,
         priority: 'medium',
       },
     });
     taskForm.name = '';
+    taskForm.parentTaskId = '';
     await loadSnapshot();
   } catch (reason) {
     error.value = reason.message;
@@ -332,6 +356,9 @@ async function saveTask() {
         jiraNumber: taskEdit.jiraNumber,
         startDate: taskEdit.startDate || null,
         endDate: taskEdit.endDate || null,
+        actualEndDate: taskEdit.actualEndDate || null,
+        bpFlag: taskEdit.bpFlag,
+        spFlag: taskEdit.spFlag,
       },
     });
     await loadSnapshot(true);
@@ -402,6 +429,48 @@ async function deleteComment(commentId) {
   }
 }
 
+function onTaskDragStart(event, task) {
+  dragTaskId.value = task.id;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', task.id);
+}
+
+async function onTaskDrop(event, targetRow) {
+  event.preventDefault();
+  const taskId = dragTaskId.value || event.dataTransfer.getData('text/plain');
+  dragTaskId.value = '';
+  if (!taskId || taskId === targetRow.task?.id) return;
+  const dragged = (snapshot.value?.tasks ?? []).find((task) => task.id === taskId);
+  if (!dragged) return;
+  if (targetRow.type === 'direction') {
+    await moveTaskTo(taskId, targetRow.direction.id, null);
+    return;
+  }
+  if (targetRow.task.level === 3) {
+    await moveTaskTo(taskId, targetRow.task.directionId, targetRow.task.parentTaskId, 9999);
+  } else {
+    await moveTaskTo(taskId, targetRow.task.directionId, targetRow.task.id);
+  }
+}
+
+async function moveTaskTo(taskId, directionId, parentTaskId, sortOrder = 9999) {
+  try {
+    await api(`/tasks/${taskId}/move`, {
+      method: 'POST',
+      body: {
+        directionId,
+        parentTaskId: parentTaskId || '',
+        sortOrder,
+        expectedVersion: (snapshot.value?.tasks ?? []).find((task) => task.id === taskId)?.version ?? 0,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+      },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
 async function moveTask() {
   if (!selectedTask.value) return;
   try {
@@ -437,69 +506,346 @@ const projectName = computed(
 
 const ganttRows = computed(() => {
   const query = filterQuery.value.trim().toLowerCase();
-  const filtering = Boolean(query || filterStatus.value);
-  const tasks = (snapshot.value?.tasks ?? []).filter((task) => {
+  const filtering = Boolean(query || filterStatus.value || selectedOwner.value);
+  const allTasks = snapshot.value?.tasks ?? [];
+  const matches = (task) => {
     const matchesQuery =
       !query ||
       task.name?.toLowerCase().includes(query) ||
       task.wbsCode?.toLowerCase().includes(query);
     const matchesStatus = !filterStatus.value || task.status === filterStatus.value;
-    return matchesQuery && matchesStatus;
-  });
+    const matchesOwner =
+      !selectedOwner.value ||
+      (task.assignments ?? []).some(
+        (assignment) => assignment.role === 'responsible' && assignment.assigneeId === selectedOwner.value,
+      );
+    return matchesQuery && matchesStatus && matchesOwner;
+  };
+  const matched = new Set(allTasks.filter(matches).map((task) => task.id));
+  const byId = new Map(allTasks.map((task) => [task.id, task]));
+  const context = new Set(matched);
+  if (filtering) {
+    for (const id of matched) {
+      let current = byId.get(id);
+      while (current?.parentTaskId) {
+        context.add(current.parentTaskId);
+        current = byId.get(current.parentTaskId);
+      }
+    }
+  }
+  const childrenByParent = new Map();
+  for (const task of allTasks) {
+    const key = task.parentTaskId ?? '';
+    const list = childrenByParent.get(key) ?? [];
+    list.push(task);
+    childrenByParent.set(key, list);
+  }
+  for (const list of childrenByParent.values()) {
+    list.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
+  }
   const rows = [];
-  for (const direction of snapshot.value?.directions ?? []) {
-    const directionTasks = tasks.filter((task) => task.directionId === direction.id);
-    if (filtering && !directionTasks.length) continue;
+  const pushTask = (task, depth) => {
+    rows.push({
+      key: `task-${task.id}`,
+      type: 'task',
+      task,
+      depth,
+      isContext: filtering && !matched.has(task.id),
+    });
+    if (collapsed.value.includes(task.id)) return;
+    for (const child of childrenByParent.get(task.id) ?? []) pushTask(child, depth + 1);
+  };
+  const directions = snapshot.value?.directions ?? [];
+  for (const direction of directions) {
+    const roots = (childrenByParent.get('') ?? []).filter((task) => task.directionId === direction.id);
+    const visibleRoots = filtering
+      ? roots.filter((task) => context.has(task.id))
+      : roots;
+    if (filtering && !visibleRoots.length) continue;
     rows.push({
       key: `direction-${direction.id}`,
       type: 'direction',
       direction,
-      tasksCount: directionTasks.length,
+      depth: 0,
+      tasksCount: roots.reduce((sum, task) => sum + 1 + (childrenByParent.get(task.id)?.length ?? 0), 0),
     });
-    for (const task of directionTasks) {
-      rows.push({ key: `task-${task.id}`, type: 'task', task });
-    }
+    if (collapsed.value.includes(direction.id)) continue;
+    for (const task of visibleRoots) pushTask(task, 1);
   }
-  const ungrouped = tasks.filter(
-    (task) => !(snapshot.value?.directions ?? []).some((direction) => direction.id === task.directionId),
+  const ungrouped = (childrenByParent.get('') ?? []).filter(
+    (task) => !directions.some((direction) => direction.id === task.directionId),
   );
-  if (ungrouped.length) {
+  const ungroupedVisible = filtering ? ungrouped.filter((task) => context.has(task.id)) : ungrouped;
+  if (ungroupedVisible.length) {
     rows.push({
       key: 'direction-ungrouped',
       type: 'direction',
       direction: { name: 'Без направления' },
-      tasksCount: ungrouped.length,
+      depth: 0,
+      tasksCount: ungroupedVisible.length,
     });
-    for (const task of ungrouped) rows.push({ key: `task-${task.id}`, type: 'task', task });
+    for (const task of ungroupedVisible) pushTask(task, 1);
   }
   return rows.map((row, index) => ({ ...row, index }));
+});
+
+function toggleCollapse(id) {
+  collapsed.value = collapsed.value.includes(id)
+    ? collapsed.value.filter((item) => item !== id)
+    : [...collapsed.value, id];
+  localStorage.setItem('oati_gantt_collapsed_v1', JSON.stringify(collapsed.value));
+}
+
+function saveLabelWidth() {
+  localStorage.setItem('oati_gantt_label_w_v1', String(labelWidth.value));
+}
+
+function taskTooltip(task) {
+  const parts = [
+    `${task.wbsCode} · ${task.name}`,
+    task.description,
+    task.startDate || task.endDate
+      ? `Срок: ${formatShortDate(task.startDate)} — ${formatShortDate(task.effectiveEndDate ?? task.endDate)} (${task.days ?? 0} дн.)`
+      : '',
+    task.actualEndDate ? `Факт: ${formatShortDate(task.actualEndDate)}` : '',
+    `Статус: ${statusLabel(task.status)} · ${task.progress}% · ${task.priority}`,
+    responsibleName(task) ? `Ответственный: ${responsibleName(task)}` : '',
+    task.jiraNumber ? `Jira: ${task.jiraNumber}` : '',
+    task.commentsCount ? `Комментарии: ${task.commentsCount}` : '',
+  ];
+  return parts.filter(Boolean).join('\n');
+}
+
+function priorityClass(priority) {
+  return `priority-${priority || 'medium'}`;
+}
+
+function changeZoom(delta) {
+  zoom.value = Math.min(2, Math.max(0.5, Number((zoom.value + delta).toFixed(2))));
+  localStorage.setItem('oati_gantt_zoom_v1', String(zoom.value));
+}
+
+async function pickLink(task) {
+  if (!linkFrom.value) {
+    linkFrom.value = task.id;
+    return;
+  }
+  if (linkFrom.value === task.id) {
+    linkFrom.value = '';
+    return;
+  }
+  try {
+    await api(`/diagrams/${diagramId.value}/dependencies`, {
+      method: 'POST',
+      body: {
+        predecessorType: 'task',
+        predecessorId: linkFrom.value,
+        successorType: 'task',
+        successorId: task.id,
+      },
+    });
+    linkFrom.value = '';
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function toggleFlag(task, key) {
+  try {
+    await api(`/tasks/${task.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: task.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        [key]: !task[key],
+      },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+function startSubtask(task) {
+  taskForm.directionId = task.directionId;
+  taskForm.parentTaskId = task.id;
+  focusNewTask();
+}
+
+function taskFlags(task) {
+  return `${task.bpFlag ? 'БП ' : ''}${task.spFlag ? 'СП' : ''}`.trim();
+}
+
+function isTaskDoneEarly(task) {
+  return Number(task.doneDeltaDays) > 0;
+}
+
+const timelineRange = computed(() => {
+  const tasks = snapshot.value?.tasks ?? [];
+  const dates = tasks
+    .flatMap((task) => [task.startDate, task.effectiveEndDate ?? task.endDate])
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter((value) => !Number.isNaN(value));
+  const today = new Date();
+  const min = dates.length ? Math.min(...dates, today.getTime()) : today.getTime();
+  const max = dates.length ? Math.max(...dates, today.getTime()) : min + 1000 * 60 * 60 * 24 * 30;
+  return { min, max: Math.max(max, min + 1000 * 60 * 60 * 24 * 7) };
+});
+
+const timelineWeeks = computed(() => {
+  const { min, max } = timelineRange.value;
+  const span = max - min;
+  const bucketCount = 8;
+  return Array.from({ length: bucketCount }, (_, index) => {
+    const start = new Date(min + (span / bucketCount) * index);
+    const end = new Date(min + (span / bucketCount) * (index + 1));
+    return {
+      label: `${start.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}–${end.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}`,
+      left: `${(100 / bucketCount) * index}%`,
+      width: `${100 / bucketCount}%`,
+    };
+  });
+});
+
+const todayLeft = computed(() => {
+  const { min, max } = timelineRange.value;
+  return `${Math.min(100, Math.max(0, ((Date.now() - min) / (max - min)) * 100))}%`;
 });
 
 const timelineBars = computed(() => {
   const taskRows = ganttRows.value.filter((row) => row.type === 'task');
   const tasks = taskRows.map((row) => row.task);
-  const dates = tasks
-    .flatMap((task) => [task.startDate, task.endDate])
-    .filter(Boolean)
-    .map((value) => new Date(value).getTime())
-    .filter((value) => !Number.isNaN(value));
-  const min = dates.length ? Math.min(...dates) : Date.now();
-  const max = dates.length ? Math.max(...dates) : min + 1000 * 60 * 60 * 24 * 30;
+  const { min, max } = timelineRange.value;
   const span = Math.max(max - min, 1000 * 60 * 60 * 24);
   return taskRows.map((row) => {
     const { task } = row;
-    const start = task.startDate ? new Date(task.startDate).getTime() : min + (span / tasks.length) * row.index;
-    const end = task.endDate ? new Date(task.endDate).getTime() : start + span / Math.max(tasks.length, 1);
+    const start = task.startDate
+      ? new Date(task.startDate).getTime()
+      : min + (span / Math.max(tasks.length, 1)) * row.index;
+    const end = task.effectiveEndDate || task.endDate
+      ? new Date(task.effectiveEndDate ?? task.endDate).getTime()
+      : start + span / Math.max(tasks.length, 1);
     return {
       task,
       style: {
         top: `${row.index * 38 + 8}px`,
-        left: `${Math.min(96, Math.max(0, ((start - min) / span) * 100))}%`,
-        width: `${Math.max(6, Math.min(100, ((end - start) / span) * 100))}%`,
+        left: `${Math.min(98, Math.max(0, ((start - min) / span) * 100))}%`,
+        width: `${Math.max(4, Math.min(100, ((end - start) / span) * 100))}%`,
       },
     };
   });
 });
+
+const dependencyLines = computed(() => {
+  const bars = new Map(timelineBars.value.map((bar) => [bar.task.id, bar]));
+  return (snapshot.value?.dependencies ?? [])
+    .map((dependency) => {
+      const from = bars.get(dependency.predecessorId);
+      const to = bars.get(dependency.successorId);
+      if (!from || !to) return null;
+      const fromLeft = Number.parseFloat(from.style.left);
+      const fromWidth = Number.parseFloat(from.style.width);
+      const fromTop = Number.parseFloat(from.style.top) + 14;
+      const toLeft = Number.parseFloat(to.style.left);
+      const toTop = Number.parseFloat(to.style.top) + 14;
+      return {
+        id: dependency.id,
+        x1: fromLeft + fromWidth,
+        y1: fromTop,
+        x2: toLeft,
+        y2: toTop,
+        critical: dependency.isCritical,
+        color: dependency.color || '#94a3b8',
+        dash: dependency.lineStyle,
+      };
+    })
+    .filter(Boolean);
+});
+
+async function updateTaskDates(task, startDate, endDate) {
+  try {
+    await api(`/tasks/${task.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: task.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        startDate,
+        endDate,
+      },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+function startBarDrag(event, bar, mode) {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = event.currentTarget.closest('.gantt-canvas');
+  if (!container || !bar.task.startDate) return;
+  const startX = event.clientX;
+  const width = container.getBoundingClientRect().width;
+  const { min, max } = timelineRange.value;
+  const dayMs = 1000 * 60 * 60 * 24;
+  const daysInRange = Math.max(1, (max - min) / dayMs);
+  const originalStart = new Date(bar.task.startDate);
+  const originalEnd = new Date(bar.task.effectiveEndDate ?? bar.task.endDate ?? bar.task.startDate);
+  const onMove = (moveEvent) => {
+    const deltaDays = Math.round(((moveEvent.clientX - startX) / width) * daysInRange);
+    let start = originalStart;
+    let end = originalEnd;
+    if (mode === 'move') {
+      start = new Date(originalStart.getTime() + deltaDays * dayMs);
+      end = new Date(originalEnd.getTime() + deltaDays * dayMs);
+    } else if (mode === 'start') {
+      start = new Date(originalStart.getTime() + deltaDays * dayMs);
+      if (start > end) start = end;
+    } else if (mode === 'end') {
+      end = new Date(originalEnd.getTime() + deltaDays * dayMs);
+      if (end < start) end = start;
+    }
+    bar.task._dragPreview = {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  };
+  const onUp = async () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    const preview = bar.task._dragPreview;
+    delete bar.task._dragPreview;
+    if (!preview || (preview.start === bar.task.startDate && preview.end === bar.task.endDate)) return;
+    await updateTaskDates(bar.task, preview.start, preview.end);
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp, { once: true });
+}
+
+function printChart() {
+  window.print();
+}
+
+async function exportPdf() {
+  try {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+    const element = document.querySelector('.gantt-frame');
+    if (!element) return;
+    const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const width = 277;
+    const height = (canvas.height * width) / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, width, Math.min(height, 190));
+    pdf.save(`SMART_OATI_диаграмма_Ганта_${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
 
 function formatShortDate(value) {
   return value ? new Date(value).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) : '';
@@ -557,6 +903,18 @@ async function addDependency() {
   }
 }
 
+async function updateDependencyStyle(dependency, patch) {
+  try {
+    await api(`/dependencies/${dependency.id}`, {
+      method: 'PATCH',
+      body: { ...patch, baseRevision: snapshot.value?.currentRevision ?? 0 },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
 async function deleteDependency(dependencyId) {
   try {
     await api(`/dependencies/${dependencyId}`, { method: 'DELETE' });
@@ -576,6 +934,38 @@ async function saveHolidays(items) {
   } catch (reason) {
     error.value = reason.message;
   }
+}
+
+async function setDayMode(mode) {
+  if (!diagramId.value || snapshot.value?.diagram?.dayMode === mode) return;
+  try {
+    await api(`/diagrams/${diagramId.value}`, {
+      method: 'PATCH',
+      body: { dayMode: mode, baseRevision: snapshot.value?.currentRevision ?? 0 },
+    });
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function addHolidayPreset() {
+  const year = new Date().getFullYear();
+  const dates = [
+    `${year}-01-01`, `${year}-01-02`, `${year}-01-07`, `${year}-01-08`,
+    `${year}-02-23`, `${year}-03-08`, `${year}-05-01`, `${year}-05-09`,
+    `${year}-06-12`, `${year}-11-04`,
+  ];
+  const existing = (snapshot.value?.holidays ?? []).map((holiday) => ({
+    holidayDate: holiday.holidayDate,
+    name: holiday.name ?? '',
+  }));
+  for (const date of dates) {
+    if (!existing.some((holiday) => holiday.holidayDate === date)) {
+      existing.push({ holidayDate: date, name: 'Праздник' });
+    }
+  }
+  await saveHolidays(existing);
 }
 
 async function addHoliday() {
@@ -600,13 +990,65 @@ async function deleteHoliday(date) {
 
 async function importFile(event) {
   const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file || !diagramId.value) return;
+  pendingImportFile.value = file;
+  importPreview.value = null;
+  importJob.value = null;
+  const text = await file.text();
+  if (importFormat.value === 'csv' || file.name.toLowerCase().endsWith('.csv')) {
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim() && !line.startsWith('#'));
+    const delimiter = lines[0]?.includes(';') ? ';' : ',';
+    const headers = (lines[0] ?? '').split(delimiter).map((value) => value.trim());
+    importPreview.value = {
+      fileName: file.name,
+      format: 'csv',
+      rows: Math.max(0, lines.length - 1),
+      columns: headers.length,
+      warnings: headers.length < 5 ? ['Недостаточно колонок для полного импорта'] : [],
+      errors: [],
+    };
+    return;
+  }
+  try {
+    const payload = JSON.parse(text);
+    const items = Array.isArray(payload.tasks) ? payload.tasks : [];
+    const directions = Array.isArray(payload.directions)
+      ? payload.directions.length
+      : items.filter((item) => Number(item.level) === 1).length;
+    const warnings = [];
+    if (payload.formatVersion !== 2 && items.some((item) => item.ownerId && !/^[0-9a-f-]{36}$/i.test(item.ownerId))) {
+      warnings.push('Локальные исполнители из HTML-файла будут пропущены без сопоставления с сервером');
+    }
+    if (payload.formatVersion !== 2 && items.some((item) => item.comments?.some((comment) => comment.author))) {
+      warnings.push('Авторы комментариев будут заменены текущим пользователем');
+    }
+    importPreview.value = {
+      fileName: file.name,
+      format: payload.formatVersion === 2 ? 'server JSON' : 'standalone JSON',
+      directions,
+      tasks: payload.formatVersion === 2 ? items.length : items.filter((item) => Number(item.level) >= 2).length,
+      dependencies:
+        payload.dependencies?.length ??
+        items.reduce((sum, item) => sum + String(item.dependencies ?? '').split(/[;,]/).filter(Boolean).length, 0),
+      holidays: payload.workdays?.holidays?.length ?? payload.holidays?.length ?? 0,
+      warnings,
+      errors: items.length ? [] : ['В файле не найдено задач'],
+    };
+  } catch (reason) {
+    importPreview.value = { fileName: file.name, format: 'json', errors: [reason.message], warnings: [] };
+  }
+}
+
+async function applyImport() {
+  const file = pendingImportFile.value;
   if (!file || !diagramId.value) return;
   importing.value = true;
   importJob.value = null;
   try {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('format', importFormat.value);
+    formData.append('format', file.name.toLowerCase().endsWith('.csv') ? 'csv' : importFormat.value);
     const response = await fetch(`/api/v1/diagrams/${diagramId.value}/import`, {
       method: 'POST',
       credentials: 'same-origin',
@@ -617,12 +1059,12 @@ async function importFile(event) {
       throw new Error((await response.json().catch(() => ({}))).detail ?? response.statusText);
     }
     importJob.value = await response.json();
+    pendingImportFile.value = null;
     await pollImport(importJob.value.id);
   } catch (reason) {
     error.value = reason.message;
   } finally {
     importing.value = false;
-    event.target.value = '';
   }
 }
 
@@ -693,6 +1135,9 @@ onUnmounted(() => {
 
 onMounted(async () => {
   try {
+    collapsed.value = JSON.parse(localStorage.getItem('oati_gantt_collapsed_v1') || '[]');
+    zoom.value = Number(localStorage.getItem('oati_gantt_zoom_v1')) || 1;
+    labelWidth.value = Number(localStorage.getItem('oati_gantt_label_w_v1')) || 420;
     const session = await api('/auth/session');
     currentUser.value = session?.user ?? session;
     await loadProjects();
@@ -778,7 +1223,34 @@ onMounted(async () => {
           <option value="done">Готово</option>
           <option value="blocked">Блокировано</option>
         </select>
-        <button v-if="filterQuery || filterStatus" class="gantt-chip" type="button" @click="filterQuery = ''; filterStatus = ''">Сбросить</button>
+        <select v-model="selectedOwner" class="input toolbar-input">
+          <option value="">Все ответственные</option>
+          <option v-for="member in members" :key="member.userId" :value="member.userId">
+            {{ member.user?.displayName || member.user?.email }}
+          </option>
+        </select>
+        <button v-if="filterQuery || filterStatus || selectedOwner" class="gantt-chip" type="button" @click="filterQuery = ''; filterStatus = ''; selectedOwner = ''">Сбросить</button>
+        <button class="gantt-chip" :class="{ active: linkMode }" type="button" @click="linkMode = !linkMode; linkFrom = ''">Связать</button>
+        <label class="gantt-chip"><input v-model="showDependencies" type="checkbox" /> Стрелки</label>
+        <span class="gantt-chip day-mode">
+          <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'calendar' }" @click="setDayMode('calendar')">Календарные</button>
+          <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'working' }" @click="setDayMode('working')">Рабочие</button>
+        </span>
+        <button class="gantt-chip" type="button" @click="changeZoom(-0.25)">−</button>
+        <span class="gantt-chip">{{ Math.round(zoom * 100) }}%</span>
+        <button class="gantt-chip" type="button" @click="changeZoom(0.25)">+</button>
+        <input
+          v-model.number="labelWidth"
+          class="width-range"
+          type="range"
+          min="360"
+          max="800"
+          step="20"
+          title="Ширина колонки названий"
+          @input="saveLabelWidth"
+        />
+        <button class="gantt-chip" type="button" @click="exportPdf">PDF</button>
+        <button class="gantt-chip" type="button" @click="printChart">Печать</button>
         <button class="gantt-chip" type="button" @click="loadSnapshot(true)">Обновить</button>
         <div class="toolbar-spacer"></div>
         <select v-model="bulkStatus" class="input toolbar-input">
@@ -794,11 +1266,21 @@ onMounted(async () => {
           <option value="csv">CSV</option>
         </select>
         <label class="gantt-chip file-chip">Импорт<input type="file" accept=".json,.csv" :disabled="importing" @change="importFile" /></label>
-        <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=json`">Экспорт JSON</a>
-        <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=csv`">CSV</a>
+        <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=json&compat=standalone`">Экспорт JSON</a>
+        <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=csv&compat=standalone`">CSV</a>
+      </div>
+
+      <div v-if="snapshot?.schedule" class="summary-cards">
+        <div class="summary-card"><span>Готовность</span><strong>{{ snapshot.schedule.overallProgress }}%</strong></div>
+        <div class="summary-card"><span>Период</span><strong>{{ formatShortDate(snapshot.schedule.projectStart) }}–{{ formatShortDate(snapshot.schedule.projectEnd) }}</strong></div>
+        <div class="summary-card"><span>Длительность</span><strong>{{ snapshot.schedule.durationDays }} дн.</strong></div>
+        <div class="summary-card"><span>Критических</span><strong>{{ snapshot.schedule.criticalTaskIds?.length || 0 }}</strong></div>
+        <div class="summary-card"><span>Просрочено</span><strong>{{ snapshot.schedule.counts?.overdue || 0 }}</strong></div>
+        <div class="summary-card"><span>Досрочно</span><strong>{{ snapshot.schedule.counts?.early || 0 }}</strong></div>
       </div>
 
       <p v-if="loading" class="muted">Загрузка...</p>
+      <p v-if="snapshot?.schedule?.cycles?.length" class="error">Обнаружен цикл зависимостей — проверьте связи.</p>
       <p v-if="error" class="error">{{ error }}</p>
 
       <section v-if="!loading && !projects.length" class="card empty-project">
@@ -823,32 +1305,60 @@ onMounted(async () => {
         </form>
       </section>
 
-      <div v-if="snapshot" class="gantt-frame">
+      <div v-if="snapshot" class="gantt-frame" :style="{ gridTemplateColumns: `${labelWidth}px minmax(420px, 1fr)` }">
         <div class="gantt-labels">
           <div class="gantt-label-head"><span>Структура работ</span><span class="wbs">WBS</span></div>
           <template v-for="row in ganttRows" :key="row.key">
-            <div v-if="row.type === 'direction'" class="gantt-row-label direction">
-              <span class="caret">⌄</span>
+            <div
+              v-if="row.type === 'direction'"
+              class="gantt-row-label direction"
+              @click="toggleCollapse(row.direction.id)"
+              @dragover.prevent
+              @drop="onTaskDrop($event, row)"
+            >
+              <span class="caret">{{ collapsed.includes(row.direction.id) ? '›' : '⌄' }}</span>
               <span class="label-name">{{ row.direction.wbsCode ? `${row.direction.wbsCode}. ` : '' }}{{ row.direction.name }}</span>
-              <span class="label-meta"><span class="badge badge-neutral">{{ row.tasksCount }} задач</span></span>
+              <span class="label-meta">
+                <span class="badge badge-dot" :class="statusBadgeClass(row.direction.status)">{{ statusLabel(row.direction.status) }}</span>
+                <span class="badge badge-neutral">{{ row.direction.progress ?? 0 }}%</span>
+                <span class="badge badge-neutral">{{ row.tasksCount }} задач</span>
+              </span>
             </div>
             <div
               v-else
               class="gantt-row-label task"
-              :class="{ selected: selectedTask?.id === row.task.id }"
+              :class="{ selected: selectedTask?.id === row.task.id, context: row.isContext }"
+              :style="{ paddingLeft: `${12 + row.depth * 18}px` }"
+              :title="taskTooltip(row.task)"
+              draggable="true"
+              @dragstart="onTaskDragStart($event, row.task)"
+              @dragover.prevent
+              @drop.stop="onTaskDrop($event, row)"
               @click="selectTask(row.task)"
             >
-              <span class="caret">›</span>
-              <span class="label-name">
+              <span
+                v-if="row.task.childrenCount"
+                class="caret"
+                @click.stop="toggleCollapse(row.task.id)"
+              >{{ collapsed.includes(row.task.id) ? '›' : '⌄' }}</span>
+              <span v-else class="caret">·</span>
+              <span class="label-name" @click.stop="selectTask(row.task)">
                 {{ row.task.wbsCode }}. {{ row.task.name }}
                 <span v-if="row.task.startDate || row.task.endDate" class="row-dates">
-                  {{ formatShortDate(row.task.startDate) }}–{{ formatShortDate(row.task.endDate) }}
+                  {{ formatShortDate(row.task.startDate) }}–{{ formatShortDate(row.task.effectiveEndDate ?? row.task.endDate) }}
                 </span>
               </span>
               <span class="label-meta">
+                <span class="priority-dot" :class="priorityClass(row.task.priority)" :title="row.task.priority"></span>
+                <button v-if="row.task.jiraNumber" class="row-chip" type="button">{{ row.task.jiraNumber }}</button>
+                <button v-if="row.task.commentsCount" class="row-chip" type="button" @click.stop="selectTask(row.task)">💬 {{ row.task.commentsCount }}</button>
+                <button class="row-chip" :class="{ 'flag-on': row.task.bpFlag }" type="button" @click.stop="toggleFlag(row.task, 'bpFlag')">БП</button>
+                <button class="row-chip" :class="{ 'flag-on': row.task.spFlag }" type="button" @click.stop="toggleFlag(row.task, 'spFlag')">СП</button>
                 <span v-if="responsibleName(row.task)" class="badge badge-neutral">{{ responsibleName(row.task) }}</span>
                 <span class="badge badge-dot" :class="statusBadgeClass(row.task.status)">{{ statusLabel(row.task.status) }}</span>
                 <span class="badge badge-neutral">{{ row.task.progress }}%</span>
+                <span v-if="isTaskDoneEarly(row.task)" class="badge badge-success">досрочно</span>
+                <button v-if="row.depth === 1" class="row-action" type="button" title="Добавить подзадачу" @click.stop="startSubtask(row.task)">＋</button>
                 <input v-model="selectedIds" type="checkbox" :value="row.task.id" @click.stop />
               </span>
             </div>
@@ -857,18 +1367,45 @@ onMounted(async () => {
         <div class="gantt-timeline">
           <div class="gantt-time-head">
             <div class="gantt-month">План</div>
-            <div class="gantt-week" v-for="week in 7" :key="week">Неделя {{ week }}</div>
+            <div
+              v-for="week in timelineWeeks"
+              :key="week.left"
+              class="gantt-week"
+              :style="{ left: week.left, width: week.width }"
+            >{{ week.label }}</div>
           </div>
-          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px` }">
-            <span class="gantt-today"></span>
+          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${500 * zoom}px` }">
+            <span class="gantt-today" :style="{ left: todayLeft }"></span>
+            <svg v-if="showDependencies" class="deps-overlay">
+              <defs>
+                <marker id="dep-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8" />
+                </marker>
+              </defs>
+              <line
+                v-for="line in dependencyLines"
+                :key="line.id"
+                :x1="`${line.x1}%`"
+                :y1="`${line.y1}px`"
+                :x2="`${line.x2}%`"
+                :y2="`${line.y2}px`"
+                :stroke="line.critical ? '#dc2626' : line.color"
+                :stroke-dasharray="line.dash === 'dashed' ? '6 4' : line.dash === 'dotted' ? '2 4' : ''"
+                stroke-width="1.4"
+                marker-end="url(#dep-arrow)"
+              />
+            </svg>
             <div
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
-              :class="bar.task.status"
+              :class="[bar.task.status, { critical: bar.task.isCritical, context: bar.task.isCritical }]"
               :style="bar.style"
-              @click="selectTask(bar.task)"
+              @pointerdown="startBarDrag($event, bar, 'move')"
+              @click="linkMode ? pickLink(bar.task) : selectTask(bar.task)"
             >
+              <span class="bar-handle left" @pointerdown.stop="startBarDrag($event, bar, 'start')"></span>
+              <span class="bar-handle right" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
               <span class="gantt-bar-label">{{ bar.task.wbsCode }} · {{ bar.task.progress }}%</span>
               <span class="fill" :style="{ width: `${bar.task.progress}%` }"></span>
             </div>
@@ -901,6 +1438,14 @@ onMounted(async () => {
                 <option value="" disabled>Направление</option>
                 <option v-for="direction in snapshot.directions" :key="direction.id" :value="direction.id">{{ direction.name }}</option>
               </select>
+              <select v-model="taskForm.parentTaskId" class="input">
+                <option value="">Верхний уровень</option>
+                <option
+                  v-for="task in snapshot.tasks.filter((item) => item.level === 2 && item.directionId === taskForm.directionId)"
+                  :key="task.id"
+                  :value="task.id"
+                >{{ task.wbsCode }} {{ task.name }}</option>
+              </select>
               <input v-model="taskForm.name" class="input" placeholder="Название задачи" required />
               <button class="btn btn-primary" type="submit">Создать задачу</button>
             </form>
@@ -911,7 +1456,24 @@ onMounted(async () => {
               <div v-for="dependency in snapshot.dependencies" :key="dependency.id" class="manage-item">
                 <span>
                   {{ taskLabel(dependency.predecessorId) }} → {{ taskLabel(dependency.successorId) }}
-                  <small class="muted">{{ dependency.lineStyle }} · {{ dependency.arrowShape }}</small>
+                  <span class="dep-controls">
+                    <input
+                      type="color"
+                      :value="dependency.color || '#94a3b8'"
+                      title="Цвет связи"
+                      @change="updateDependencyStyle(dependency, { color: $event.target.value })"
+                    />
+                    <select :value="dependency.lineStyle" @change="updateDependencyStyle(dependency, { lineStyle: $event.target.value })">
+                      <option value="solid">Сплошная</option>
+                      <option value="dashed">Пунктир</option>
+                      <option value="dotted">Точки</option>
+                    </select>
+                    <select :value="dependency.arrowShape" @change="updateDependencyStyle(dependency, { arrowShape: $event.target.value })">
+                      <option value="orthogonal">Ортогональная</option>
+                      <option value="straight">Прямая</option>
+                      <option value="curved">Изогнутая</option>
+                    </select>
+                  </span>
                 </span>
                 <button type="button" class="btn btn-ghost btn-sm" @click="deleteDependency(dependency.id)">Удалить</button>
               </div>
@@ -952,7 +1514,23 @@ onMounted(async () => {
               <input v-model="holidayDate" class="input" type="date" required />
               <input v-model="holidayName" class="input" placeholder="Название" />
               <button class="btn btn-secondary" type="submit">Добавить праздник</button>
+              <button class="btn btn-ghost btn-sm" type="button" @click="addHolidayPreset">Праздники РФ</button>
             </form>
+            <div v-if="importPreview" class="import-preview">
+              <p class="muted small">{{ importPreview.fileName }} · {{ importPreview.format }}</p>
+              <p class="muted small">
+                Направления: {{ importPreview.directions ?? 0 }}, задачи: {{ importPreview.tasks ?? importPreview.rows ?? 0 }},
+                связи: {{ importPreview.dependencies ?? 0 }}, праздники: {{ importPreview.holidays ?? 0 }}
+              </p>
+              <p v-for="warning in importPreview.warnings" :key="warning" class="import-warning">⚠ {{ warning }}</p>
+              <p v-for="issue in importPreview.errors" :key="issue" class="error">{{ issue }}</p>
+              <button
+                class="btn btn-primary btn-sm"
+                type="button"
+                :disabled="importPreview.errors?.length || importing"
+                @click="applyImport"
+              >Применить импорт</button>
+            </div>
             <p v-if="importing" class="muted small">Импорт выполняется...</p>
             <template v-else-if="importJob">
               <p class="muted small">{{ importJob.fileName }}: {{ importJob.status }}</p>
@@ -998,6 +1576,9 @@ onMounted(async () => {
           </select>
           <input v-model="taskEdit.jiraNumber" class="input" placeholder="Jira" />
           <div class="dates"><input v-model="taskEdit.startDate" class="input" type="date" /><input v-model="taskEdit.endDate" class="input" type="date" /></div>
+          <label class="field"><span>Факт завершения</span><input v-model="taskEdit.actualEndDate" class="input" type="date" /></label>
+          <label class="checkbox-line"><input v-model="taskEdit.bpFlag" type="checkbox" /> БП</label>
+          <label class="checkbox-line"><input v-model="taskEdit.spFlag" type="checkbox" /> СП</label>
           <button class="btn btn-secondary" type="button" @click="saveTask">Сохранить задачу</button>
           <button class="btn btn-ghost danger" type="button" @click="deleteTask">Удалить задачу</button>
         </div>
@@ -1065,6 +1646,10 @@ onMounted(async () => {
 .brand-mark { display: inline-grid; place-items: center; }
 .sync-status { font-size: 12px; color: var(--color-text-muted); }
 .sync-status.online { color: var(--color-success); }
+.summary-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.summary-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 10px 12px; display: grid; gap: 3px; box-shadow: var(--shadow-sm); }
+.summary-card span { color: var(--color-text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.summary-card strong { font-size: 16px; }
 .project-bar { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; margin: 0 0 16px; }
 .project-create-toggle { margin-bottom: 1px; }
 .project-create-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -1092,7 +1677,25 @@ onMounted(async () => {
 .gantt-label-head { background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .gantt-label-head .wbs { margin-left: auto; }
 .gantt-row-label { cursor: pointer; font-size: 13px; }
-.gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: default; }
+.gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: pointer; }
+.gantt-row-label.context { opacity: 0.55; }
+.width-range { width: 90px; accent-color: var(--color-primary); }
+.row-chip, .row-action { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 5px; padding: 1px 5px; font-size: 10px; cursor: pointer; }
+.row-chip.flag-on { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.priority-dot { width: 8px; height: 8px; transform: rotate(45deg); border-radius: 1px; display: inline-block; }
+.priority-low { background: #94a3b8; }
+.priority-medium { background: #f59e0b; }
+.priority-high { background: #f97316; }
+.priority-critical { background: #dc2626; }
+.row-action { color: var(--color-primary); }
+.day-mode { padding: 0; overflow: hidden; }
+.day-mode button { border: 0; background: transparent; padding: 5px 8px; font-size: 11px; cursor: pointer; }
+.day-mode button.active { background: var(--color-primary); color: #fff; }
+.bar-handle { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 3; }
+.bar-handle.left { left: 0; }
+.bar-handle.right { right: 0; }
+.gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
+.gantt-row-label.task .label-meta { flex-wrap: wrap; justify-content: flex-end; }
 .gantt-row-label.direction .caret { color: var(--color-text-muted); }
 .gantt-row-label:hover, .gantt-row-label.selected { background: #eff6ff; }
 .gantt-row-label .caret { color: var(--color-text-muted); }
@@ -1101,6 +1704,7 @@ onMounted(async () => {
 .gantt-timeline { min-width: 420px; overflow: hidden; }
 .gantt-time-head { display: grid; grid-template-columns: 1.2fr repeat(7, 1fr); min-height: 38px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-subtle); font-size: 11px; color: var(--color-text-muted); }
 .gantt-time-head > * { display: flex; align-items: center; padding: 0 8px; border-right: 1px solid var(--color-border); }
+.deps-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
 .gantt-canvas { position: relative; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(14.285% - 1px), var(--color-border) calc(14.285% - 1px), var(--color-border) 14.285%); }
 .gantt-today { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid var(--color-danger); z-index: 1; }
 .gantt-bar { position: absolute; height: 28px; border-radius: var(--radius-md); background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; cursor: pointer; overflow: hidden; z-index: 2; }
@@ -1113,6 +1717,11 @@ onMounted(async () => {
 .manage-card summary { cursor: pointer; font-weight: 600; }
 .manage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 18px; }
 .manage-list { display: grid; gap: 8px; }
+.import-preview { margin-top: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-subtle); }
+.import-warning { color: #b45309; font-size: 11px; margin: 4px 0; }
+.dep-controls { display: flex; gap: 4px; margin-top: 4px; }
+.dep-controls select { font-size: 10px; padding: 2px 4px; }
+.dep-controls input[type=color] { width: 24px; height: 24px; padding: 0; border: 1px solid var(--color-border); }
 .manage-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border-radius: var(--radius-md); background: var(--color-surface-subtle); font-size: 12px; }
 .stack { display: grid; gap: 8px; margin-top: 8px; }
 .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1131,6 +1740,12 @@ onMounted(async () => {
 .composer { margin-top: 12px; }
 .composer-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 .empty-project { max-width: 440px; margin: 40px auto; }
+@media print {
+  .app-header, .gantt-toolbar, .project-bar, .gantt-top-actions, .manage-card, .gantt-drawer, .summary-card .muted { display: none !important; }
+  .gantt-shell { min-height: 0; }
+  .gantt-page { padding: 0; }
+  .gantt-frame { box-shadow: none; }
+}
 @media (max-width: 1180px) {
   .gantt-page.has-drawer { padding-right: 0; }
   .gantt-drawer { position: static; width: auto; height: auto; margin: 16px; }

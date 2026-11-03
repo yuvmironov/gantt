@@ -57,7 +57,12 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.goto(`/gantt?project=${ids.projectId}&diagram=${ids.diagramId}`);
   await expect(page.locator('.gantt-page')).toBeVisible();
   await expect(page.locator('.sync-status')).toHaveText('Синхронизировано');
-  await page.locator('.gantt-row-label').filter({ hasText: taskName }).first().click();
+  await page
+    .locator('.gantt-row-label')
+    .filter({ hasText: taskName })
+    .first()
+    .locator('.label-name')
+    .click();
   await expect(page.locator('.drawer')).toBeVisible();
   await page.locator('.drawer .inline input[type=number]').fill('25');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
@@ -79,13 +84,18 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.locator('.manage input[placeholder="Название задачи"]').fill(createdName);
   await page.locator('.manage button').filter({ hasText: 'Создать задачу' }).click();
   await expect(page.locator('.gantt-labels')).toContainText(createdName);
-  await page.locator('.gantt-row-label').filter({ hasText: createdName }).click();
+  await page
+    .locator('.gantt-row-label')
+    .filter({ hasText: createdName })
+    .locator('.label-name')
+    .click();
   await page.locator('.drawer input[placeholder="Название задачи"]').fill(`${createdName} edited`);
   await page.locator('.drawer button').filter({ hasText: 'Сохранить задачу' }).click();
   await expect(page.locator('.gantt-labels')).toContainText(`${createdName} edited`);
   await page
     .locator('.gantt-row-label')
     .filter({ hasText: `${createdName} edited` })
+    .locator('.label-name')
     .click();
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('.drawer button').filter({ hasText: 'Удалить задачу' }).click();
