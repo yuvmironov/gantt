@@ -712,6 +712,7 @@ message StartImportRequest {
   string file_name = 3;
   bytes data = 4;
   string idempotency_key = 5;
+  bool preview = 6;
 }
 
 message StartImportResponse {

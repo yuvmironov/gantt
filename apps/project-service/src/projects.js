@@ -503,7 +503,7 @@ function booleanValue(value) {
   );
 }
 
-function standaloneCsvToPayload(text, report) {
+function standaloneCsvToPayload(text, report, executorMap = new Map()) {
   const { headers, rows, meta } = parseDelimited(text);
   const find = (names) => names.find((name) => headers.includes(name));
   const idKey = find(['WBS ID', 'ID', 'wbs_code', 'WBS']);
@@ -558,11 +558,12 @@ function standaloneCsvToPayload(text, report) {
   const payload = normalizeStandaloneImport(
     { project: meta.project, tasks, workdays: { mode: 'calendar', holidays: [] } },
     report,
+    executorMap,
   );
   return payload;
 }
 
-function normalizeStandaloneImport(payload, report) {
+function normalizeStandaloneImport(payload, report, executorMap = new Map()) {
   const statusMap = {
     Запланировано: 'planned',
     'В работе': 'in_progress',
@@ -577,6 +578,27 @@ function normalizeStandaloneImport(payload, report) {
   };
   const items = Array.isArray(payload.tasks) ? payload.tasks : [];
   const byId = new Map(items.map((item) => [String(item.id), item]));
+  const localExecutorNames = new Map(
+    (payload.executors ?? []).map((executor) => [String(executor.id), String(executor.name ?? '')]),
+  );
+  const resolveExecutor = (localId) => {
+    const id = String(localId ?? '');
+    if (!id) return null;
+    if (isUuid(id)) return id;
+    const name = localExecutorNames.get(id) ?? id;
+    return executorMap.get(String(name).trim().toLowerCase()) ?? null;
+  };
+  const assignmentsFor = (item, roles, ownerLabel) => {
+    const assignments = [];
+    for (const [field, role] of roles) {
+      const resolved = resolveExecutor(item[field]);
+      if (item[field] && !resolved) {
+        report.issues.push(`${ownerLabel}_not_mapped:${item.id}:${item[field]}`);
+      }
+      if (resolved) assignments.push({ role, assigneeType: 'executor', assigneeId: resolved });
+    }
+    return assignments;
+  };
   const rootId = (item) => {
     let current = item;
     while (current?.parentId && byId.has(String(current.parentId))) {
@@ -599,7 +621,7 @@ function normalizeStandaloneImport(payload, report) {
       jiraNumber: item.jira ?? '',
       bpFlag: Boolean(item.hasBP ?? item.bp),
       spFlag: Boolean(item.hasSP ?? item.sp),
-      assignments: [],
+      assignments: assignmentsFor(item, [['ownerId', 'responsible']], 'responsible'),
     }));
   const tasks = items
     .filter(
@@ -612,9 +634,6 @@ function normalizeStandaloneImport(payload, report) {
       const directionId = rootId(item);
       if (!directions.some((direction) => direction.id === directionId)) {
         report.issues.push(`direction_not_found:${item.id}`);
-      }
-      if (item.ownerId && !isUuid(item.ownerId)) {
-        report.issues.push(`executor_id_not_mapped:${item.id}:${item.ownerId}`);
       }
       return {
         id: String(item.id),
@@ -635,7 +654,15 @@ function normalizeStandaloneImport(payload, report) {
         jiraNumber: item.jira ?? '',
         bpFlag: Boolean(item.hasBP ?? item.bp),
         spFlag: Boolean(item.hasSP ?? item.sp),
-        assignments: [],
+        assignments: assignmentsFor(
+          item,
+          [
+            ['ownerId', 'responsible'],
+            ['execId', 'executor'],
+            ['coId', 'co_executor'],
+          ],
+          'executor',
+        ),
       };
     });
   const dependencies = [];
@@ -684,7 +711,10 @@ function normalizeStandaloneImport(payload, report) {
   };
 }
 
-async function processDiagramImport(db, { diagramId, format: inputFormat, data, actorId }) {
+async function processDiagramImport(
+  db,
+  { diagramId, format: inputFormat, data, actorId, executorMap = new Map(), dryRun = false },
+) {
   let format = inputFormat;
   const client = await db.connect();
   const report = {
@@ -773,7 +803,7 @@ async function processDiagramImport(db, { diagramId, format: inputFormat, data, 
     if (format === 'csv') {
       const csvText = Buffer.from(data).toString('utf8');
       if (/WBS ID|Наименование|Уровень|Родитель/i.test(csvText.slice(0, 500))) {
-        const converted = standaloneCsvToPayload(csvText, report);
+        const converted = standaloneCsvToPayload(csvText, report, executorMap);
         await client.query(
           `UPDATE project.diagrams
            SET name = COALESCE(NULLIF($2, ''), name), day_mode = 'calendar',
@@ -833,7 +863,7 @@ async function processDiagramImport(db, { diagramId, format: inputFormat, data, 
     } else {
       let payload = JSON.parse(Buffer.from(data).toString('utf8'));
       if (payload && !payload.formatVersion && Array.isArray(payload.tasks)) {
-        payload = normalizeStandaloneImport(payload, report);
+        payload = normalizeStandaloneImport(payload, report, executorMap);
         await client.query(
           `UPDATE project.diagrams
            SET name = COALESCE(NULLIF($2, ''), name),
@@ -995,7 +1025,11 @@ async function processDiagramImport(db, { diagramId, format: inputFormat, data, 
       }
     }
 
-    await client.query('COMMIT');
+    if (dryRun) {
+      await client.query('ROLLBACK');
+    } else {
+      await client.query('COMMIT');
+    }
     return report;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -2274,6 +2308,7 @@ export function createProjectImplementation({ db, userClient }) {
     async StartImport(call_, callback) {
       const diagramId = String(call_.request.diagram_id ?? '');
       const format = call_.request.format === 'IMPORT_FORMAT_CSV' ? 'csv' : 'json';
+      const preview = Boolean(call_.request.preview);
       const data = Buffer.from(call_.request.data ?? []);
       const fileName = String(call_.request.file_name ?? '');
       if (!diagramId || data.length === 0 || data.length > 50 * 1024 * 1024) {
@@ -2291,6 +2326,20 @@ export function createProjectImplementation({ db, userClient }) {
         }
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.import');
         const actor = actorUserId(call_);
+        const executorMap = new Map();
+        try {
+          const executors = await call(userClient, 'ListExecutors', {
+            include_inactive: true,
+            page: { limit: 200, offset: 0 },
+          });
+          for (const executor of executors.items ?? []) {
+            if (executor.full_name) {
+              executorMap.set(String(executor.full_name).trim().toLowerCase(), executor.id);
+            }
+          }
+        } catch {
+          // Executor mapping is optional for import.
+        }
         const created = await db.query(
           `INSERT INTO jobs.import_jobs
              (project_id, diagram_id, initiator_user_id, format, status, file_name,
@@ -2322,13 +2371,15 @@ export function createProjectImplementation({ db, userClient }) {
             format,
             data,
             actorId: actor,
+            executorMap,
+            dryRun: preview,
           });
           const finished = await db.query(
             `UPDATE jobs.import_jobs
-             SET status = 'completed', report = $2, finished_at = now()
+             SET status = $2, report = $3, finished_at = now()
              WHERE id = $1
              RETURNING *`,
-            [job.id, report],
+            [job.id, preview ? 'cancelled' : 'completed', report],
           );
           job = finished.rows[0];
         } catch (error) {

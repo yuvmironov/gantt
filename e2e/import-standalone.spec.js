@@ -76,6 +76,24 @@ test('imports standalone HTML JSON format', async ({ page }) => {
       'plan.json',
     );
     form.append('format', 'json');
+    const previewForm = new FormData();
+    previewForm.append(
+      'file',
+      new window.Blob([JSON.stringify(payload)], { type: 'application/json' }),
+      'plan.json',
+    );
+    previewForm.append('format', 'json');
+    const previewResponse = await fetch(`/api/v1/diagrams/${diagram.id}/import?preview=true`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRF-Token': csrf ?? '' },
+      body: previewForm,
+    });
+    if (!previewResponse.ok) throw new Error(await previewResponse.text());
+    const previewJob = await previewResponse.json();
+    const before = await fetch(`/api/v1/diagrams/${diagram.id}/snapshot`).then((item) =>
+      item.json(),
+    );
     const response = await fetch(`/api/v1/diagrams/${diagram.id}/import`, {
       method: 'POST',
       credentials: 'same-origin',
@@ -90,9 +108,12 @@ test('imports standalone HTML JSON format', async ({ page }) => {
     const exported = await fetch(
       `/api/v1/diagrams/${diagram.id}/export?format=json&compat=standalone`,
     ).then((item) => item.json());
-    return { job, snapshot, exported, diagramId: diagram.id };
+    return { job, previewJob, before, snapshot, exported, diagramId: diagram.id };
   });
 
+  expect(result.previewJob.status).toBe('cancelled');
+  expect(result.previewJob.report.tasksCount).toBe(2);
+  expect(result.before.tasks).toHaveLength(0);
   expect(result.job.status).toBe('completed');
   expect(result.snapshot.diagram.name).toBe('Standalone import');
   expect(result.snapshot.directions).toHaveLength(1);
