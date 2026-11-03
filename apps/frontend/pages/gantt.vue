@@ -479,6 +479,15 @@ function onTaskDragOver(event, targetRow) {
   dragOverMode.value = ratio < 0.3 ? 'before' : ratio > 0.7 ? 'after' : 'inside';
 }
 
+function nextSortOrder(directionId, parentTaskId = null) {
+  const siblings = (snapshot.value?.tasks ?? []).filter(
+    (task) =>
+      task.directionId === directionId &&
+      (parentTaskId ? task.parentTaskId === parentTaskId : !task.parentTaskId),
+  );
+  return Math.max(0, ...siblings.map((task) => Number(task.sortOrder) || 0)) + 1;
+}
+
 async function onTaskDrop(event, targetRow) {
   event.preventDefault();
   const taskId = dragTaskId.value || event.dataTransfer.getData('text/plain');
@@ -490,12 +499,22 @@ async function onTaskDrop(event, targetRow) {
   const dragged = (snapshot.value?.tasks ?? []).find((task) => task.id === taskId);
   if (!dragged) return;
   if (targetRow.type === 'direction') {
-    await moveTaskTo(taskId, targetRow.direction.id, null);
+    await moveTaskTo(
+      taskId,
+      targetRow.direction.id,
+      null,
+      nextSortOrder(targetRow.direction.id),
+    );
     return;
   }
   const target = targetRow.task;
-  if (mode === 'inside' && target.level === 2) {
-    await moveTaskTo(taskId, target.directionId, target.id);
+  if (mode === 'inside' && target.level === 2 && !dragged.childrenCount) {
+    await moveTaskTo(
+      taskId,
+      target.directionId,
+      target.id,
+      nextSortOrder(target.directionId, target.id),
+    );
   } else {
     await moveTaskTo(
       taskId,
