@@ -1083,8 +1083,8 @@ function statusBadgeClass(statusValue) {
     {
       done: 'badge-success',
       in_progress: 'badge-primary',
-      blocked: 'badge-warning',
-      postponed: 'badge-warning',
+      blocked: 'badge-danger',
+      postponed: 'badge-postponed',
       planned: 'badge-neutral',
     }[statusValue] ?? 'badge-neutral'
   );
@@ -1990,6 +1990,7 @@ onMounted(async () => {
 .width-range { width: 90px; accent-color: var(--color-primary); }
 .row-chip, .row-action { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 5px; padding: 1px 5px; font-size: 10px; cursor: pointer; }
 .row-chip.flag-on { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.badge-postponed { background: #e5e7eb; color: #4b5563; }
 .priority-dot { width: 8px; height: 8px; transform: rotate(45deg); border-radius: 1px; display: inline-block; }
 .priority-low { background: #94a3b8; }
 .priority-medium { background: #f59e0b; }
@@ -2031,7 +2032,7 @@ onMounted(async () => {
 .gantt-bar.done { background: #dcfce7; border-color: #86efac; color: #15803d; }
 .gantt-bar.blocked { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
 .gantt-bar.planned { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
-.gantt-bar.postponed { background: #ede9fe; border-color: #c4b5fd; color: #6d28d9; }
+.gantt-bar.postponed { background: #e5e7eb; border-color: #9ca3af; color: #4b5563; }
 .manage-card { margin-top: 18px; padding: 14px 18px; }
 .manage-card summary { cursor: pointer; font-weight: 600; }
 .manage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 18px; }
