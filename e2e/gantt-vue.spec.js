@@ -59,9 +59,9 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await expect(page.locator('.sync-status')).toHaveText('Синхронизировано');
   await page.locator('.gantt-row-label').filter({ hasText: taskName }).first().click();
   await expect(page.locator('.drawer')).toBeVisible();
-  await page.locator('.drawer input[type=number]').fill('25');
+  await page.locator('.drawer .inline input[type=number]').fill('25');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.locator('.drawer input[type=number]')).toHaveValue('25');
+  await expect(page.locator('.drawer .inline input[type=number]')).toHaveValue('25');
   await page.locator('.comment-form textarea').fill('Vue comment');
   await page.locator('.comment-form button').click();
   await expect(page.locator('.comments')).toContainText('Vue comment');
@@ -87,6 +87,7 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .locator('.gantt-row-label')
     .filter({ hasText: `${createdName} edited` })
     .click();
+  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('.drawer button').filter({ hasText: 'Удалить задачу' }).click();
   await expect(page.locator('.gantt-labels')).not.toContainText(`${createdName} edited`);
   await expect(page.locator('nav')).toContainText('Участники');
