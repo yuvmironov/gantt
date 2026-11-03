@@ -358,7 +358,17 @@ function toImportJob(row) {
       without_responsible_count: report.without_responsible_count ?? 0,
       without_executor_count: report.without_executor_count ?? 0,
       without_coexecutor_count: report.without_coexecutor_count ?? 0,
-      issues: report.issues ?? [],
+      issues: (report.issues ?? []).map((issue) =>
+        typeof issue === 'string'
+          ? {
+              task_id: '',
+              wbs_code: issue.split(':')[1] ?? '',
+              task_name: '',
+              code: issue.split(':')[0] ?? 'import_issue',
+              message: issue,
+            }
+          : issue,
+      ),
     },
     error_code: row.error_code ?? '',
     error_message: row.error_message ?? '',
