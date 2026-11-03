@@ -1469,6 +1469,7 @@ onMounted(async () => {
                 <span v-if="responsibleName(row.task)" class="badge badge-neutral">{{ responsibleName(row.task) }}</span>
                 <span class="badge badge-dot" :class="statusBadgeClass(row.task.status)">{{ statusLabel(row.task.status) }}</span>
                 <span class="badge badge-neutral">{{ row.task.progress }}%</span>
+                <span v-if="row.task.autoProgress" class="badge badge-primary" title="Рассчитывается по подзадачам">авто</span>
                 <span v-if="isTaskDoneEarly(row.task)" class="badge badge-success">досрочно</span>
                 <button v-if="row.depth === 1" class="row-action" type="button" title="Добавить подзадачу" @click.stop="startSubtask(row.task)">＋</button>
                 <input v-model="selectedIds" type="checkbox" :value="row.task.id" @click.stop />
