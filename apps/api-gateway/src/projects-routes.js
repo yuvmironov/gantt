@@ -1289,6 +1289,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
           format: format === 'csv' ? 'IMPORT_FORMAT_CSV' : 'IMPORT_FORMAT_JSON',
           file_name: fileName,
           data,
+          preview: request.query.preview === 'true',
         },
         actorMetadata(current.user_id),
       );

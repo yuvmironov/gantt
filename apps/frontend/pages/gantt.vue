@@ -7,6 +7,8 @@ const snapshot = ref(null);
 const selectedTask = ref(null);
 const comments = ref([]);
 const commentBody = ref('');
+const editingCommentId = ref('');
+const editCommentBody = ref('');
 const progress = ref(0);
 const status = ref('planned');
 const error = ref('');
@@ -56,6 +58,8 @@ const linkMode = ref(false);
 const linkFrom = ref('');
 const selectedOwner = ref('');
 const dragTaskId = ref('');
+const dragOverId = ref('');
+const dragOverMode = ref('');
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -172,6 +176,13 @@ async function loadSnapshot(preserveTask = false) {
   if (!preserveTask) selectedTask.value = null;
   if (!diagramId.value) return;
   snapshot.value = await api(`/diagrams/${diagramId.value}/snapshot`);
+  if (!localStorage.getItem('oati_gantt_label_w_v1')) {
+    const longest = Math.max(
+      ...(snapshot.value?.tasks ?? []).map((task) => String(task.name ?? '').length),
+      30,
+    );
+    labelWidth.value = Math.min(800, Math.max(420, longest * 7 + 220));
+  }
   const fresh = (snapshot.value?.tasks ?? []).find((task) => task.id === previousId);
   if (fresh) {
     selectedTask.value = fresh;
@@ -417,6 +428,27 @@ async function addComment() {
   }
 }
 
+function startEditComment(comment) {
+  editingCommentId.value = comment.id;
+  editCommentBody.value = comment.body;
+}
+
+async function saveComment(comment) {
+  if (!editCommentBody.value.trim()) return;
+  try {
+    await api(`/comments/${comment.id}`, {
+      method: 'PATCH',
+      body: { body: editCommentBody.value },
+    });
+    editingCommentId.value = '';
+    comments.value = (
+      await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)
+    ).items ?? [];
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
 async function deleteComment(commentId) {
   if (!selectedTask.value) return;
   try {
@@ -435,10 +467,25 @@ function onTaskDragStart(event, task) {
   event.dataTransfer.setData('text/plain', task.id);
 }
 
+function onTaskDragOver(event, targetRow) {
+  if (!dragTaskId.value) return;
+  dragOverId.value = targetRow.key;
+  if (targetRow.type === 'direction') {
+    dragOverMode.value = 'inside';
+    return;
+  }
+  const rect = event.currentTarget.getBoundingClientRect();
+  const ratio = (event.clientY - rect.top) / rect.height;
+  dragOverMode.value = ratio < 0.3 ? 'before' : ratio > 0.7 ? 'after' : 'inside';
+}
+
 async function onTaskDrop(event, targetRow) {
   event.preventDefault();
   const taskId = dragTaskId.value || event.dataTransfer.getData('text/plain');
+  const mode = dragOverMode.value || 'inside';
   dragTaskId.value = '';
+  dragOverId.value = '';
+  dragOverMode.value = '';
   if (!taskId || taskId === targetRow.task?.id) return;
   const dragged = (snapshot.value?.tasks ?? []).find((task) => task.id === taskId);
   if (!dragged) return;
@@ -446,10 +493,16 @@ async function onTaskDrop(event, targetRow) {
     await moveTaskTo(taskId, targetRow.direction.id, null);
     return;
   }
-  if (targetRow.task.level === 3) {
-    await moveTaskTo(taskId, targetRow.task.directionId, targetRow.task.parentTaskId, 9999);
+  const target = targetRow.task;
+  if (mode === 'inside' && target.level === 2) {
+    await moveTaskTo(taskId, target.directionId, target.id);
   } else {
-    await moveTaskTo(taskId, targetRow.task.directionId, targetRow.task.id);
+    await moveTaskTo(
+      taskId,
+      target.directionId,
+      target.parentTaskId,
+      Number(target.sortOrder) + (mode === 'after' ? 1 : 0),
+    );
   }
 }
 
@@ -611,6 +664,7 @@ function taskTooltip(task) {
     `Статус: ${statusLabel(task.status)} · ${task.progress}% · ${task.priority}`,
     responsibleName(task) ? `Ответственный: ${responsibleName(task)}` : '',
     task.jiraNumber ? `Jira: ${task.jiraNumber}` : '',
+    task.isCritical ? 'Критический путь' : task.float != null ? `Резерв: ${task.float} дн.` : '',
     task.commentsCount ? `Комментарии: ${task.commentsCount}` : '',
   ];
   return parts.filter(Boolean).join('\n');
@@ -764,6 +818,16 @@ const dependencyLines = computed(() => {
     .filter(Boolean);
 });
 
+function snapWorkday(value, direction = 1) {
+  if (snapshot.value?.diagram?.dayMode !== 'working') return value;
+  const holidays = new Set((snapshot.value?.holidays ?? []).map((item) => item.holidayDate));
+  const date = new Date(value);
+  while (holidays.has(date.toISOString().slice(0, 10)) || [0, 6].includes(date.getUTCDay())) {
+    date.setUTCDate(date.getUTCDate() + direction);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 async function updateTaskDates(task, startDate, endDate) {
   try {
     await api(`/tasks/${task.id}`, {
@@ -808,8 +872,8 @@ function startBarDrag(event, bar, mode) {
       if (end < start) end = start;
     }
     bar.task._dragPreview = {
-      start: start.toISOString().slice(0, 10),
-      end: end.toISOString().slice(0, 10),
+      start: snapWorkday(start.toISOString().slice(0, 10), 1),
+      end: snapWorkday(end.toISOString().slice(0, 10), -1),
     };
   };
   const onUp = async () => {
@@ -1008,6 +1072,7 @@ async function importFile(event) {
       warnings: headers.length < 5 ? ['Недостаточно колонок для полного импорта'] : [],
       errors: [],
     };
+    await requestServerPreview(file);
     return;
   }
   try {
@@ -1035,8 +1100,48 @@ async function importFile(event) {
       warnings,
       errors: items.length ? [] : ['В файле не найдено задач'],
     };
+    await requestServerPreview(file);
   } catch (reason) {
     importPreview.value = { fileName: file.name, format: 'json', errors: [reason.message], warnings: [] };
+  }
+}
+
+async function requestServerPreview(file) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('format', file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json');
+    const response = await fetch(
+      `/api/v1/diagrams/${diagramId.value}/import?preview=true`,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': csrfToken() ?? '' },
+        body: formData,
+      },
+    );
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail ?? response.statusText);
+    const job = await response.json();
+    const issues = job.report?.issues ?? [];
+    const warnings = issues
+      .map((issue) => issue.message ?? issue.code)
+      .filter(Boolean)
+      .slice(0, 20);
+    importPreview.value = {
+      ...(importPreview.value ?? { fileName: file.name }),
+      fileName: file.name,
+      directions: job.report?.directionsCount ?? importPreview.value?.directions ?? 0,
+      tasks: job.report?.tasksCount ?? importPreview.value?.tasks ?? 0,
+      serverValidated: true,
+      warnings: [...(importPreview.value?.warnings ?? []), ...warnings],
+      errors: job.status === 'failed' ? [job.errorMessage || 'Импорт отклонён сервером'] : [],
+    };
+  } catch (reason) {
+    importPreview.value = {
+      ...(importPreview.value ?? { fileName: file.name }),
+      serverValidated: false,
+      errors: [...(importPreview.value?.errors ?? []), reason.message],
+    };
   }
 }
 
@@ -1313,7 +1418,8 @@ onMounted(async () => {
               v-if="row.type === 'direction'"
               class="gantt-row-label direction"
               @click="toggleCollapse(row.direction.id)"
-              @dragover.prevent
+              @dragover.prevent="onTaskDragOver($event, row)"
+              :class="{ 'drop-inside': dragOverId === row.key && dragOverMode === 'inside' }"
               @drop="onTaskDrop($event, row)"
             >
               <span class="caret">{{ collapsed.includes(row.direction.id) ? '›' : '⌄' }}</span>
@@ -1327,12 +1433,18 @@ onMounted(async () => {
             <div
               v-else
               class="gantt-row-label task"
-              :class="{ selected: selectedTask?.id === row.task.id, context: row.isContext }"
+              :class="{
+                selected: selectedTask?.id === row.task.id,
+                context: row.isContext,
+                'drop-before': dragOverId === row.key && dragOverMode === 'before',
+                'drop-after': dragOverId === row.key && dragOverMode === 'after',
+                'drop-inside': dragOverId === row.key && dragOverMode === 'inside',
+              }"
               :style="{ paddingLeft: `${12 + row.depth * 18}px` }"
               :title="taskTooltip(row.task)"
               draggable="true"
               @dragstart="onTaskDragStart($event, row.task)"
-              @dragover.prevent
+              @dragover.prevent="onTaskDragOver($event, row)"
               @drop.stop="onTaskDrop($event, row)"
               @click="selectTask(row.task)"
             >
@@ -1624,8 +1736,20 @@ onMounted(async () => {
             <span class="avatar sm">К</span>
             <div>
               <div class="comment-head"><span class="comment-name">{{ comment.authorUserId }}</span><span class="muted small">{{ formatShortDate(comment.createdAt) }}</span></div>
-              <p class="comment-text">{{ comment.body }}</p>
-              <button class="link-button" type="button" @click="deleteComment(comment.id)">Удалить</button>
+              <template v-if="editingCommentId === comment.id">
+                <textarea v-model="editCommentBody" class="textarea" rows="2" />
+                <div class="comment-actions">
+                  <button class="link-button" type="button" @click="saveComment(comment)">Сохранить</button>
+                  <button class="link-button" type="button" @click="editingCommentId = ''">Отмена</button>
+                </div>
+              </template>
+              <template v-else>
+                <p class="comment-text">{{ comment.body }}</p>
+                <div class="comment-actions">
+                  <button class="link-button" type="button" @click="startEditComment(comment)">Изменить</button>
+                  <button class="link-button" type="button" @click="deleteComment(comment.id)">Удалить</button>
+                </div>
+              </template>
             </div>
           </div>
           <p v-if="!comments.length" class="muted small">Комментариев пока нет.</p>
@@ -1679,6 +1803,9 @@ onMounted(async () => {
 .gantt-row-label { cursor: pointer; font-size: 13px; }
 .gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: pointer; }
 .gantt-row-label.context { opacity: 0.55; }
+.gantt-row-label.drop-before { box-shadow: inset 0 2px 0 var(--color-primary); }
+.gantt-row-label.drop-after { box-shadow: inset 0 -2px 0 var(--color-primary); }
+.gantt-row-label.drop-inside { background: var(--color-primary-soft); outline: 1px dashed var(--color-primary); outline-offset: -2px; }
 .width-range { width: 90px; accent-color: var(--color-primary); }
 .row-chip, .row-action { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 5px; padding: 1px 5px; font-size: 10px; cursor: pointer; }
 .row-chip.flag-on { background: #dcfce7; border-color: #86efac; color: #15803d; }
@@ -1737,6 +1864,7 @@ onMounted(async () => {
 .comment-head { display: flex; gap: 8px; align-items: baseline; }
 .comment-name { font-size: 12px; font-weight: 600; }
 .comment-text { margin: 4px 0 0; font-size: 13px; color: var(--color-text); }
+.comment-actions { display: flex; gap: 10px; margin-top: 4px; }
 .composer { margin-top: 12px; }
 .composer-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 .empty-project { max-width: 440px; margin: 40px auto; }
