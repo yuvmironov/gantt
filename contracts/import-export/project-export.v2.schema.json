@@ -380,7 +380,8 @@
             "planned",
             "in_progress",
             "done",
-            "blocked"
+            "blocked",
+            "postponed"
           ]
         },
         "progress": {

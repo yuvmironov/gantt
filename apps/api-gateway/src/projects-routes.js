@@ -147,6 +147,7 @@ function toTaskStatus(value) {
       TASK_STATUS_IN_PROGRESS: 'in_progress',
       TASK_STATUS_DONE: 'done',
       TASK_STATUS_BLOCKED: 'blocked',
+      TASK_STATUS_POSTPONED: 'postponed',
     }[value] ?? value
   );
 }
@@ -366,6 +367,7 @@ function standaloneExport(snapshotData, format) {
     in_progress: 'В работе',
     done: 'Выполнено',
     blocked: 'Заблокировано',
+    postponed: 'Отложено',
   };
   const priorityRu = { low: 'Низкий', medium: 'Средний', high: 'Высокий', critical: 'Критический' };
   const tasks = [
@@ -1049,6 +1051,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
               in_progress: 'TASK_STATUS_IN_PROGRESS',
               done: 'TASK_STATUS_DONE',
               blocked: 'TASK_STATUS_BLOCKED',
+              postponed: 'TASK_STATUS_POSTPONED',
             }[status] ?? 'TASK_STATUS_PLANNED',
           progress: Number(request.body?.progress ?? 0),
           expected_version: Number(request.body?.expectedVersion ?? 0),
