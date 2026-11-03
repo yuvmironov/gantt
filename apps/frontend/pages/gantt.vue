@@ -508,7 +508,8 @@ async function onTaskDrop(event, targetRow) {
     return;
   }
   const target = targetRow.task;
-  if (mode === 'inside' && target.level === 2 && !dragged.childrenCount) {
+  const dropAsChild = mode === 'inside' && target.level === 2 && !dragged.childrenCount;
+  if (dropAsChild) {
     await moveTaskTo(
       taskId,
       target.directionId,

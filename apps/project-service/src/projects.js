@@ -2844,7 +2844,7 @@ export function createProjectImplementation({ db, userClient }) {
         ]);
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
 
-        const directionId = hasField(call_.request, 'direction_id')
+        let directionId = hasField(call_.request, 'direction_id')
           ? String(call_.request.direction_id)
           : current.direction_id;
         const direction = await db.query(
@@ -2880,58 +2880,138 @@ export function createProjectImplementation({ db, userClient }) {
           parent = parentResult.rows[0];
         }
 
-        const requestedSort = Number(call_.request.sort_order ?? 0);
-        let sortOrder = requestedSort;
-        if (!Number.isInteger(sortOrder) || sortOrder <= 0) {
-          const next = await db.query(
-            `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
-             FROM plan.tasks
-             WHERE direction_id = $1
-               AND parent_task_id IS NOT DISTINCT FROM $2
-               AND deleted_at IS NULL`,
-            [directionId, parentTaskId],
-          );
-          sortOrder = next.rows[0].next;
+        if (parent && parent.direction_id !== directionId) {
+          directionId = parent.direction_id;
+        }
+        const allTasksResult = await db.query(
+          `SELECT * FROM plan.tasks
+           WHERE diagram_id = $1 AND deleted_at IS NULL
+           ORDER BY sort_order ASC, created_at ASC`,
+          [current.diagram_id],
+        );
+        const allTasks = allTasksResult.rows;
+        const allById = new Map(allTasks.map((row) => [row.id, row]));
+        const hasChildren = allTasks.some((row) => row.parent_task_id === taskId);
+        if (parentTaskId && hasChildren) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'task_has_children'));
+          return;
+        }
+        let ancestor = parent;
+        while (ancestor?.parent_task_id) {
+          if (ancestor.parent_task_id === taskId) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'task_parent_cycle'));
+            return;
+          }
+          ancestor = allById.get(ancestor.parent_task_id);
         }
 
-        const level = parent ? 3 : 2;
-        const wbsCode = parent
-          ? `${parent.wbs_code}.${sortOrder}`
-          : `${direction.rows[0].wbs_code}.${sortOrder}`;
-        const conflict = await db.query(
-          `SELECT 1 FROM plan.tasks
-           WHERE diagram_id = $1 AND wbs_code = $2 AND deleted_at IS NULL AND id <> $3`,
-          [current.diagram_id, wbsCode, taskId],
+        const requestedSort = Number(call_.request.sort_order ?? 0);
+        const level = parentTaskId ? 3 : 2;
+        const oldParentId = current.parent_task_id ?? null;
+        const oldDirectionId = current.direction_id;
+        const groupOf = (row) => `${row.direction_id}:${row.parent_task_id ?? ''}`;
+        const newGroupKey = `${directionId}:${parentTaskId ?? ''}`;
+        const oldGroupKey = `${oldDirectionId}:${oldParentId ?? ''}`;
+        const newSiblings = allTasks
+          .filter((row) => row.id !== taskId && groupOf(row) === newGroupKey)
+          .sort((a, b) => a.sort_order - b.sort_order);
+        const insertIndex =
+          Number.isInteger(requestedSort) && requestedSort > 0
+            ? Math.max(0, Math.min(newSiblings.length, requestedSort - 1))
+            : newSiblings.length;
+        const moved = {
+          ...current,
+          direction_id: directionId,
+          parent_task_id: parentTaskId,
+          level,
+          sort_order: insertIndex + 1,
+        };
+        newSiblings.splice(insertIndex, 0, moved);
+        const sortById = new Map(newSiblings.map((row, index) => [row.id, index + 1]));
+        if (oldGroupKey !== newGroupKey) {
+          allTasks
+            .filter((row) => row.id !== taskId && groupOf(row) === oldGroupKey)
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .forEach((row, index) => sortById.set(row.id, index + 1));
+        }
+
+        const directionsResult = await db.query(
+          `SELECT * FROM plan.directions
+           WHERE diagram_id = $1 AND deleted_at IS NULL
+           ORDER BY sort_order ASC`,
+          [current.diagram_id],
         );
-        if (conflict.rowCount > 0) {
-          callback(grpcError(status.ALREADY_EXISTS, 'task_wbs_conflict'));
-          return;
+        const directionWbs = new Map(directionsResult.rows.map((row) => [row.id, row.wbs_code]));
+        const tasksForWbs = allTasks.map((row) =>
+          row.id === taskId
+            ? moved
+            : { ...row, sort_order: sortById.get(row.id) ?? row.sort_order },
+        );
+        const rootsByDirection = new Map();
+        for (const row of tasksForWbs.filter((item) => !item.parent_task_id)) {
+          const list = rootsByDirection.get(row.direction_id) ?? [];
+          list.push(row);
+          rootsByDirection.set(row.direction_id, list);
+        }
+        const wbsById = new Map();
+        for (const [dirId, roots] of rootsByDirection) {
+          const base = directionWbs.get(dirId);
+          if (!base) continue;
+          roots
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .forEach((row, index) => {
+              row.sort_order = index + 1;
+              row.wbs_code = `${base}.${index + 1}`;
+              wbsById.set(row.id, row);
+            });
+        }
+        const childrenByParent = new Map();
+        for (const row of tasksForWbs.filter((item) => item.parent_task_id)) {
+          const list = childrenByParent.get(row.parent_task_id) ?? [];
+          list.push(row);
+          childrenByParent.set(row.parent_task_id, list);
+        }
+        for (const [parentId, children] of childrenByParent) {
+          const parentRow = wbsById.get(parentId);
+          if (!parentRow) continue;
+          children
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .forEach((row, index) => {
+              row.sort_order = index + 1;
+              row.wbs_code = `${parentRow.wbs_code}.${index + 1}`;
+              wbsById.set(row.id, row);
+            });
         }
 
         client = await db.connect();
         await client.query('BEGIN');
-        const updated = await client.query(
+        await client.query(
           `UPDATE plan.tasks
-           SET direction_id = $2, parent_task_id = $3, level = $4, wbs_code = $5,
-               sort_order = $6, updated_by_user_id = $7,
-               version = version + 1, updated_at = now()
-           WHERE id = $1
-           RETURNING *`,
-          [taskId, directionId, parentTaskId, level, wbsCode, sortOrder, actorUserId(call_)],
+           SET wbs_code = '~' || left(replace(id::text, '-', ''), 30)
+           WHERE diagram_id = $1`,
+          [current.diagram_id],
         );
-        if (directionId !== current.direction_id || wbsCode !== current.wbs_code) {
+        for (const row of wbsById.values()) {
           await client.query(
             `UPDATE plan.tasks
-             SET direction_id = $2,
-                 wbs_code = $3 || substr(wbs_code, length($4) + 1),
-                 updated_at = now(),
-                 updated_by_user_id = $5
-             WHERE parent_task_id = $1
-               AND deleted_at IS NULL
-               AND left(wbs_code, length($4) + 1) = $4 || '.'`,
-            [taskId, directionId, wbsCode, current.wbs_code, actorUserId(call_)],
+             SET direction_id = $2, parent_task_id = $3, level = $4, wbs_code = $5,
+                 sort_order = $6, updated_by_user_id = $7,
+                 version = version + CASE WHEN id = $8 THEN 1 ELSE 0 END,
+                 updated_at = now()
+             WHERE id = $1`,
+            [
+              row.id,
+              row.direction_id,
+              row.parent_task_id,
+              row.level,
+              row.wbs_code,
+              row.sort_order,
+              actorUserId(call_),
+              taskId,
+            ],
           );
         }
+        const updated = await client.query(`SELECT * FROM plan.tasks WHERE id = $1`, [taskId]);
         await client.query('COMMIT');
         const assignments = await loadAssignments(db, userClient, 'task', taskId);
         const movedTask = toTask(updated.rows[0], assignments);
