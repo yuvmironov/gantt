@@ -62,6 +62,7 @@ const selectedOwner = ref('');
 const dragTaskId = ref('');
 const dragOverId = ref('');
 const dragOverMode = ref('');
+const barDragPreview = ref(null);
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -1010,21 +1011,39 @@ function startBarDrag(event, bar, mode) {
       end = new Date(originalEnd.getTime() + deltaDays * dayMs);
       if (end < start) end = start;
     }
-    bar.task._dragPreview = {
-      start: snapWorkday(start.toISOString().slice(0, 10), 1),
-      end: snapWorkday(end.toISOString().slice(0, 10), -1),
+    const previewStart = snapWorkday(start.toISOString().slice(0, 10), 1);
+    const previewEnd = snapWorkday(end.toISOString().slice(0, 10), -1);
+    const previewStartMs = new Date(previewStart).getTime();
+    const previewEndMs = new Date(previewEnd).getTime();
+    const span = Math.max(max - min, dayMs);
+    barDragPreview.value = {
+      taskId: bar.task.id,
+      top: bar.style.top,
+      left: `${Math.min(98, Math.max(0, ((previewStartMs - min) / span) * 100))}%`,
+      width: `${Math.max(2, Math.min(100, ((previewEndMs - previewStartMs) / span) * 100))}%`,
+      start: previewStart,
+      end: previewEnd,
+      label: `${formatShortDate(previewStart)}–${formatShortDate(previewEnd)}`,
     };
   };
-  const onUp = async () => {
+  const finish = async (apply) => {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
-    const preview = bar.task._dragPreview;
-    delete bar.task._dragPreview;
-    if (!preview || (preview.start === bar.task.startDate && preview.end === bar.task.endDate)) return;
+    window.removeEventListener('keydown', onKey);
+    const preview = barDragPreview.value;
+    barDragPreview.value = null;
+    if (!apply || !preview) return;
+    if (preview.start === bar.task.startDate?.slice(0, 10) && preview.end === bar.task.endDate?.slice(0, 10)) return;
     await updateTaskDates(bar.task, preview.start, preview.end);
+  };
+  const onUp = () => finish(true);
+  const onKey = (keyEvent) => {
+    if (keyEvent.key !== 'Escape') return;
+    finish(false);
   };
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp, { once: true });
+  window.addEventListener('keydown', onKey);
 }
 
 function printChart() {
@@ -1667,7 +1686,7 @@ onMounted(async () => {
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
-              :class="[bar.task.status, { critical: bar.task.isCritical, context: bar.task.isCritical }]"
+              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
               @click="linkMode ? pickLink(bar.task) : selectTask(bar.task)"
@@ -1676,6 +1695,9 @@ onMounted(async () => {
               <span class="bar-handle right" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
               <span class="gantt-bar-label">{{ bar.task.wbsCode }} · {{ bar.task.progress }}%</span>
               <span class="fill" :style="{ width: `${bar.task.progress}%` }"></span>
+            </div>
+            <div v-if="barDragPreview" class="gantt-bar-preview" :style="{ top: barDragPreview.top, left: barDragPreview.left, width: barDragPreview.width }">
+              <span>{{ barDragPreview.label }}</span>
             </div>
           </div>
         </div>
@@ -1984,6 +2006,8 @@ onMounted(async () => {
 .gantt-bar.direction-bar .fill { background: rgb(255 255 255 / 18%); }
 .gantt-bar.direction-bar.done { background: #166534; border-color: #14532d; }
 .gantt-bar.direction-bar.blocked { background: #991b1b; border-color: #7f1d1d; }
+.gantt-bar.dragging { opacity: 0.28; }
+.gantt-bar-preview { position: absolute; height: 28px; z-index: 6; display: flex; align-items: center; padding: 0 8px; border: 2px dashed #2563eb; border-radius: var(--radius-md); background: rgb(219 234 254 / 82%); color: #1d4ed8; font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px rgb(37 99 235 / 18%); }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
 .gantt-row-label.task .label-meta { flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
 .gantt-row-label.direction .caret { color: var(--color-text-muted); }
