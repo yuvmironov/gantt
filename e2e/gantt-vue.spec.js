@@ -78,11 +78,10 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .click();
   await expect(page.locator('.drawer')).toBeVisible();
   await page.locator('.drawer .inline input[type=number]').fill('25');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.locator('.drawer .inline input[type=number]')).toHaveValue('25');
   await page.locator('.drawer .inline select').selectOption('done');
   await expect(page.locator('.drawer .inline select')).toHaveValue('done');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await expect(page.locator('.drawer .inline input[type=number]')).toHaveValue('25');
   await expect(page.locator('.drawer .inline select')).toHaveValue('done');
   await expect(page.locator('.gantt-labels')).toContainText('Готово');
   await page.locator('.comment-form textarea').fill('Vue comment');
@@ -108,7 +107,7 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .locator('.label-name')
     .click();
   await page.locator('.drawer input[placeholder="Название задачи"]').fill(`${createdName} edited`);
-  await page.locator('.drawer button').filter({ hasText: 'Сохранить задачу' }).click();
+  await page.locator('.drawer-footer').getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.locator('.gantt-labels')).toContainText(`${createdName} edited`);
   await page
     .locator('.gantt-row-label')
@@ -116,7 +115,7 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .locator('.label-name')
     .click();
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('.drawer button').filter({ hasText: 'Удалить задачу' }).click();
+  await page.locator('.drawer-footer .danger').click();
   await expect(page.locator('.gantt-labels')).not.toContainText(`${createdName} edited`);
   await expect(page.locator('nav')).toContainText('Участники');
 });

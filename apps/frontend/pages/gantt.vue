@@ -12,6 +12,7 @@ const editCommentBody = ref('');
 const progress = ref(0);
 const status = ref('planned');
 const savingProgress = ref(false);
+const savingTask = ref(false);
 const error = ref('');
 const loading = ref(true);
 const syncConnected = ref(false);
@@ -292,6 +293,8 @@ async function selectTask(task) {
   status.value = task.status ?? 'planned';
   fillTaskEdit(task);
   fillAssignments(task);
+  moveForm.directionId = '';
+  moveForm.sortOrder = 0;
   comments.value = (await api(`/comments?entityType=task&entityId=${task.id}`)).items ?? [];
 }
 
@@ -423,6 +426,78 @@ async function saveProgress() {
     error.value = reason.message;
   } finally {
     savingProgress.value = false;
+  }
+}
+
+async function saveTaskAll() {
+  if (!selectedTask.value || savingTask.value) return;
+  await nextTick();
+  savingTask.value = true;
+  error.value = '';
+  const submitted = {
+    status: status.value,
+    progress: Number(progress.value),
+    assignments: assignmentDraft.value.map((item) => ({
+      role: item.role,
+      assigneeType: item.assigneeType,
+      assigneeId: item.assigneeId,
+    })),
+  };
+  try {
+    let task = await api(`/tasks/${selectedTask.value.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: selectedTask.value.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        name: taskEdit.name,
+        description: taskEdit.description,
+        priority: taskEdit.priority,
+        jiraNumber: taskEdit.jiraNumber,
+        startDate: taskEdit.startDate || null,
+        endDate: taskEdit.endDate || null,
+        actualEndDate: taskEdit.actualEndDate || null,
+        bpFlag: taskEdit.bpFlag,
+        spFlag: taskEdit.spFlag,
+      },
+    });
+    task = await api(`/tasks/${task.id}/progress`, {
+      method: 'PATCH',
+      body: {
+        status: submitted.status,
+        progress: submitted.progress,
+        expectedVersion: task.version,
+      },
+    });
+    if (moveForm.directionId || Number(moveForm.sortOrder) > 0) {
+      task = await api(`/tasks/${task.id}/move`, {
+        method: 'POST',
+        body: {
+          directionId: moveForm.directionId || task.directionId,
+          sortOrder: Number(moveForm.sortOrder) || 0,
+          expectedVersion: task.version,
+          baseRevision: snapshot.value?.currentRevision ?? 0,
+        },
+      });
+    }
+    task = await api(`/tasks/${task.id}/assignments`, {
+      method: 'PUT',
+      body: {
+        assignments: submitted.assignments,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+      },
+    });
+    selectedTask.value = task;
+    status.value = task.status ?? submitted.status;
+    progress.value = Number(task.progress) || submitted.progress;
+    moveForm.directionId = '';
+    moveForm.sortOrder = 0;
+    fillTaskEdit(task);
+    fillAssignments(task);
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  } finally {
+    savingTask.value = false;
   }
 }
 
@@ -579,10 +654,9 @@ async function moveTask() {
   }
 }
 
-async function quickProgress() {
+function quickProgress() {
   if (!selectedTask.value) return;
   progress.value = Math.min(100, Number(progress.value) + 25);
-  await saveProgress();
 }
 
 async function logout() {
@@ -1749,7 +1823,6 @@ onMounted(async () => {
             <option value="blocked">Блокировано</option>
           </select>
           <input v-model.number="progress" class="input" type="number" min="0" max="100" step="5" />
-          <button class="btn btn-primary btn-sm" type="button" @click="saveProgress">Сохранить</button>
           <button class="btn btn-secondary btn-sm" type="button" @click="quickProgress">+25%</button>
         </div>
         <div class="stack task-edit">
@@ -1766,8 +1839,7 @@ onMounted(async () => {
           <label class="field"><span>Факт завершения</span><input v-model="taskEdit.actualEndDate" class="input" type="date" /></label>
           <label class="checkbox-line"><input v-model="taskEdit.bpFlag" type="checkbox" /> БП</label>
           <label class="checkbox-line"><input v-model="taskEdit.spFlag" type="checkbox" /> СП</label>
-          <button class="btn btn-secondary" type="button" @click="saveTask">Сохранить задачу</button>
-          <button class="btn btn-ghost danger" type="button" @click="deleteTask">Удалить задачу</button>
+
         </div>
         <h3>Перемещение</h3>
         <div class="stack">
@@ -1778,7 +1850,6 @@ onMounted(async () => {
             </option>
           </select>
           <input v-model.number="moveForm.sortOrder" class="input" type="number" min="0" placeholder="Порядок" />
-          <button class="btn btn-secondary" type="button" @click="moveTask">Переместить</button>
         </div>
         <h3>Назначения</h3>
         <div class="stack">
@@ -1803,7 +1874,6 @@ onMounted(async () => {
             <option v-for="option in assignmentOptions(assignmentForm.assigneeType)" :key="option.id" :value="option.id">{{ option.displayName }}</option>
           </select>
           <button class="btn btn-secondary" type="button" @click="addAssignment">Добавить назначение</button>
-          <button class="btn btn-primary" type="button" @click="saveAssignments">Сохранить назначения</button>
         </div>
         <h3>Комментарии</h3>
         <div class="comments">
@@ -1833,6 +1903,12 @@ onMounted(async () => {
           <textarea v-model="commentBody" class="textarea" rows="3" placeholder="Написать комментарий..." />
           <div class="composer-footer"><button class="btn btn-primary btn-sm" type="submit">Добавить</button></div>
         </form>
+      </div>
+      <div class="drawer-footer">
+        <button class="btn btn-ghost danger" type="button" @click="deleteTask">Удалить</button>
+        <button class="btn btn-primary" type="button" :disabled="savingTask" @click="saveTaskAll">
+          {{ savingTask ? 'Сохранение...' : 'Сохранить' }}
+        </button>
       </div>
     </aside>
   </div>
@@ -1937,10 +2013,11 @@ onMounted(async () => {
 .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .task-edit { padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
 .danger { color: var(--color-danger); }
-.gantt-drawer { position: fixed; top: 0; right: 0; z-index: 30; width: 400px; height: 100vh; overflow: auto; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: -20px 0 60px rgb(15 35 64 / 12%); }
+.gantt-drawer { position: fixed; top: 0; right: 0; z-index: 30; width: 420px; height: 100vh; display: flex; flex-direction: column; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: -20px 0 60px rgb(15 35 64 / 12%); }
 .drawer-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 18px; border-bottom: 1px solid var(--color-border); }
 .drawer-head h3 { margin: 0 0 3px; }
-.drawer-body { padding: 18px; }
+.drawer-body { padding: 18px; overflow: auto; flex: 1; }
+.drawer-footer { display: flex; justify-content: space-between; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
 .inline { display: flex; gap: 8px; flex-wrap: wrap; }
 .comments { display: grid; gap: 12px; margin-top: 10px; }
 .comment { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
