@@ -1855,7 +1855,7 @@ onMounted(async () => {
 .file-chip input { display: none; }
 .gantt-frame { display: grid; grid-template-columns: minmax(380px, 46%) 1fr; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
 .gantt-labels { border-right: 1px solid var(--color-border); min-width: 0; }
-.gantt-label-head, .gantt-row-label { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 38px; padding: 0 12px; border-bottom: 1px solid var(--color-border); }
+.gantt-label-head, .gantt-row-label { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; height: 38px; min-height: 38px; max-height: 38px; overflow: hidden; padding: 0 12px; border-bottom: 1px solid var(--color-border); }
 .gantt-label-head { background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .gantt-label-head .wbs { margin-left: auto; }
 .gantt-row-label { cursor: pointer; font-size: 13px; }
@@ -1884,12 +1884,12 @@ onMounted(async () => {
 .gantt-bar.direction-bar.done { background: #166534; border-color: #14532d; }
 .gantt-bar.direction-bar.blocked { background: #991b1b; border-color: #7f1d1d; }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
-.gantt-row-label.task .label-meta { flex-wrap: wrap; justify-content: flex-end; }
+.gantt-row-label.task .label-meta { flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
 .gantt-row-label.direction .caret { color: var(--color-text-muted); }
 .gantt-row-label:hover, .gantt-row-label.selected { background: #eff6ff; }
 .gantt-row-label .caret { color: var(--color-text-muted); }
 .label-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.label-meta { display: flex; gap: 5px; align-items: center; }
+.label-meta { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; white-space: nowrap; }
 .gantt-timeline { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
 .gantt-timeline::-webkit-scrollbar { height: 12px; }
 .gantt-timeline::-webkit-scrollbar-track { background: var(--color-surface-subtle); border-top: 1px solid var(--color-border); }
