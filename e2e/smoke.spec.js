@@ -18,10 +18,10 @@ test('local Vue MVP workflow', async ({ page }) => {
   await page.locator('#register-form button[type=submit]').click();
   await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
 
-  await page.locator('.empty-project input').fill(projectName);
+  await page.getByPlaceholder('Название проекта').fill(projectName);
   await page.locator('.empty-project button').click();
   await expect(page.locator('.empty-project')).toContainText('диаграмму');
-  await page.locator('.empty-project input').fill(diagramName);
+  await page.getByPlaceholder('Название диаграммы').fill(diagramName);
   await page.locator('.empty-project button').click();
   await expect(page.locator('.gantt-page')).toContainText(diagramName);
 
