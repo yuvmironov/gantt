@@ -792,6 +792,30 @@ const timelineBars = computed(() => {
   });
 });
 
+const directionBars = computed(() => {
+  const rows = ganttRows.value.filter((row) => row.type === 'direction');
+  const { min, max } = timelineRange.value;
+  const span = Math.max(max - min, 1000 * 60 * 60 * 24);
+  return rows
+    .map((row) => {
+      const startValue = row.direction.startDate;
+      const endValue = row.direction.endDate;
+      if (!startValue || !endValue) return null;
+      const start = new Date(startValue).getTime();
+      const end = new Date(endValue).getTime();
+      if (Number.isNaN(start) || Number.isNaN(end)) return null;
+      return {
+        direction: row.direction,
+        style: {
+          top: `${row.index * 38 + 8}px`,
+          left: `${Math.min(98, Math.max(0, ((start - min) / span) * 100))}%`,
+          width: `${Math.max(4, Math.min(100, ((end - start) / span) * 100))}%`,
+        },
+      };
+    })
+    .filter(Boolean);
+});
+
 const dependencyLines = computed(() => {
   const bars = new Map(timelineBars.value.map((bar) => [bar.task.id, bar]));
   return (snapshot.value?.dependencies ?? [])
@@ -1509,6 +1533,19 @@ onMounted(async () => {
               />
             </svg>
             <div
+              v-for="bar in directionBars"
+              :key="`direction-bar-${bar.direction.id}`"
+              class="gantt-bar direction-bar"
+              :class="bar.direction.status"
+              :style="bar.style"
+            >
+              <span class="gantt-bar-label">
+                {{ bar.direction.wbsCode ? `${bar.direction.wbsCode}. ` : '' }}{{ bar.direction.name }}
+                · {{ bar.direction.progress ?? 0 }}%
+              </span>
+              <span class="fill" :style="{ width: `${bar.direction.progress ?? 0}%` }"></span>
+            </div>
+            <div
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
@@ -1822,6 +1859,10 @@ onMounted(async () => {
 .bar-handle { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 3; }
 .bar-handle.left { left: 0; }
 .bar-handle.right { right: 0; }
+.gantt-bar.direction-bar { background: #334155; border-color: #1e293b; color: #f8fafc; z-index: 3; }
+.gantt-bar.direction-bar .fill { background: rgb(255 255 255 / 18%); }
+.gantt-bar.direction-bar.done { background: #166534; border-color: #14532d; }
+.gantt-bar.direction-bar.blocked { background: #991b1b; border-color: #7f1d1d; }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
 .gantt-row-label.task .label-meta { flex-wrap: wrap; justify-content: flex-end; }
 .gantt-row-label.direction .caret { color: var(--color-text-muted); }
