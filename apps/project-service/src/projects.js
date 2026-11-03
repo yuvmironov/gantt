@@ -1165,8 +1165,8 @@ export function createProjectImplementation({ db, userClient }) {
         const accessible = await call(userClient, 'ListAccessibleProjectIds', {
           user_id: userId,
         });
-        const ids = accessible.items.map((item) => item.project_id);
-        const roles = new Map(accessible.items.map((item) => [item.project_id, item.role]));
+        const ids = (accessible.items ?? []).map((item) => item.project_id);
+        const roles = new Map((accessible.items ?? []).map((item) => [item.project_id, item.role]));
 
         if (ids.length === 0) {
           callback(null, {
@@ -2878,16 +2878,6 @@ export function createProjectImplementation({ db, userClient }) {
             return;
           }
           parent = parentResult.rows[0];
-          const children = await db.query(
-            `SELECT 1 FROM plan.tasks
-             WHERE parent_task_id = $1 AND deleted_at IS NULL
-             LIMIT 1`,
-            [taskId],
-          );
-          if (children.rowCount > 0) {
-            callback(grpcError(status.INVALID_ARGUMENT, 'task_has_children'));
-            return;
-          }
         }
 
         const requestedSort = Number(call_.request.sort_order ?? 0);
