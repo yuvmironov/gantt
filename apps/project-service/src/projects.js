@@ -3064,9 +3064,9 @@ export function createProjectImplementation({ db, userClient }) {
         const taskStatus = fromTaskStatus(call_.request.status);
         const result = await db.query(
           `UPDATE plan.tasks
-           SET status = $2, progress = $3, updated_by_user_id = $4,
+           SET status = $2::text, progress = $3, updated_by_user_id = $4,
                actual_end_date = CASE
-                 WHEN $2 = 'done' THEN COALESCE(actual_end_date, CURRENT_DATE)
+                 WHEN $2::text = 'done' THEN COALESCE(actual_end_date, CURRENT_DATE)
                  ELSE NULL
                END,
                version = version + 1, updated_at = now()

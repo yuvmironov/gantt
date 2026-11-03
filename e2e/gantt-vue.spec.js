@@ -80,6 +80,11 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.locator('.drawer .inline input[type=number]').fill('25');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.locator('.drawer .inline input[type=number]')).toHaveValue('25');
+  await page.locator('.drawer .inline select').selectOption('done');
+  await expect(page.locator('.drawer .inline select')).toHaveValue('done');
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await expect(page.locator('.drawer .inline select')).toHaveValue('done');
+  await expect(page.locator('.gantt-labels')).toContainText('Готово');
   await page.locator('.comment-form textarea').fill('Vue comment');
   await page.locator('.comment-form button').click();
   await expect(page.locator('.comments')).toContainText('Vue comment');
