@@ -175,18 +175,21 @@ async function loadDiagrams(preferredDiagram) {
 
 async function loadSnapshot(preserveTask = false) {
   const previousId = preserveTask ? selectedTask.value?.id : null;
-  snapshot.value = null;
-  if (!preserveTask) selectedTask.value = null;
+  if (!preserveTask) {
+    snapshot.value = null;
+    selectedTask.value = null;
+  }
   if (!diagramId.value) return;
-  snapshot.value = await api(`/diagrams/${diagramId.value}/snapshot`);
+  const nextSnapshot = await api(`/diagrams/${diagramId.value}/snapshot`);
   if (!localStorage.getItem('oati_gantt_label_w_v1')) {
     const longest = Math.max(
-      ...(snapshot.value?.tasks ?? []).map((task) => String(task.name ?? '').length),
+      ...(nextSnapshot?.tasks ?? []).map((task) => String(task.name ?? '').length),
       30,
     );
     labelWidth.value = Math.min(800, Math.max(420, longest * 7 + 220));
   }
-  const fresh = (snapshot.value?.tasks ?? []).find((task) => task.id === previousId);
+  snapshot.value = nextSnapshot;
+  const fresh = (nextSnapshot?.tasks ?? []).find((task) => task.id === previousId);
   if (fresh) selectedTask.value = fresh;
 }
 
