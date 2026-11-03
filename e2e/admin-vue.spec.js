@@ -9,7 +9,7 @@ test('nuxt admin page renders users and settings', async ({ page }) => {
 
   await page.goto('/admin');
   await expect(page.locator('.admin-page')).toBeVisible();
-  await expect(page.locator('.admin-page table')).toBeVisible();
+  await expect(page.locator('.admin-page table').first()).toBeVisible();
   await expect(page.locator('.admin-page textarea')).toBeVisible();
   await expect(page.locator('.admin-page .list')).toBeVisible();
   await page.locator('.admin-page .back').click();

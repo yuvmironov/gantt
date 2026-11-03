@@ -14,3 +14,4 @@ generated/
 *.local
 *.log
 frontend/design/
+apps/frontend/node_modules/

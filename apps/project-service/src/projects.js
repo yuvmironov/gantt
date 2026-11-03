@@ -440,7 +440,242 @@ async function entityBelongsToDiagram(db, type, id, diagramId) {
   return result.rowCount > 0;
 }
 
-async function processDiagramImport(db, { diagramId, format, data, actorId }) {
+function parseDelimited(text) {
+  const clean = text.replace(/^\uFEFF/, '');
+  const lines = clean.split(/\r?\n/).filter((line) => line.trim());
+  const delimiter =
+    (lines[0]?.match(/;/g)?.length ?? 0) > (lines[0]?.match(/,/g)?.length ?? 0) ? ';' : ',';
+  const parseLine = (line) => {
+    const values = [];
+    let value = '';
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"') {
+        if (quoted && line[index + 1] === '"') {
+          value += '"';
+          index += 1;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (char === delimiter && !quoted) {
+        values.push(value.trim());
+        value = '';
+      } else {
+        value += char;
+      }
+    }
+    values.push(value.trim());
+    return values;
+  };
+  const dataLines = lines.filter((line) => !line.startsWith('#'));
+  const meta = Object.fromEntries(
+    lines
+      .filter((line) => line.startsWith('#'))
+      .map((line) => {
+        const [key, ...rest] = line.slice(1).trim().split(/\s+/);
+        return [key, rest.join(' ')];
+      }),
+  );
+  const headers = parseLine(dataLines[0] ?? '');
+  const rows = dataLines.slice(1).map((line) => {
+    const values = parseLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
+  });
+  return { headers, rows, meta };
+}
+
+function booleanValue(value) {
+  return ['1', 'да', 'есть', 'yes', 'true'].includes(
+    String(value ?? '')
+      .trim()
+      .toLowerCase(),
+  );
+}
+
+function standaloneCsvToPayload(text, report) {
+  const { headers, rows, meta } = parseDelimited(text);
+  const find = (names) => names.find((name) => headers.includes(name));
+  const idKey = find(['WBS ID', 'ID', 'wbs_code', 'WBS']);
+  if (!idKey) throw new Error('import_format_unsupported');
+  const nameKey = find(['Наименование', 'Название', 'name']);
+  const parentKey = find(['Родитель', 'parent_wbs', 'parent']);
+  const levelKey = find(['Уровень', 'level']);
+  const typeKey = find(['Тип', 'type']);
+  const statusKey = find(['Статус', 'status']);
+  const percentKey = find(['Процент', '%', 'progress']);
+  const priorityKey = find(['Приоритет', 'priority']);
+  const startKey = find(['Начало', 'start_date', 'start']);
+  const endKey = find(['Окончание', 'end_date', 'end']);
+  const doneKey = find(['Факт завершения', 'Факт', 'actual_end_date']);
+  const jiraKey = find(['Jira', 'jira_number']);
+  const bpKey = find(['БП', 'bp_flag']);
+  const spKey = find(['СП', 'sp_flag']);
+  const depsKey = find(['Зависимости', 'deps', 'dependencies']);
+  const resultKey = find(['Результат', 'result']);
+  const descKey = find(['Описание', 'description']);
+  const commentsKey = find(['Комментарии', 'comments']);
+  const tasks = rows.map((row) => {
+    const id = row[idKey];
+    const level = Number(row[levelKey]) || id.split('.').length;
+    const type =
+      row[typeKey] || (level === 1 ? 'Направление' : level === 3 ? 'Подзадача' : 'Задача');
+    return {
+      id,
+      task: row[nameKey],
+      parentId: row[parentKey] || null,
+      level,
+      type,
+      status: row[statusKey],
+      percentComplete: Number(String(row[percentKey] ?? '').replace(',', '.')),
+      priority: row[priorityKey],
+      start: row[startKey],
+      end: row[endKey],
+      doneDate: row[doneKey],
+      jira: row[jiraKey],
+      hasBP: booleanValue(row[bpKey]),
+      hasSP: booleanValue(row[spKey]),
+      dependencies: row[depsKey],
+      result: row[resultKey],
+      description: row[descKey],
+      comments: String(row[commentsKey] ?? '')
+        .split('|')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => ({ text: value.replace(/^\d{2}\.\d{2}\.\d{4}:\s*/, '') })),
+    };
+  });
+  const payload = normalizeStandaloneImport(
+    { project: meta.project, tasks, workdays: { mode: 'calendar', holidays: [] } },
+    report,
+  );
+  return payload;
+}
+
+function normalizeStandaloneImport(payload, report) {
+  const statusMap = {
+    Запланировано: 'planned',
+    'В работе': 'in_progress',
+    Выполнено: 'done',
+    Заблокировано: 'blocked',
+  };
+  const priorityMap = {
+    Низкий: 'low',
+    Средний: 'medium',
+    Высокий: 'high',
+    Критический: 'critical',
+  };
+  const items = Array.isArray(payload.tasks) ? payload.tasks : [];
+  const byId = new Map(items.map((item) => [String(item.id), item]));
+  const rootId = (item) => {
+    let current = item;
+    while (current?.parentId && byId.has(String(current.parentId))) {
+      current = byId.get(String(current.parentId));
+    }
+    return String(current?.id ?? '');
+  };
+  const directions = items
+    .filter((item) => Number(item.level) === 1 || item.type === 'Направление')
+    .map((item, index) => ({
+      id: String(item.id),
+      wbsCode: String(item.id),
+      sortOrder: Number(payload.directionOrder?.indexOf(String(item.id))) + 1 || index + 1,
+      name: item.task ?? item.name ?? String(item.id),
+      description: item.description ?? item.desc ?? '',
+      result: item.result ?? '',
+      priority: priorityMap[item.priority] ?? item.priority ?? 'medium',
+      startDate: item.start ?? null,
+      endDate: item.end ?? null,
+      jiraNumber: item.jira ?? '',
+      bpFlag: Boolean(item.hasBP ?? item.bp),
+      spFlag: Boolean(item.hasSP ?? item.sp),
+      assignments: [],
+    }));
+  const tasks = items
+    .filter(
+      (item) => Number(item.level) >= 2 || item.type === 'Задача' || item.type === 'Подзадача',
+    )
+    .map((item, index) => {
+      const level =
+        Number(item.level) >= 2 ? Number(item.level) : String(item.id).split('.').length;
+      const parentId = item.parentId ? String(item.parentId) : null;
+      const directionId = rootId(item);
+      if (!directions.some((direction) => direction.id === directionId)) {
+        report.issues.push(`direction_not_found:${item.id}`);
+      }
+      if (item.ownerId && !isUuid(item.ownerId)) {
+        report.issues.push(`executor_id_not_mapped:${item.id}:${item.ownerId}`);
+      }
+      return {
+        id: String(item.id),
+        directionId,
+        parentTaskId: level >= 3 ? parentId : null,
+        level,
+        wbsCode: String(item.id),
+        sortOrder: Number(String(item.id).split('.').at(-1)) || index + 1,
+        name: item.task ?? item.name ?? String(item.id),
+        description: item.description ?? item.desc ?? '',
+        result: item.result ?? '',
+        status: statusMap[item.status] ?? item.status ?? 'planned',
+        progress: Number(item.percentComplete ?? item.pct ?? item.progress ?? 0),
+        priority: priorityMap[item.priority] ?? item.priority ?? 'medium',
+        startDate: item.start ?? null,
+        endDate: item.end ?? null,
+        actualEndDate: item.doneDate ?? item.actualEndDate ?? null,
+        jiraNumber: item.jira ?? '',
+        bpFlag: Boolean(item.hasBP ?? item.bp),
+        spFlag: Boolean(item.hasSP ?? item.sp),
+        assignments: [],
+      };
+    });
+  const dependencies = [];
+  for (const item of items) {
+    const predecessors = String(item.dependencies ?? item.deps ?? '')
+      .split(/[;,]/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    for (const predecessorId of predecessors) {
+      const predecessor = byId.get(predecessorId);
+      if (!predecessor) {
+        report.issues.push(`dependency_not_found:${item.id}:${predecessorId}`);
+        continue;
+      }
+      const style = payload.depStyles?.[`${predecessorId}>${item.id}`] ?? {};
+      dependencies.push({
+        predecessorType: Number(predecessor.level) === 1 ? 'direction' : 'task',
+        predecessorId,
+        successorType: 'task',
+        successorId: String(item.id),
+        color: style.color,
+        lineStyle: style.dash ?? style.lineStyle,
+        arrowShape: style.shape ?? style.arrowShape,
+      });
+    }
+  }
+  const comments = [];
+  for (const item of items) {
+    for (const comment of item.comments ?? []) {
+      comments.push({
+        entityType: 'task',
+        entityId: String(item.id),
+        authorUserId: isUuid(comment.authorUserId) ? comment.authorUserId : null,
+        body: comment.text ?? comment.body ?? '',
+      });
+    }
+  }
+  return {
+    formatVersion: 2,
+    project: payload.project,
+    workdays: payload.workdays,
+    directions,
+    tasks,
+    dependencies,
+    comments,
+  };
+}
+
+async function processDiagramImport(db, { diagramId, format: inputFormat, data, actorId }) {
+  let format = inputFormat;
   const client = await db.connect();
   const report = {
     directions_count: 0,
@@ -526,6 +761,21 @@ async function processDiagramImport(db, { diagramId, format, data, actorId }) {
     };
 
     if (format === 'csv') {
+      const csvText = Buffer.from(data).toString('utf8');
+      if (/WBS ID|Наименование|Уровень|Родитель/i.test(csvText.slice(0, 500))) {
+        const converted = standaloneCsvToPayload(csvText, report);
+        await client.query(
+          `UPDATE project.diagrams
+           SET name = COALESCE(NULLIF($2, ''), name), day_mode = 'calendar',
+               updated_by_user_id = $3, updated_at = now()
+           WHERE id = $1`,
+          [diagramId, String(converted.project ?? '').trim(), actorId],
+        );
+        data = Buffer.from(JSON.stringify(converted));
+        format = 'json';
+      }
+    }
+    if (format === 'csv') {
       const rows = parseCsv(Buffer.from(data).toString('utf8'));
       const directionMap = new Map();
       for (const row of rows) {
@@ -571,7 +821,24 @@ async function processDiagramImport(db, { diagramId, format, data, actorId }) {
         report.tasks_count += 1;
       }
     } else {
-      const payload = JSON.parse(Buffer.from(data).toString('utf8'));
+      let payload = JSON.parse(Buffer.from(data).toString('utf8'));
+      if (payload && !payload.formatVersion && Array.isArray(payload.tasks)) {
+        payload = normalizeStandaloneImport(payload, report);
+        await client.query(
+          `UPDATE project.diagrams
+           SET name = COALESCE(NULLIF($2, ''), name),
+               day_mode = $3,
+               updated_by_user_id = $4,
+               updated_at = now()
+           WHERE id = $1`,
+          [
+            diagramId,
+            String(payload.project ?? '').trim(),
+            payload.workdays?.mode === 'workdays' ? 'working' : 'calendar',
+            actorId,
+          ],
+        );
+      }
       if (!payload || payload.formatVersion !== 2) {
         throw new Error('import_format_unsupported');
       }
@@ -1574,12 +1841,34 @@ export function createProjectImplementation({ db, userClient }) {
         }
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.create');
         const parentTaskId = String(call_.request.parent_task_id ?? '') || null;
-        const next = await db.query(
-          `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
-           FROM plan.tasks WHERE direction_id = $1`,
-          [directionId],
-        );
+        let parentTask = null;
+        if (parentTaskId) {
+          const parent = await db.query(
+            `SELECT * FROM plan.tasks
+             WHERE id = $1 AND diagram_id = $2 AND direction_id = $3
+               AND level = 2 AND deleted_at IS NULL`,
+            [parentTaskId, diagramId, directionId],
+          );
+          if (parent.rowCount === 0) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'invalid_parent_task'));
+            return;
+          }
+          parentTask = parent.rows[0];
+        }
+        const next = parentTaskId
+          ? await db.query(
+              `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
+               FROM plan.tasks WHERE parent_task_id = $1 AND deleted_at IS NULL`,
+              [parentTaskId],
+            )
+          : await db.query(
+              `SELECT COALESCE(MAX(sort_order), 0)::int + 1 AS next
+               FROM plan.tasks
+               WHERE direction_id = $1 AND parent_task_id IS NULL AND deleted_at IS NULL`,
+              [directionId],
+            );
         const sortOrder = next.rows[0].next;
+        const wbsBase = parentTask ? parentTask.wbs_code : direction.rows[0].wbs_code;
         const result = await db.query(
           `INSERT INTO plan.tasks
              (diagram_id, direction_id, parent_task_id, level, wbs_code, sort_order,
@@ -1592,7 +1881,7 @@ export function createProjectImplementation({ db, userClient }) {
             directionId,
             parentTaskId,
             parentTaskId ? 3 : 2,
-            `${direction.rows[0].wbs_code}.${sortOrder}`,
+            `${wbsBase}.${sortOrder}`,
             sortOrder,
             name,
             String(call_.request.description ?? ''),
@@ -1645,9 +1934,12 @@ export function createProjectImplementation({ db, userClient }) {
           [diagramId],
         );
         const tasks = await db.query(
-          `SELECT * FROM plan.tasks
-           WHERE diagram_id = $1 AND deleted_at IS NULL
-           ORDER BY sort_order ASC`,
+          `SELECT t.*
+           FROM plan.tasks t
+           JOIN plan.directions d ON d.id = t.direction_id
+           WHERE t.diagram_id = $1 AND t.deleted_at IS NULL AND d.deleted_at IS NULL
+           ORDER BY d.sort_order ASC, t.level ASC, t.parent_task_id NULLS FIRST,
+                    t.sort_order ASC, t.created_at ASC`,
           [diagramId],
         );
         const dependencies = await db.query(
@@ -2591,7 +2883,19 @@ export function createProjectImplementation({ db, userClient }) {
         }
         await client.query('COMMIT');
         const assignments = await loadAssignments(db, userClient, 'task', taskId);
-        callback(null, { task: toTask(updated.rows[0], assignments), revision: '0' });
+        const movedTask = toTask(updated.rows[0], assignments);
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: taskId,
+          eventType: 'task.moved',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId: current.diagram_id,
+          entityType: 'task',
+          entityId: taskId,
+          payload: { task: movedTask },
+        });
+        callback(null, { task: movedTask, revision: '0' });
       } catch (error) {
         if (client) await client.query('ROLLBACK');
         callback(mapDbError(error));
@@ -2626,15 +2930,31 @@ export function createProjectImplementation({ db, userClient }) {
           return;
         }
         const progress = Math.min(Math.max(requestedProgress, 0), 100);
+        const taskStatus = fromTaskStatus(call_.request.status);
         const result = await db.query(
           `UPDATE plan.tasks
            SET status = $2, progress = $3, updated_by_user_id = $4,
+               actual_end_date = CASE
+                 WHEN $2 = 'done' THEN COALESCE(actual_end_date, CURRENT_DATE)
+                 ELSE NULL
+               END,
                version = version + 1, updated_at = now()
            WHERE id = $1
            RETURNING *`,
-          [taskId, fromTaskStatus(call_.request.status), progress, actorUserId(call_)],
+          [taskId, taskStatus, progress, actorUserId(call_)],
         );
         const assignments = await loadAssignments(db, userClient, 'task', taskId);
+        await queueEvent(db, {
+          aggregateType: 'task',
+          aggregateId: taskId,
+          eventType: 'task.progress.updated',
+          actorUserId: actorUserId(call_),
+          projectId: diagram.rows[0].project_id,
+          diagramId: task.rows[0].diagram_id,
+          entityType: 'task',
+          entityId: taskId,
+          payload: { task: toTask(result.rows[0], assignments) },
+        });
         callback(null, { task: toTask(result.rows[0], assignments), revision: '0' });
       } catch (error) {
         callback(mapDbError(error));
@@ -2751,17 +3071,36 @@ export function createProjectImplementation({ db, userClient }) {
           task.rows[0].diagram_id,
         ]);
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.delete');
-        await db.query(
-          `UPDATE plan.tasks
+        const deleted = await db.query(
+          `WITH RECURSIVE subtree AS (
+             SELECT id FROM plan.tasks WHERE id = $1 AND deleted_at IS NULL
+             UNION ALL
+             SELECT t.id FROM plan.tasks t
+             JOIN subtree s ON t.parent_task_id = s.id
+             WHERE t.deleted_at IS NULL
+           )
+           UPDATE plan.tasks
            SET deleted_at = now(), updated_by_user_id = $2, updated_at = now()
-           WHERE id = $1`,
+           WHERE id IN (SELECT id FROM subtree)
+           RETURNING id`,
           [taskId, actorUserId(call_)],
         );
+        const deletedIds = deleted.rows.map((row) => row.id);
         await db.query(
           `DELETE FROM plan.dependencies
-           WHERE (predecessor_type = 'task' AND predecessor_id = $1)
-              OR (successor_type = 'task' AND successor_id = $1)`,
-          [taskId],
+           WHERE (predecessor_type = 'task' AND predecessor_id = ANY($1::uuid[]))
+              OR (successor_type = 'task' AND successor_id = ANY($1::uuid[]))`,
+          [deletedIds],
+        );
+        await db.query(
+          `DELETE FROM plan.assignments
+           WHERE entity_type = 'task' AND entity_id = ANY($1::uuid[])`,
+          [deletedIds],
+        );
+        await db.query(
+          `DELETE FROM plan.comments
+           WHERE entity_type = 'task' AND entity_id = ANY($1::uuid[])`,
+          [deletedIds],
         );
         await queueEvent(db, {
           aggregateType: 'task',

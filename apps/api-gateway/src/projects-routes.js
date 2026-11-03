@@ -1,6 +1,7 @@
 import { createMetadata } from '@smart-oati/service-kit';
 import { csrfValid, sendProblem } from './auth-routes.js';
 import { call } from './project-client.js';
+import { applySchedule } from './gantt-schedule.js';
 
 function fromTimestamp(value) {
   if (!value) return undefined;
@@ -309,7 +310,7 @@ export function mapImportJob(job) {
 }
 
 export function mapSnapshot(snapshot) {
-  return {
+  const mapped = {
     diagram: mapDiagram(snapshot.diagram),
     directions: (snapshot.directions ?? []).map(mapDirection),
     tasks: (snapshot.tasks ?? []).map(mapTask),
@@ -318,6 +319,193 @@ export function mapSnapshot(snapshot) {
     holidays: (snapshot.holidays ?? []).map(mapHoliday),
     currentRevision: Number(snapshot.current_revision ?? 0),
     namesResolved: snapshot.names_resolved,
+  };
+  return applySchedule(mapped, mapped.diagram?.dayMode, mapped.holidays);
+}
+
+function standaloneExport(snapshotData, format) {
+  const snapshot = mapSnapshot(snapshotData);
+  const byId = new Map();
+  for (const direction of snapshot.directions) byId.set(direction.id, direction.wbsCode);
+  for (const task of snapshot.tasks) byId.set(task.id, task.wbsCode);
+  const depsByTask = new Map();
+  const depStyles = {};
+  for (const dependency of snapshot.dependencies) {
+    const from = byId.get(dependency.predecessorId);
+    const to = byId.get(dependency.successorId);
+    if (!from || !to) continue;
+    if (dependency.successorType === 'task') {
+      const list = depsByTask.get(dependency.successorId) ?? [];
+      list.push(from);
+      depsByTask.set(dependency.successorId, list);
+    }
+    depStyles[`${from}>${to}`] = {
+      color: dependency.color || '#94a3b8',
+      dash: dependency.lineStyle,
+      shape: dependency.arrowShape,
+    };
+  }
+  const commentsByEntity = new Map();
+  for (const comment of snapshot.comments) {
+    const list = commentsByEntity.get(comment.entityId) ?? [];
+    list.push({
+      id: comment.id,
+      text: comment.body,
+      author: comment.authorUserId,
+      createdAt: comment.createdAt,
+    });
+    commentsByEntity.set(comment.entityId, list);
+  }
+  const assignmentsOf = (entity) => {
+    const list = entity.assignments ?? [];
+    const find = (role) => list.find((item) => item.role === role)?.assigneeId ?? null;
+    return { ownerId: find('responsible'), execId: find('executor'), coId: find('co_executor') };
+  };
+  const statusRu = {
+    planned: 'Запланировано',
+    in_progress: 'В работе',
+    done: 'Выполнено',
+    blocked: 'Заблокировано',
+  };
+  const priorityRu = { low: 'Низкий', medium: 'Средний', high: 'Высокий', critical: 'Критический' };
+  const tasks = [
+    ...snapshot.directions.map((direction) => ({
+      id: direction.wbsCode,
+      parentId: null,
+      level: 1,
+      type: 'Направление',
+      task: direction.name,
+      result: direction.result,
+      description: direction.description,
+      ...assignmentsOf(direction),
+      start: direction.startDate?.slice(0, 10) ?? null,
+      end: direction.effectiveEndDate ?? direction.endDate?.slice(0, 10) ?? null,
+      days: direction.days ?? 0,
+      status: statusRu[direction.status] ?? direction.status,
+      percentComplete: direction.progress ?? 0,
+      priority: priorityRu[direction.priority] ?? direction.priority,
+      dependencies: '',
+      jira: direction.jiraNumber ?? '',
+      doneDate: null,
+      comments: commentsByEntity.get(direction.id) ?? [],
+      hasBP: Boolean(direction.bpFlag),
+      hasSP: Boolean(direction.spFlag),
+    })),
+    ...snapshot.tasks.map((task) => ({
+      id: task.wbsCode,
+      parentId: task.parentTaskId ? byId.get(task.parentTaskId) : byId.get(task.directionId),
+      level: task.level,
+      type: task.level === 3 ? 'Подзадача' : 'Задача',
+      task: task.name,
+      result: task.result,
+      description: task.description,
+      ...assignmentsOf(task),
+      start: task.startDate?.slice(0, 10) ?? null,
+      end: task.effectiveEndDate ?? task.endDate?.slice(0, 10) ?? null,
+      days: task.days ?? 0,
+      status: statusRu[task.status] ?? task.status,
+      percentComplete: task.progress ?? 0,
+      priority: priorityRu[task.priority] ?? task.priority,
+      dependencies: (depsByTask.get(task.id) ?? []).join('; '),
+      jira: task.jiraNumber ?? '',
+      doneDate: task.actualEndDate?.slice(0, 10) ?? null,
+      comments: commentsByEntity.get(task.id) ?? [],
+      hasBP: Boolean(task.bpFlag),
+      hasSP: Boolean(task.spFlag),
+    })),
+  ];
+  if (format === 'csv') {
+    const headers = [
+      'WBS ID',
+      'Наименование',
+      'Родитель',
+      'Уровень',
+      'Тип',
+      'Владелец',
+      'Исполнитель',
+      'Соисполнитель',
+      'Начало',
+      'Окончание',
+      'Дни',
+      'Рабочие дни',
+      'Статус',
+      'Процент',
+      'Приоритет',
+      'Jira',
+      'БП',
+      'СП',
+      'Зависимости',
+      'Результат',
+      'Описание',
+      'Факт завершения',
+      'Досрочно (дн.)',
+      'Комментарии',
+    ];
+    const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const lines = [
+      headers.join(';'),
+      ...tasks.map((task) =>
+        [
+          task.id,
+          task.task,
+          task.parentId,
+          task.level,
+          task.type,
+          task.ownerId,
+          task.execId,
+          task.coId,
+          task.start,
+          task.end,
+          task.days,
+          '',
+          task.status,
+          task.percentComplete,
+          task.priority,
+          task.jira,
+          task.hasBP ? 'да' : 'нет',
+          task.hasSP ? 'да' : 'нет',
+          task.dependencies,
+          task.result,
+          task.description,
+          task.doneDate,
+          '',
+          (task.comments ?? []).map((comment) => comment.text).join(' | '),
+        ]
+          .map(escape)
+          .join(';'),
+      ),
+      `# project ${snapshot.diagram?.name ?? ''}`,
+      `# workdays ${JSON.stringify({ mode: snapshot.diagram?.dayMode === 'working' ? 'workdays' : 'calendar', holidays: snapshot.holidays.map((holiday) => ({ date: holiday.holidayDate, name: holiday.name })) })}`,
+      `# depstyles ${JSON.stringify(depStyles)}`,
+    ];
+    return {
+      content: `\uFEFF${lines.join('\n')}`,
+      type: 'text/csv; charset=utf-8',
+      name: `${snapshot.diagram?.name ?? 'diagram'}.csv`,
+    };
+  }
+  const payload = {
+    project: snapshot.diagram?.name ?? '',
+    source: 'smart-oati',
+    exportedAt: new Date().toISOString(),
+    today: new Date().toISOString().slice(0, 10),
+    count: tasks.length,
+    directionOrder: snapshot.directions.map((direction) => direction.wbsCode),
+    workdays: {
+      mode: snapshot.diagram?.dayMode === 'working' ? 'workdays' : 'calendar',
+      holidays: snapshot.holidays.map((holiday) => ({
+        date: holiday.holidayDate,
+        name: holiday.name,
+      })),
+    },
+    executors: [],
+    depStyles,
+    tasks,
+  };
+  return {
+    content: JSON.stringify(payload, null, 2),
+    type: 'application/json',
+    name: `${snapshot.diagram?.name ?? 'diagram'}.json`,
   };
 }
 
@@ -1145,6 +1333,22 @@ export async function projectRoutes(app, { userClient, projectClient }) {
     try {
       const current = await session(request, userClient);
       const format = String(request.query.format ?? 'json').toLowerCase();
+      if (String(request.query.compat ?? '') === 'standalone') {
+        const snapshot = await call(
+          projectClient,
+          'GetDiagramSnapshot',
+          { diagram_id: request.params.diagramId },
+          actorMetadata(current.user_id),
+        );
+        const exported = standaloneExport(snapshot.snapshot, format);
+        return reply
+          .type(exported.type)
+          .header(
+            'content-disposition',
+            `attachment; filename*=UTF-8''${encodeURIComponent(exported.name)}`,
+          )
+          .send(exported.content);
+      }
       const response = await call(
         projectClient,
         'ExportDiagram',

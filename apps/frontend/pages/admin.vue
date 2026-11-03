@@ -9,6 +9,8 @@ const search = ref('');
 const auditAction = ref('');
 const auditActor = ref('');
 const newUser = ref({ email: '', lastName: '', firstName: '', appAdmin: false });
+const executors = ref([]);
+const newExecutor = ref({ lastName: '', firstName: '', middleName: '', position: '' });
 
 function csrfToken() {
   return document.cookie
@@ -46,6 +48,25 @@ async function loadAudit() {
   audit.value = (await api(`/audit/events?${query}`)).items ?? [];
 }
 
+async function loadExecutors() {
+  executors.value = (await api('/executors?limit=200&includeInactive=true')).items ?? [];
+}
+
+async function createExecutor() {
+  await run(async () => {
+    await api('/executors', { method: 'POST', body: newExecutor.value });
+    newExecutor.value = { lastName: '', firstName: '', middleName: '', position: '' };
+    await loadExecutors();
+  });
+}
+
+async function deactivateExecutor(item) {
+  await run(async () => {
+    await api(`/executors/${item.id}`, { method: 'DELETE' });
+    await loadExecutors();
+  });
+}
+
 async function loadSettings() {
   settings.value = JSON.stringify((await api('/settings')).items ?? [], null, 2);
 }
@@ -57,7 +78,7 @@ async function boot() {
       window.location.href = '/';
       return;
     }
-    await Promise.all([loadUsers(), loadAudit(), loadSettings()]);
+    await Promise.all([loadUsers(), loadAudit(), loadSettings(), loadExecutors()]);
   } catch (reason) {
     error.value = reason.message;
   } finally {
@@ -164,6 +185,32 @@ onMounted(boot);
                   {{ item.status === 'blocked' ? 'Разблокировать' : 'Заблокировать' }}
                 </button>
                 <button type="button" @click="deleteUser(item)">Удалить</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Каталог исполнителей</h2>
+      <form class="inline" @submit.prevent="createExecutor">
+        <input v-model="newExecutor.lastName" placeholder="Фамилия" required />
+        <input v-model="newExecutor.firstName" placeholder="Имя" required />
+        <input v-model="newExecutor.middleName" placeholder="Отчество" />
+        <input v-model="newExecutor.position" placeholder="Должность" />
+        <button type="submit">Добавить</button>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ФИО</th><th>Должность</th><th>Связан с пользователем</th><th /></tr></thead>
+          <tbody>
+            <tr v-for="item in executors" :key="item.id">
+              <td>{{ item.fullName }}</td>
+              <td>{{ item.position || '—' }}</td>
+              <td>{{ item.linkedUserId || '—' }}</td>
+              <td class="actions">
+                <button type="button" @click="deactivateExecutor(item)">Деактивировать</button>
               </td>
             </tr>
           </tbody>

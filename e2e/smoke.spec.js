@@ -35,7 +35,11 @@ test('local Vue MVP workflow', async ({ page }) => {
   await page.locator('.manage button').filter({ hasText: 'Создать задачу' }).click();
   await expect(page.locator('.gantt-labels')).toContainText(taskName);
 
-  await page.locator('.gantt-row-label').filter({ hasText: taskName }).click();
+  await page
+    .locator('.gantt-row-label')
+    .filter({ hasText: taskName })
+    .locator('.label-name')
+    .click();
   await expect(page.locator('.drawer')).toBeVisible();
   await expect(page.locator('.drawer')).toContainText(taskName);
 });
