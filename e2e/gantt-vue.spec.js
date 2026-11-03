@@ -57,6 +57,19 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.goto(`/gantt?project=${ids.projectId}&diagram=${ids.diagramId}`);
   await expect(page.locator('.gantt-page')).toBeVisible();
   await expect(page.locator('.sync-status')).toHaveText('Синхронизировано');
+  const alignment = await page.evaluate(() => {
+    const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+    const labelHead = rect('.gantt-label-head');
+    const timeHead = rect('.gantt-time-head');
+    const row = rect('.gantt-row-label.task');
+    const bar = rect('.gantt-bar:not(.direction-bar)');
+    return {
+      headerDelta: Math.abs(labelHead.height - timeHead.height),
+      rowBarDelta: Math.abs(row.top + row.height / 2 - (bar.top + bar.height / 2)),
+    };
+  });
+  expect(alignment.headerDelta).toBeLessThanOrEqual(1);
+  expect(alignment.rowBarDelta).toBeLessThanOrEqual(5);
   await page
     .locator('.gantt-row-label')
     .filter({ hasText: taskName })
