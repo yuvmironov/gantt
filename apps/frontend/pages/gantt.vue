@@ -11,6 +11,7 @@ const editingCommentId = ref('');
 const editCommentBody = ref('');
 const progress = ref(0);
 const status = ref('planned');
+const savingProgress = ref(false);
 const error = ref('');
 const loading = ref(true);
 const syncConnected = ref(false);
@@ -184,13 +185,7 @@ async function loadSnapshot(preserveTask = false) {
     labelWidth.value = Math.min(800, Math.max(420, longest * 7 + 220));
   }
   const fresh = (snapshot.value?.tasks ?? []).find((task) => task.id === previousId);
-  if (fresh) {
-    selectedTask.value = fresh;
-    progress.value = Number(fresh.progress) || 0;
-    status.value = fresh.status ?? 'planned';
-    fillTaskEdit(fresh);
-    fillAssignments(fresh);
-  }
+  if (fresh) selectedTask.value = fresh;
 }
 
 function fillAssignments(task) {
@@ -393,19 +388,41 @@ async function deleteTask() {
 }
 
 async function saveProgress() {
-  if (!selectedTask.value) return;
+  if (!selectedTask.value || savingProgress.value) return;
+  await nextTick();
+  savingProgress.value = true;
+  const submittedStatus = status.value;
+  const submittedProgress = Number(progress.value);
   try {
-    const updated = await api(`/tasks/${selectedTask.value.id}/progress`, {
-      method: 'PATCH',
-      body: {
-        status: status.value,
-        progress: Number(progress.value),
-        expectedVersion: selectedTask.value.version,
-      },
-    });
-    await loadSnapshot(true);
+    const payload = {
+      status: submittedStatus,
+      progress: submittedProgress,
+    };
+    let updated;
+    try {
+      updated = await api(`/tasks/${selectedTask.value.id}/progress`, {
+        method: 'PATCH',
+        body: { ...payload, expectedVersion: selectedTask.value.version },
+      });
+    } catch (reason) {
+      if (!String(reason.message).includes('version_conflict')) throw reason;
+      await loadSnapshot(true);
+      if (!selectedTask.value) throw reason;
+      updated = await api(`/tasks/${selectedTask.value.id}/progress`, {
+        method: 'PATCH',
+        body: { ...payload, expectedVersion: selectedTask.value.version },
+      });
+    }
+    const responseStatus = updated.status ?? 'planned';
+    const responseProgress = Number(updated.progress) || 0;
+    selectedTask.value = updated;
+    if (status.value === submittedStatus) status.value = responseStatus;
+    if (Number(progress.value) === submittedProgress) progress.value = responseProgress;
+    loadSnapshot(true).catch((reason) => (error.value = reason.message));
   } catch (reason) {
     error.value = reason.message;
+  } finally {
+    savingProgress.value = false;
   }
 }
 

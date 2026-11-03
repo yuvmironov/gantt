@@ -16,7 +16,9 @@ test('password reset through local mail', async ({ page, context }) => {
   await page.locator('#register-form button[type=submit]').click();
   await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
   await page.context().clearCookies();
-  await page.goto('/login');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' }).catch((error) => {
+    if (!String(error.message).includes('ERR_ABORTED')) throw error;
+  });
   await expect(page.locator('#auth-view')).toBeVisible();
 
   await page.evaluate(async (userEmail) => {
