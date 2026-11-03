@@ -1477,7 +1477,7 @@ onMounted(async () => {
           </template>
         </div>
         <div class="gantt-timeline">
-          <div class="gantt-time-head">
+          <div class="gantt-time-head" :style="{ minWidth: `${900 * zoom}px` }">
             <div class="gantt-month">План</div>
             <div
               v-for="week in timelineWeeks"
@@ -1486,7 +1486,7 @@ onMounted(async () => {
               :style="{ left: week.left, width: week.width }"
             >{{ week.label }}</div>
           </div>
-          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${500 * zoom}px` }">
+          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${900 * zoom}px` }">
             <span class="gantt-today" :style="{ left: todayLeft }"></span>
             <svg v-if="showDependencies" class="deps-overlay">
               <defs>
@@ -1828,7 +1828,11 @@ onMounted(async () => {
 .gantt-row-label .caret { color: var(--color-text-muted); }
 .label-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .label-meta { display: flex; gap: 5px; align-items: center; }
-.gantt-timeline { min-width: 420px; overflow: hidden; }
+.gantt-timeline { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
+.gantt-timeline::-webkit-scrollbar { height: 12px; }
+.gantt-timeline::-webkit-scrollbar-track { background: var(--color-surface-subtle); border-top: 1px solid var(--color-border); }
+.gantt-timeline::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+.gantt-timeline::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .gantt-time-head { display: grid; grid-template-columns: 1.2fr repeat(7, 1fr); min-height: 38px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-subtle); font-size: 11px; color: var(--color-text-muted); }
 .gantt-time-head > * { display: flex; align-items: center; padding: 0 8px; border-right: 1px solid var(--color-border); }
 .deps-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
