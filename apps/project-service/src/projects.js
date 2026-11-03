@@ -100,6 +100,7 @@ function toTaskStatus(value) {
       in_progress: 'TASK_STATUS_IN_PROGRESS',
       done: 'TASK_STATUS_DONE',
       blocked: 'TASK_STATUS_BLOCKED',
+      postponed: 'TASK_STATUS_POSTPONED',
     }[value] ?? 'TASK_STATUS_PLANNED'
   );
 }
@@ -208,6 +209,7 @@ function fromTaskStatus(value) {
       TASK_STATUS_IN_PROGRESS: 'in_progress',
       TASK_STATUS_DONE: 'done',
       TASK_STATUS_BLOCKED: 'blocked',
+      TASK_STATUS_POSTPONED: 'postponed',
     }[value] ?? 'planned'
   );
 }
@@ -569,6 +571,7 @@ function normalizeStandaloneImport(payload, report, executorMap = new Map()) {
     'В работе': 'in_progress',
     Выполнено: 'done',
     Заблокировано: 'blocked',
+    Отложено: 'postponed',
   };
   const priorityMap = {
     Низкий: 'low',
@@ -746,7 +749,7 @@ async function processDiagramImport(
     await client.query('DELETE FROM plan.directions WHERE diagram_id = $1', [diagramId]);
 
     const priorityValues = new Set(['low', 'medium', 'high', 'critical']);
-    const statusValues = new Set(['planned', 'in_progress', 'done', 'blocked']);
+    const statusValues = new Set(['planned', 'in_progress', 'done', 'blocked', 'postponed']);
     const normalizeRole = (value) =>
       String(value ?? '')
         .replace('ASSIGNMENT_ROLE_', '')

@@ -100,6 +100,7 @@ function statusLabel(value) {
     in_progress: 'В работе',
     done: 'Готово',
     blocked: 'Блокировано',
+    postponed: 'Отложено',
   }[value] ?? value;
 }
 
@@ -1061,6 +1062,7 @@ function statusBadgeClass(statusValue) {
       done: 'badge-success',
       in_progress: 'badge-primary',
       blocked: 'badge-warning',
+      postponed: 'badge-warning',
       planned: 'badge-neutral',
     }[statusValue] ?? 'badge-neutral'
   );
@@ -1462,6 +1464,7 @@ onMounted(async () => {
           <option value="in_progress">В работе</option>
           <option value="done">Готово</option>
           <option value="blocked">Блокировано</option>
+            <option value="postponed">Отложено</option>
         </select>
         <select v-model="selectedOwner" class="input toolbar-input">
           <option value="">Все ответственные</option>
@@ -1498,6 +1501,7 @@ onMounted(async () => {
           <option value="in_progress">В работе</option>
           <option value="done">Готово</option>
           <option value="blocked">Блокировано</option>
+            <option value="postponed">Отложено</option>
         </select>
         <input v-model.number="bulkProgress" class="input toolbar-input progress-input" type="number" min="0" max="100" step="5" />
         <button class="gantt-chip" type="button" :disabled="!selectedIds.length" @click="applyBulk">Применить к {{ selectedIds.length }}</button>
@@ -1821,6 +1825,7 @@ onMounted(async () => {
             <option value="in_progress">В работе</option>
             <option value="done">Готово</option>
             <option value="blocked">Блокировано</option>
+            <option value="postponed">Отложено</option>
           </select>
           <input v-model.number="progress" class="input" type="number" min="0" max="100" step="5" />
           <button class="btn btn-secondary btn-sm" type="button" @click="quickProgress">+25%</button>
@@ -1999,6 +2004,7 @@ onMounted(async () => {
 .gantt-bar.done { background: #dcfce7; border-color: #86efac; color: #15803d; }
 .gantt-bar.blocked { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
 .gantt-bar.planned { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
+.gantt-bar.postponed { background: #ede9fe; border-color: #c4b5fd; color: #6d28d9; }
 .manage-card { margin-top: 18px; padding: 14px 18px; }
 .manage-card summary { cursor: pointer; font-weight: 600; }
 .manage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 18px; }

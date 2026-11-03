@@ -143,6 +143,7 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
       if (task.status === 'done') acc.done += 1;
       else if (task.status === 'in_progress') acc.inProgress += 1;
       else if (task.status === 'blocked') acc.blocked += 1;
+      else if (task.status === 'postponed') acc.postponed += 1;
       else acc.planned += 1;
       if (task.doneDeltaDays > 0) acc.early += 1;
       if (
@@ -154,7 +155,16 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
       }
       return acc;
     },
-    { total: 0, done: 0, inProgress: 0, blocked: 0, planned: 0, early: 0, overdue: 0 },
+    {
+      total: 0,
+      done: 0,
+      inProgress: 0,
+      blocked: 0,
+      postponed: 0,
+      planned: 0,
+      early: 0,
+      overdue: 0,
+    },
   );
   const projectStart = issuedTasks
     .map((task) => toDate(task.startDate))

@@ -37,6 +37,7 @@ enum TaskStatus {
   TASK_STATUS_IN_PROGRESS = 2;
   TASK_STATUS_DONE = 3;
   TASK_STATUS_BLOCKED = 4;
+  TASK_STATUS_POSTPONED = 5;
 }
 
 enum Priority {
