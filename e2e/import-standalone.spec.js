@@ -118,7 +118,8 @@ test('imports standalone HTML JSON format', async ({ page }) => {
   expect(result.snapshot.diagram.name).toBe('Standalone import');
   expect(result.snapshot.directions).toHaveLength(1);
   expect(result.snapshot.tasks).toHaveLength(2);
-  expect(result.snapshot.tasks.find((task) => task.wbsCode === '1.1').progress).toBe(40);
+  expect(result.snapshot.tasks.find((task) => task.wbsCode === '1.1').progress).toBe(100);
+  expect(result.snapshot.tasks.find((task) => task.wbsCode === '1.1').autoProgress).toBe(true);
   expect(result.snapshot.tasks.find((task) => task.wbsCode === '1.1.1').parentTaskId).toBeTruthy();
   expect(result.snapshot.dependencies).toHaveLength(1);
   expect(result.snapshot.schedule.criticalTaskIds.length).toBeGreaterThan(0);

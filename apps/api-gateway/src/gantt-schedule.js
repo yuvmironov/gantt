@@ -63,13 +63,34 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
     };
   });
 
+  const enrichedById = new Map(enrichedTasks.map((task) => [task.id, task]));
+  function aggregateProgress(task) {
+    const children = (childrenByParent.get(task.id) ?? [])
+      .map((child) => enrichedById.get(child.id))
+      .filter(Boolean);
+    for (const child of children) aggregateProgress(child);
+    if (!children.length) return task;
+    const progress = Math.round(
+      children.reduce((sum, child) => sum + Number(child.progress || 0), 0) / children.length,
+    );
+    const allDone = children.every((child) => child.status === 'done');
+    const anyStarted = children.some((child) =>
+      ['in_progress', 'done', 'blocked'].includes(child.status),
+    );
+    task.progress = progress;
+    task.status = allDone ? 'done' : anyStarted ? 'in_progress' : 'planned';
+    task.autoProgress = true;
+    return task;
+  }
+  for (const task of enrichedTasks) aggregateProgress(task);
+
   const enrichedDirections = directions.map((direction) => {
     const directionTasks = enrichedTasks.filter((task) => task.directionId === direction.id);
-    const done = directionTasks.filter((task) => task.status === 'done').length;
-    const progress = directionTasks.length
+    const rootTasks = directionTasks.filter((task) => !task.parentTaskId);
+    const done = rootTasks.filter((task) => task.status === 'done').length;
+    const progress = rootTasks.length
       ? Math.round(
-          directionTasks.reduce((sum, task) => sum + Number(task.progress || 0), 0) /
-            directionTasks.length,
+          rootTasks.reduce((sum, task) => sum + Number(task.progress || 0), 0) / rootTasks.length,
         )
       : 0;
     const start = directionTasks
@@ -86,9 +107,9 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
       doneCount: done,
       progress,
       status:
-        directionTasks.length && done === directionTasks.length
+        rootTasks.length && done === rootTasks.length
           ? 'done'
-          : directionTasks.some((task) => task.status === 'in_progress' || task.status === 'done')
+          : rootTasks.some((task) => task.status === 'in_progress' || task.status === 'done')
             ? 'in_progress'
             : 'planned',
       startDate: start ? dateKey(start) : null,
