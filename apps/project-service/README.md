@@ -13,6 +13,8 @@
 - направления: `CreateDirection`, `UpdateDirection`, `DeleteDirection`, `ReorderDirections`, `SetDirectionResponsible`;
 - задачи: `CreateTask`, `GetTask`, `UpdateTask`, `MoveTask`, `UpdateTaskProgress`, `SetTaskAssignments`, `DeleteTask`;
 - зависимости: `CreateDependency`, `ListDependencies`, `UpdateDependency`, `DeleteDependency`;
+- правила зависимостей: `direction → direction` и `task → direction` разрешены, `direction → task` запрещён; циклы проверяются по всему графу;
+- БД дополнительно защищена constraint `dependencies_no_direction_to_task`;
 - комментарии: `ListComments`, `CreateComment`, `UpdateComment`, `DeleteComment`;
 - календарь: `GetHolidays`, `UpdateHolidays`;
 - снимок: `GetDiagramSnapshot`;

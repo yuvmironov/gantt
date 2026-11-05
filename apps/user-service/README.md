@@ -12,6 +12,7 @@
 - сессии: `RestoreSession`, `ListMySessions`, `RevokeMySession`;
 - пароли: `ResendEmailVerification`, `RequestPasswordReset`, `ResetPassword`, `ChangePassword`;
 - профиль и пользователи: `GetCurrentUser`, `GetUser`, `UpdateUserProfile`, `ListUsers`, `AdminCreateUser`, `DeleteUser`, `BlockUser`, `UnblockUser`, `GetUsersByIds`;
+- `ListUsers` возвращает фактические `global_roles`, включая `GLOBAL_ROLE_APP_ADMIN`;
 - роли, права и доступ: `GetRoles`, `GetPermissions`, `GetUserRoles`, `SetUserGlobalRoles`, `GetProjectAccess`, `CheckProjectPermission`, `ListAccessibleProjectIds`, `EnsureProjectOwner`;
 - участники проекта: `ListProjectMembers`, `UpdateProjectMemberRole`, `RemoveProjectMember`, `SetProjectOwnerMembership`;
 - приглашения: `CreateInvitation`, `ListProjectInvitations`, `ResendInvitation`, `RevokeInvitation`, `AcceptInvitation`;
