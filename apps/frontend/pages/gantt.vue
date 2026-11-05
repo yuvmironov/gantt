@@ -48,6 +48,21 @@ const projectForm = reactive({ name: '', description: '' });
 const showProjectForm = ref(false);
 const diagramForm = reactive({ name: '', description: '', dayMode: 'working' });
 const directionForm = reactive({ name: '' });
+const showDirectionModal = ref(false);
+const directionEdit = reactive({
+  id: '',
+  version: 0,
+  name: '',
+  description: '',
+  result: '',
+  priority: 'medium',
+  startDate: '',
+  endDate: '',
+  jiraNumber: '',
+  bpFlag: false,
+  spFlag: false,
+  responsibleId: '',
+});
 const taskForm = reactive({ name: '', directionId: '', parentTaskId: '' });
 const showTaskModal = ref(false);
 const newTask = reactive({
@@ -434,6 +449,62 @@ async function createDirection() {
       body: { name: directionForm.name },
     });
     directionForm.name = '';
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+function openDirectionModal(direction) {
+  directionEdit.id = direction.id;
+  directionEdit.version = direction.version ?? 0;
+  directionEdit.name = direction.name ?? '';
+  directionEdit.description = direction.description ?? '';
+  directionEdit.result = direction.result ?? '';
+  directionEdit.priority = direction.priority ?? 'medium';
+  directionEdit.startDate = direction.startDate ? direction.startDate.slice(0, 10) : '';
+  directionEdit.endDate = direction.endDate ? direction.endDate.slice(0, 10) : '';
+  directionEdit.jiraNumber = direction.jiraNumber ?? '';
+  directionEdit.bpFlag = Boolean(direction.bpFlag);
+  directionEdit.spFlag = Boolean(direction.spFlag);
+  directionEdit.responsibleId =
+    (direction.assignments ?? []).find((item) => item.role === 'responsible')?.assigneeId ?? '';
+  showDirectionModal.value = true;
+}
+
+function closeDirectionModal() {
+  showDirectionModal.value = false;
+}
+
+async function saveDirectionEdit() {
+  if (!directionEdit.name.trim()) return;
+  try {
+    await api(`/directions/${directionEdit.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: directionEdit.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        name: directionEdit.name,
+        description: directionEdit.description,
+        result: directionEdit.result,
+        priority: directionEdit.priority,
+        startDate: directionEdit.startDate || null,
+        endDate: directionEdit.endDate || null,
+        jiraNumber: directionEdit.jiraNumber,
+        bpFlag: directionEdit.bpFlag,
+        spFlag: directionEdit.spFlag,
+      },
+    });
+    if (directionEdit.responsibleId) {
+      await api(`/directions/${directionEdit.id}/responsible`, {
+        method: 'PUT',
+        body: {
+          assignment: { assigneeType: 'user', assigneeId: directionEdit.responsibleId },
+          baseRevision: snapshot.value?.currentRevision ?? 0,
+        },
+      });
+    }
+    showDirectionModal.value = false;
     await loadSnapshot(true);
   } catch (reason) {
     error.value = reason.message;
@@ -1810,6 +1881,12 @@ onMounted(async () => {
                 <button
                   class="row-action"
                   type="button"
+                  title="Редактировать направление"
+                  @click.stop="openDirectionModal(row.direction)"
+                >✎</button>
+                <button
+                  class="row-action"
+                  type="button"
                   title="Создать задачу в направлении"
                   @click.stop="openTaskModal({ directionId: row.direction.id })"
                 >＋</button>
@@ -2297,6 +2374,68 @@ onMounted(async () => {
       </form>
     </div>
 
+    <div v-if="showDirectionModal" class="task-modal-bg" @click.self="closeDirectionModal">
+      <form class="task-modal direction-modal" @submit.prevent="saveDirectionEdit">
+        <div class="task-modal-head">
+          <div>
+            <p class="eyebrow">Направление</p>
+            <h3>Редактирование направления</h3>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" @click="closeDirectionModal">✕</button>
+        </div>
+        <div class="task-modal-grid">
+          <label class="field full">
+            <span>Название *</span>
+            <input v-model="directionEdit.name" class="input direction-modal-name" required />
+          </label>
+          <label class="field full">
+            <span>Описание</span>
+            <textarea v-model="directionEdit.description" class="textarea" rows="2" />
+          </label>
+          <label class="field full">
+            <span>Результат</span>
+            <textarea v-model="directionEdit.result" class="textarea" rows="2" />
+          </label>
+          <label class="field">
+            <span>Приоритет</span>
+            <select v-model="directionEdit.priority" class="input">
+              <option value="low">Низкий</option>
+              <option value="medium">Средний</option>
+              <option value="high">Высокий</option>
+              <option value="critical">Критический</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Jira</span>
+            <input v-model="directionEdit.jiraNumber" class="input" />
+          </label>
+          <label class="field">
+            <span>Начало</span>
+            <input v-model="directionEdit.startDate" class="input" type="date" />
+          </label>
+          <label class="field">
+            <span>Окончание</span>
+            <input v-model="directionEdit.endDate" class="input" type="date" />
+          </label>
+          <label class="field full">
+            <span>Ответственный</span>
+            <select v-model="directionEdit.responsibleId" class="input">
+              <option value="">Не назначен</option>
+              <option v-for="member in members" :key="member.userId" :value="member.userId">
+                {{ member.user?.displayName || member.user?.email || member.userId }}
+              </option>
+            </select>
+          </label>
+          <label class="checkbox-line"><input v-model="directionEdit.bpFlag" type="checkbox" /> БП</label>
+          <label class="checkbox-line"><input v-model="directionEdit.spFlag" type="checkbox" /> СП</label>
+        </div>
+        <div class="task-modal-actions">
+          <button class="btn btn-secondary" type="button" @click="closeDirectionModal">Отмена</button>
+          <button class="btn btn-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="showDependencyModal" class="dependency-modal-bg" @click.self="closeDependency">
       <div class="dependency-modal dependency-modal-wide">
         <div class="dependency-modal-head">
@@ -2519,6 +2658,7 @@ onMounted(async () => {
 .empty-project { max-width: 440px; margin: 40px auto; }
 .task-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); overflow: auto; }
 .task-modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-lg); }
+.direction-modal { width: min(620px, 100%); }
 .task-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .task-modal-head h3 { margin: 2px 0 0; }
 .task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
