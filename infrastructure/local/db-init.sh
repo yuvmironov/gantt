@@ -30,6 +30,7 @@ apply_seed "$USER_DB" "$DB_ROOT/seeds/user_access/002_system_settings.sql"
 
 apply_migration "$PROJECT_DB" "$DB_ROOT/migrations/project_diagram/0002_project_diagram.sql"
 apply_migration "$PROJECT_DB" "$DB_ROOT/migrations/project_diagram/0005_task_status_postponed.sql"
+apply_migration "$PROJECT_DB" "$DB_ROOT/migrations/project_diagram/0006_direction_to_task_dependency_forbidden.sql"
 apply_migration "$NOTIFICATION_DB" "$DB_ROOT/migrations/notification/0003_notification.sql"
 apply_migration "$AUDIT_DB" "$DB_ROOT/migrations/audit/0004_audit.sql"
 apply_seed "$AUDIT_DB" "$DB_ROOT/seeds/audit/003_audit_actions.sql"

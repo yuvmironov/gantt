@@ -1055,34 +1055,51 @@ async function resolveCommentEntity(db, entityType, entityId) {
   return result.rows[0] ?? null;
 }
 
-async function createsTaskCycle(db, diagramId, fromId, toId, excludeDependencyId = null) {
+async function createsDependencyCycle(
+  db,
+  diagramId,
+  fromType,
+  fromId,
+  toType,
+  toId,
+  excludeDependencyId = null,
+) {
   const result = await db.query(
-    `SELECT predecessor_id, successor_id
+    `SELECT predecessor_type, predecessor_id, successor_type, successor_id
      FROM plan.dependencies
      WHERE diagram_id = $1
-       AND predecessor_type = 'task'
-       AND successor_type = 'task'
        AND ($2::uuid IS NULL OR id <> $2)`,
     [diagramId, excludeDependencyId],
   );
   const graph = new Map();
+  const addEdge = (from, to) => {
+    if (!graph.has(from)) graph.set(from, []);
+    graph.get(from).push(to);
+  };
   for (const row of result.rows) {
-    if (!graph.has(row.predecessor_id)) graph.set(row.predecessor_id, []);
-    graph.get(row.predecessor_id).push(row.successor_id);
+    addEdge(
+      `${row.predecessor_type}:${row.predecessor_id}`,
+      `${row.successor_type}:${row.successor_id}`,
+    );
   }
-  if (!graph.has(fromId)) graph.set(fromId, []);
-  graph.get(fromId).push(toId);
+  const fromKey = `${fromType}:${fromId}`;
+  const toKey = `${toType}:${toId}`;
+  addEdge(fromKey, toKey);
 
-  const stack = [toId];
+  const stack = [toKey];
   const seen = new Set();
   while (stack.length > 0) {
     const current = stack.pop();
-    if (current === fromId) return true;
+    if (current === fromKey) return true;
     if (seen.has(current)) continue;
     seen.add(current);
     for (const next of graph.get(current) ?? []) stack.push(next);
   }
   return false;
+}
+
+function forbiddenDependencyDirection(predecessorType, successorType) {
+  return predecessorType === 'direction' && successorType === 'task';
 }
 
 async function checkPermission(call_, userClient, projectId, permission) {
@@ -3293,10 +3310,19 @@ export function createProjectImplementation({ db, userClient }) {
           callback(grpcError(status.NOT_FOUND, 'dependency_entity_not_found'));
           return;
         }
+        if (forbiddenDependencyDirection(predecessorType, successorType)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'direction_to_task_dependency_forbidden'));
+          return;
+        }
         if (
-          predecessorType === 'task' &&
-          successorType === 'task' &&
-          (await createsTaskCycle(db, diagramId, predecessorId, successorId))
+          await createsDependencyCycle(
+            db,
+            diagramId,
+            predecessorType,
+            predecessorId,
+            successorType,
+            successorId,
+          )
         ) {
           callback(grpcError(status.FAILED_PRECONDITION, 'dependency_cycle'));
           return;
@@ -3432,10 +3458,20 @@ export function createProjectImplementation({ db, userClient }) {
           callback(grpcError(status.NOT_FOUND, 'dependency_entity_not_found'));
           return;
         }
+        if (forbiddenDependencyDirection(predecessorType, successorType)) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'direction_to_task_dependency_forbidden'));
+          return;
+        }
         if (
-          predecessorType === 'task' &&
-          successorType === 'task' &&
-          (await createsTaskCycle(db, current.diagram_id, predecessorId, successorId, dependencyId))
+          await createsDependencyCycle(
+            db,
+            current.diagram_id,
+            predecessorType,
+            predecessorId,
+            successorType,
+            successorId,
+            dependencyId,
+          )
         ) {
           callback(grpcError(status.FAILED_PRECONDITION, 'dependency_cycle'));
           return;
