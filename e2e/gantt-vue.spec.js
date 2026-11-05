@@ -149,10 +149,6 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   await expect(page.locator('.dependency-manager')).toBeVisible();
   await expect(page.locator('.dependency-list-item')).toHaveCount(1);
   await page.locator('.dependency-modal-head .btn-icon').click();
-  await page.locator('.dep-predecessor').selectOption(ids.taskId);
-  await page.locator('.dep-successor').selectOption(ids.successorId);
-  await page.locator('.manage button').filter({ hasText: 'Добавить связь' }).click();
-  await expect(page.locator('.manage')).toContainText('→');
   await page.locator('.gantt-toolbar button').filter({ hasText: 'Календарь' }).click();
   await expect(page.locator('.calendar-modal')).toBeVisible();
   await page.locator('.calendar-date').fill('2026-01-02');

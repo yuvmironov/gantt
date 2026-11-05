@@ -17,7 +17,6 @@ const error = ref('');
 const loading = ref(true);
 const syncConnected = ref(false);
 const currentUser = ref(null);
-const dependencyForm = reactive({ predecessorId: '', successorId: '', lineStyle: 'solid', arrowShape: 'orthogonal' });
 const editingDependency = ref(null);
 const showDependencyModal = ref(false);
 const dependencyEdit = reactive({
@@ -41,6 +40,7 @@ const importing = ref(false);
 const importFormat = ref('json');
 const pendingImportFile = ref(null);
 const importPreview = ref(null);
+const showImportModal = ref(false);
 const members = ref([]);
 const executors = ref([]);
 const unreadCount = ref(0);
@@ -67,7 +67,6 @@ const directionEdit = reactive({
   spFlag: false,
   responsibleId: '',
 });
-const taskForm = reactive({ name: '', directionId: '', parentTaskId: '' });
 const showTaskModal = ref(false);
 const editingTaskId = ref('');
 const modalPeople = computed(() => [
@@ -663,26 +662,6 @@ async function saveDirectionEdit() {
     }
     showDirectionModal.value = false;
     await loadSnapshot(true);
-  } catch (reason) {
-    error.value = reason.message;
-  }
-}
-
-async function createTask() {
-  if (!taskForm.name.trim() || !taskForm.directionId) return;
-  try {
-    await api(`/diagrams/${diagramId.value}/tasks`, {
-      method: 'POST',
-      body: {
-        directionId: taskForm.directionId,
-        parentTaskId: taskForm.parentTaskId || null,
-        name: taskForm.name,
-        priority: 'medium',
-      },
-    });
-    taskForm.name = '';
-    taskForm.parentTaskId = '';
-    await loadSnapshot();
   } catch (reason) {
     error.value = reason.message;
   }
@@ -1468,37 +1447,6 @@ function initials(user) {
   return String(name).slice(0, 2).toUpperCase();
 }
 
-function taskLabel(taskId) {
-  const task = (snapshot.value?.tasks ?? []).find((item) => item.id === taskId);
-  return task ? `${task.wbsCode} ${task.name}` : taskId;
-}
-
-async function addDependency() {
-  if (!dependencyForm.predecessorId || !dependencyForm.successorId) return;
-  if (dependencyForm.predecessorId === dependencyForm.successorId) {
-    error.value = 'Нельзя связать задачу с самой собой';
-    return;
-  }
-  try {
-    await api(`/diagrams/${diagramId.value}/dependencies`, {
-      method: 'POST',
-      body: {
-        predecessorType: 'task',
-        predecessorId: dependencyForm.predecessorId,
-        successorType: 'task',
-        successorId: dependencyForm.successorId,
-        lineStyle: dependencyForm.lineStyle,
-        arrowShape: dependencyForm.arrowShape,
-      },
-    });
-    dependencyForm.predecessorId = '';
-    dependencyForm.successorId = '';
-    await loadSnapshot(true);
-  } catch (reason) {
-    error.value = reason.message;
-  }
-}
-
 function entityLabel(type, id) {
   if (type === 'direction') {
     return (snapshot.value?.directions ?? []).find((item) => item.id === id)?.name ?? id;
@@ -1699,6 +1647,7 @@ async function importFile(event) {
   pendingImportFile.value = file;
   importPreview.value = null;
   importJob.value = null;
+  showImportModal.value = true;
   const text = await file.text();
   if (importFormat.value === 'csv' || file.name.toLowerCase().endsWith('.csv')) {
     const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim() && !line.startsWith('#'));
@@ -1783,6 +1732,14 @@ async function requestServerPreview(file) {
       errors: [...(importPreview.value?.errors ?? []), reason.message],
     };
   }
+}
+
+function closeImportModal() {
+  if (importing.value) return;
+  showImportModal.value = false;
+  importPreview.value = null;
+  importJob.value = null;
+  pendingImportFile.value = null;
 }
 
 async function applyImport() {
@@ -1984,10 +1941,6 @@ onMounted(async () => {
           {{ linkFrom ? 'Выберите задачу-последователя' : 'Выберите задачу-предшественника' }}
         </span>
         <label class="gantt-chip"><input v-model="showDependencies" type="checkbox" /> Стрелки</label>
-        <span class="gantt-chip day-mode">
-          <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'calendar' }" @click="setDayMode('calendar')">Календарные</button>
-          <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'working' }" @click="setDayMode('working')">Рабочие</button>
-        </span>
         <button class="gantt-chip" type="button" @click="openCalendarModal">Календарь</button>
         <button class="gantt-chip" type="button" @click="changeZoom(-0.25)">−</button>
         <span class="gantt-chip">{{ Math.round(zoom * 100) }}%</span>
@@ -2207,118 +2160,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <section v-if="snapshot" class="card manage-card manage">
-        <h2>Управление задачами, связями и календарём</h2>
-        <div class="manage-grid">
-          <div>
-            <h3>Направление</h3>
-            <button class="btn btn-secondary" type="button" @click="openDirectionCreateModal">Создать направление</button>
-            <h3>Новая задача</h3>
-            <form class="stack" @submit.prevent="createTask">
-              <select v-model="taskForm.directionId" class="input task-direction" required>
-                <option value="" disabled>Направление</option>
-                <option v-for="direction in snapshot.directions" :key="direction.id" :value="direction.id">{{ direction.name }}</option>
-              </select>
-              <select v-model="taskForm.parentTaskId" class="input">
-                <option value="">Верхний уровень</option>
-                <option
-                  v-for="task in snapshot.tasks.filter((item) => item.level === 2 && item.directionId === taskForm.directionId)"
-                  :key="task.id"
-                  :value="task.id"
-                >{{ task.wbsCode }} {{ task.name }}</option>
-              </select>
-              <input v-model="taskForm.name" class="input" placeholder="Название задачи" required />
-              <button class="btn btn-primary" type="submit">Создать задачу</button>
-            </form>
-          </div>
-          <div>
-            <h3>Зависимости</h3>
-            <div class="manage-list">
-              <div v-for="dependency in snapshot.dependencies" :key="dependency.id" class="manage-item">
-                <span>
-                  {{ taskLabel(dependency.predecessorId) }} → {{ taskLabel(dependency.successorId) }}
-                  <span class="dep-controls">
-                    <input
-                      type="color"
-                      :value="dependency.color || '#94a3b8'"
-                      title="Цвет связи"
-                      @change="updateDependencyStyle(dependency, { color: $event.target.value })"
-                    />
-                    <select :value="dependency.lineStyle" @change="updateDependencyStyle(dependency, { lineStyle: $event.target.value })">
-                      <option value="solid">Сплошная</option>
-                      <option value="dashed">Пунктир</option>
-                      <option value="dotted">Точки</option>
-                    </select>
-                    <select :value="dependency.arrowShape" @change="updateDependencyStyle(dependency, { arrowShape: $event.target.value })">
-                      <option value="orthogonal">Ортогональная</option>
-                      <option value="straight">Прямая</option>
-                      <option value="curved">Изогнутая</option>
-                    </select>
-                  </span>
-                </span>
-                <button type="button" class="btn btn-ghost btn-sm" @click="deleteDependency(dependency.id)">Удалить</button>
-              </div>
-              <p v-if="!snapshot.dependencies?.length" class="muted small">Связей пока нет.</p>
-            </div>
-            <form class="stack" @submit.prevent="addDependency">
-              <select v-model="dependencyForm.predecessorId" class="input dep-predecessor" required>
-                <option value="" disabled>Предшественник</option>
-                <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
-              </select>
-              <select v-model="dependencyForm.successorId" class="input dep-successor" required>
-                <option value="" disabled>Последователь</option>
-                <option v-for="task in snapshot.tasks" :key="task.id" :value="task.id">{{ task.wbsCode }} {{ task.name }}</option>
-              </select>
-              <select v-model="dependencyForm.lineStyle" class="input">
-                <option value="solid">Сплошная</option>
-                <option value="dashed">Пунктир</option>
-                <option value="dotted">Точки</option>
-              </select>
-              <select v-model="dependencyForm.arrowShape" class="input">
-                <option value="orthogonal">Ортогональная</option>
-                <option value="straight">Прямая</option>
-                <option value="curved">Изогнутая</option>
-              </select>
-              <button class="btn btn-secondary" type="submit">Добавить связь</button>
-            </form>
-          </div>
-          <div>
-            <h3>Производственный календарь</h3>
-            <p class="muted small">
-              Праздников: {{ snapshot.holidays?.length ?? 0 }} · режим:
-              {{ snapshot.diagram?.dayMode === 'calendar' ? 'календарные дни' : 'рабочие дни' }}
-            </p>
-            <button class="btn btn-secondary" type="button" @click="openCalendarModal">Настроить календарь</button>
-            <div v-if="importPreview" class="import-preview">
-              <p class="muted small">{{ importPreview.fileName }} · {{ importPreview.format }}</p>
-              <p class="muted small">
-                Направления: {{ importPreview.directions ?? 0 }}, задачи: {{ importPreview.tasks ?? importPreview.rows ?? 0 }},
-                связи: {{ importPreview.dependencies ?? 0 }}, праздники: {{ importPreview.holidays ?? 0 }}
-              </p>
-              <p v-for="warning in importPreview.warnings" :key="warning" class="import-warning">⚠ {{ warning }}</p>
-              <p v-for="issue in importPreview.errors" :key="issue" class="error">{{ issue }}</p>
-              <button
-                class="btn btn-primary btn-sm"
-                type="button"
-                :disabled="importPreview.errors?.length || importing"
-                @click="applyImport"
-              >Применить импорт</button>
-            </div>
-            <p v-if="importing" class="muted small">Импорт выполняется...</p>
-            <template v-else-if="importJob">
-              <p class="muted small">{{ importJob.fileName }}: {{ importJob.status }}</p>
-              <p v-if="importJob.report" class="muted small">
-                Направления: {{ importJob.report.directionsCount }}, задачи: {{ importJob.report.tasksCount }},
-                назначения: {{ importJob.report.assignmentsCount }}.
-              </p>
-              <p v-if="importJob.report?.issues?.length" class="muted small">
-                Замечания: {{ importJob.report.issues.length }}
-              </p>
-              <p v-if="importJob.errorMessage" class="error">{{ importJob.errorMessage }}</p>
-            </template>
-          </div>
-        </div>
-      </section>
     </main>
 
     <aside v-if="selectedTask && !showTaskModal" class="gantt-drawer drawer">
@@ -2578,6 +2419,50 @@ onMounted(async () => {
           <button class="btn btn-primary" type="submit">{{ editingTaskId ? 'Сохранить' : 'Создать задачу' }}</button>
         </div>
       </form>
+    </div>
+
+    <div v-if="showImportModal" class="task-modal-bg" @click.self="closeImportModal">
+      <div class="task-modal import-modal">
+        <div class="task-modal-head">
+          <div>
+            <p class="eyebrow">Импорт</p>
+            <h3>Загрузка диаграммы</h3>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" :disabled="importing" @click="closeImportModal">✕</button>
+        </div>
+        <div v-if="importPreview" class="import-preview">
+          <p class="muted small">{{ importPreview.fileName }} · {{ importPreview.format }}</p>
+          <p class="muted small">
+            Направления: {{ importPreview.directions ?? 0 }}, задачи: {{ importPreview.tasks ?? importPreview.rows ?? 0 }},
+            связи: {{ importPreview.dependencies ?? 0 }}, праздники: {{ importPreview.holidays ?? 0 }}
+          </p>
+          <p v-for="warning in importPreview.warnings" :key="warning" class="import-warning">⚠ {{ warning }}</p>
+          <p v-for="issue in importPreview.errors" :key="issue" class="error">{{ issue }}</p>
+          <button
+            v-if="!importJob"
+            class="btn btn-primary"
+            type="button"
+            :disabled="importPreview.errors?.length || importing"
+            @click="applyImport"
+          >Применить импорт</button>
+        </div>
+        <p v-if="importing" class="muted">Импорт выполняется...</p>
+        <template v-else-if="importJob">
+          <p class="muted small">{{ importJob.fileName }}: {{ importJob.status }}</p>
+          <p v-if="importJob.report" class="muted small">
+            Направления: {{ importJob.report.directionsCount }}, задачи: {{ importJob.report.tasksCount }},
+            назначения: {{ importJob.report.assignmentsCount }}.
+          </p>
+          <p v-if="importJob.report?.issues?.length" class="muted small">
+            Замечания: {{ importJob.report.issues.length }}
+          </p>
+          <p v-if="importJob.errorMessage" class="error">{{ importJob.errorMessage }}</p>
+        </template>
+        <p v-if="!importPreview && !importJob && !importing" class="muted">Выберите файл для импорта.</p>
+        <div class="task-modal-actions">
+          <button class="btn btn-secondary" type="button" :disabled="importing" @click="closeImportModal">Закрыть</button>
+        </div>
+      </div>
     </div>
 
     <div v-if="showDiagramModal" class="task-modal-bg" @click.self="closeDiagramModal">
@@ -2949,6 +2834,7 @@ onMounted(async () => {
 .task-modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-lg); }
 .direction-modal { width: min(620px, 100%); }
 .diagram-modal { width: min(560px, 100%); }
+.import-modal { width: min(620px, 100%); }
 .calendar-modal { width: min(560px, 100%); }
 .calendar-mode { display: flex; gap: 4px; padding: 4px; background: var(--color-surface-muted, #f1f5f9); border-radius: var(--radius-lg, 10px); }
 .calendar-mode button { flex: 1; border: 0; background: transparent; padding: 7px 10px; border-radius: var(--radius-md, 8px); color: var(--color-text-muted); cursor: pointer; }
