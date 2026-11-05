@@ -8,7 +8,7 @@
 - gRPC-сервер на `50051`;
 - стандартный `grpc.health.v1.Health` со статусом `SERVING`;
 - загрузка контракта `smartoati.project.v1.ProjectService`;
-- проекты: `CreateProject`, `ListProjects`, `GetProject`, `UpdateProject`, `ArchiveProject`, `UnarchiveProject`, `DeleteProject`, `RestoreProject`;
+- проекты: `CreateProject`, `ListProjects` (active/archived/deleted), `GetProject`, `UpdateProject`, `ArchiveProject`, `UnarchiveProject`, `DeleteProject`, `RestoreProject`;
 - диаграммы: `CreateDiagram`, `ListDiagrams`, `GetDiagram`, `UpdateDiagram`, `DeleteDiagram`;
 - направления: `CreateDirection`, `UpdateDirection`, `DeleteDirection`, `ReorderDirections`, `SetDirectionResponsible`;
 - задачи: `CreateTask`, `GetTask`, `UpdateTask`, `MoveTask`, `UpdateTaskProgress`, `SetTaskAssignments`, `DeleteTask`;

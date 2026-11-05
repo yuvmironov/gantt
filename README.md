@@ -153,7 +153,7 @@ tools/                 # проверки контрактов
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import. Разрешены direction→direction и task→direction; direction→task запрещён на API и в БД.
 - [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт, toast-уведомления.
 - [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
-- [x] Componentized Nuxt pages: /gantt (root), /login, /admin, /profile, /notifications and /members.
+- [x] Componentized Nuxt pages: /projects, /gantt, /login, /admin, /profile, /notifications and /members.
 - [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления.
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.

@@ -1948,7 +1948,7 @@ onMounted(async () => {
     <header class="app-header">
       <a class="app-brand" href="/gantt"><span class="brand-mark">▥</span><span>SMART OATI</span></a>
       <nav class="app-nav">
-        <a class="active" href="/gantt">Проекты</a>
+        <a href="/projects">Проекты</a>
         <a href="/members">Участники</a>
         <a href="/notifications">Уведомления</a>
         <a href="/profile">Профиль</a>

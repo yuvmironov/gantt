@@ -70,6 +70,7 @@ message Project {
   google.protobuf.Timestamp deleted_at = 14;
   google.protobuf.Timestamp purge_after = 15;
   bool names_resolved = 16;
+  int32 diagrams_count = 17;
 }
 
 message Diagram {
@@ -274,6 +275,7 @@ message GetProjectResponse {
 message ListProjectsRequest {
   string user_id = 1;
   smartoati.common.v1.PageRequest page = 2;
+  smartoati.common.v1.ProjectStatus status = 3;
 }
 
 message ListProjectsResponse {

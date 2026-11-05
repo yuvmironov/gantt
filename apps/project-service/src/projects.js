@@ -30,12 +30,15 @@ function toProjectStatus(value) {
   );
 }
 
-function toProject(row, myRole) {
+function toProject(row, myRole, owner = null) {
   return {
     id: row.id,
     name: row.name,
     description: row.description ?? '',
     owner_user_id: row.owner_user_id,
+    owner: owner
+      ? { user_id: owner.id, display_name: owner.display_name ?? '', resolved: true }
+      : { user_id: row.owner_user_id, display_name: '', resolved: false },
     status: toProjectStatus(row.status),
     settings: row.settings ?? {},
     my_role: myRole ?? 'PROJECT_ROLE_UNSPECIFIED',
@@ -46,7 +49,8 @@ function toProject(row, myRole) {
     archived_at: toTimestamp(row.archived_at),
     deleted_at: toTimestamp(row.deleted_at),
     purge_after: toTimestamp(row.purge_after),
-    names_resolved: false,
+    names_resolved: Boolean(owner),
+    diagrams_count: Number(row.diagrams_count ?? 0),
   };
 }
 
@@ -1196,24 +1200,41 @@ export function createProjectImplementation({ db, userClient }) {
           return;
         }
 
+        const status =
+          {
+            PROJECT_STATUS_ARCHIVED: 'archived',
+            PROJECT_STATUS_DELETED: 'deleted',
+            PROJECT_STATUS_ACTIVE: 'active',
+          }[call_.request.status] ?? 'active';
         const result = await db.query(
-          `SELECT *
-           FROM project.projects
-           WHERE id = ANY($1::uuid[]) AND status = 'active'
-           ORDER BY created_at DESC
+          `SELECT p.*, count(d.id)::int AS diagrams_count
+           FROM project.projects p
+           LEFT JOIN project.diagrams d ON d.project_id = p.id AND d.deleted_at IS NULL
+           WHERE p.id = ANY($1::uuid[]) AND p.status = $4
+           GROUP BY p.id
+           ORDER BY p.updated_at DESC
            LIMIT $2 OFFSET $3`,
-          [ids, limit, offset],
+          [ids, limit, offset, status],
         );
         const count = await db.query(
           `SELECT count(*)::int AS total
            FROM project.projects
-           WHERE id = ANY($1::uuid[]) AND status = 'active'`,
-          [ids],
+           WHERE id = ANY($1::uuid[]) AND status = $2`,
+          [ids, status],
         );
+        const ownerIds = [...new Set(result.rows.map((row) => row.owner_user_id).filter(Boolean))];
+        const ownerResponse = ownerIds.length
+          ? await call(userClient, 'GetUsersByIds', { user_ids: ownerIds })
+          : { items: [] };
+        const owners = new Map((ownerResponse.items ?? []).map((item) => [item.id, item]));
 
         callback(null, {
           items: result.rows.map((row) =>
-            toProject(row, roles.get(row.id) ?? 'PROJECT_ROLE_UNSPECIFIED'),
+            toProject(
+              row,
+              roles.get(row.id) ?? 'PROJECT_ROLE_UNSPECIFIED',
+              owners.get(row.owner_user_id) ?? null,
+            ),
           ),
           page: {
             total: count.rows[0].total,
