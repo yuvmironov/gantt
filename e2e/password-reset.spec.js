@@ -30,7 +30,7 @@ test('password reset through local mail', async ({ page, context }) => {
     if (!response.ok) throw new Error(await response.text());
   }, email);
 
-  let token;
+  let resetLink;
   await expect
     .poll(
       async () => {
@@ -42,24 +42,20 @@ test('password reset through local mail', async ({ page, context }) => {
         if (!message) return false;
         await mailPage.goto(`https://mail.localhost/api/v1/message/${message.ID}`);
         const payload = JSON.parse(await mailPage.locator('body').innerText());
-        token = payload.Text?.match(/reset=([^\s]+)/)?.[1];
-        return Boolean(token);
+        resetLink = payload.Text?.match(/https?:\/\/\S+/)?.[0];
+        return Boolean(resetLink);
       },
       { timeout: 20_000 },
     )
     .toBe(true);
 
-  await page.evaluate(
-    async ({ resetToken, nextPassword }) => {
-      const response = await fetch('/api/v1/auth/password/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, newPassword: nextPassword }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-    },
-    { resetToken: token, nextPassword: newPassword },
-  );
+  expect(new URL(resetLink).pathname).toBe('/login');
+  await page.goto(resetLink);
+  await expect(page.locator('.reset-form')).toBeVisible();
+  await expect(page.locator('.reset-form input').first()).not.toHaveValue('');
+  await page.locator('.reset-form input[type=password]').fill(newPassword);
+  await page.locator('.reset-form button[type=submit]').click();
+  await expect(page.locator('.message')).toContainText('Пароль сброшен');
 
   await page.locator('#login-tab').click();
   await page.locator('#login-form input[name=email]').fill(email);
