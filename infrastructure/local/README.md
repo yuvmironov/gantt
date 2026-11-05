@@ -1,6 +1,6 @@
 # Локальная инфраструктура SMART OATI
 
-Поднимает PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, API Gateway, User & Access, Project / Diagram и минимальный frontend.
+Поднимает PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt frontend.
 
 ## Запуск
 
@@ -56,7 +56,8 @@ Traefik использует собственный самоподписанны
 - `api.localhost` — API Gateway;
 - `mail.localhost` — Mailpit UI;
 - `kafka.localhost` — Kafka UI;
-- `sync.localhost`, `notify.localhost` — зарезервированы.
+- `sync.localhost` — Sync Service WebSocket;
+- `notify.localhost` — Notification Service WebSocket.
 
 ## Порты
 
@@ -70,12 +71,13 @@ Traefik использует собственный самоподписанны
 | Mailpit UI | 8025 |
 | User & Access gRPC | 50051 |
 | Project / Diagram gRPC | internal 50051 |
+| Sync / Notification / Audit HTTP | internal 8080 |
 | Traefik HTTP/HTTPS | 80/443 |
 
 ## Ограничения
 
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
-- Frontend — минимальный bootstrap UI, не полный Nuxt-интерфейс.
-- `sync.localhost` и `notify.localhost` пока не обслуживаются.
-- Импорт JSON v2/CSV работает через API и кнопку «Импорт» в интерфейсе.
+- Frontend — Nuxt SPA из `apps/frontend`; legacy `apps/web` Compose не запускает.
+- Sync и Notification обслуживаются через `sync.localhost` и `notify.localhost`.
+- Импорт JSON v2/CSV доступен через API и модалку «Импорт» в интерфейсе.
