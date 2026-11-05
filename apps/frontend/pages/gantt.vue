@@ -32,6 +32,10 @@ const dependencyEdit = reactive({
 });
 const holidayDate = ref('');
 const holidayName = ref('');
+const showCalendarModal = ref(false);
+const sortedHolidays = computed(() =>
+  [...(snapshot.value?.holidays ?? [])].sort((a, b) => a.holidayDate.localeCompare(b.holidayDate)),
+);
 const importJob = ref(null);
 const importing = ref(false);
 const importFormat = ref('json');
@@ -1624,6 +1628,16 @@ async function setDayMode(mode) {
   }
 }
 
+function openCalendarModal() {
+  holidayDate.value = '';
+  holidayName.value = '';
+  showCalendarModal.value = true;
+}
+
+function closeCalendarModal() {
+  showCalendarModal.value = false;
+}
+
 async function addHolidayPreset() {
   const year = new Date().getFullYear();
   const dates = [
@@ -1958,6 +1972,7 @@ onMounted(async () => {
           <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'calendar' }" @click="setDayMode('calendar')">Календарные</button>
           <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'working' }" @click="setDayMode('working')">Рабочие</button>
         </span>
+        <button class="gantt-chip" type="button" @click="openCalendarModal">Календарь</button>
         <button class="gantt-chip" type="button" @click="changeZoom(-0.25)">−</button>
         <span class="gantt-chip">{{ Math.round(zoom * 100) }}%</span>
         <button class="gantt-chip" type="button" @click="changeZoom(0.25)">+</button>
@@ -2256,19 +2271,11 @@ onMounted(async () => {
           </div>
           <div>
             <h3>Производственный календарь</h3>
-            <div class="manage-list">
-              <div v-for="holiday in snapshot.holidays" :key="holiday.id" class="manage-item">
-                <span>{{ holiday.holidayDate }} — {{ holiday.name || 'Праздник' }}</span>
-                <button type="button" class="btn btn-ghost btn-sm" @click="deleteHoliday(holiday.holidayDate)">Удалить</button>
-              </div>
-              <p v-if="!snapshot.holidays?.length" class="muted small">Праздников пока нет.</p>
-            </div>
-            <form class="stack" @submit.prevent="addHoliday">
-              <input v-model="holidayDate" class="input" type="date" required />
-              <input v-model="holidayName" class="input" placeholder="Название" />
-              <button class="btn btn-secondary" type="submit">Добавить праздник</button>
-              <button class="btn btn-ghost btn-sm" type="button" @click="addHolidayPreset">Праздники РФ</button>
-            </form>
+            <p class="muted small">
+              Праздников: {{ snapshot.holidays?.length ?? 0 }} · режим:
+              {{ snapshot.diagram?.dayMode === 'calendar' ? 'календарные дни' : 'рабочие дни' }}
+            </p>
+            <button class="btn btn-secondary" type="button" @click="openCalendarModal">Настроить календарь</button>
             <div v-if="importPreview" class="import-preview">
               <p class="muted small">{{ importPreview.fileName }} · {{ importPreview.format }}</p>
               <p class="muted small">
@@ -2593,6 +2600,56 @@ onMounted(async () => {
       </form>
     </div>
 
+    <div v-if="showCalendarModal" class="task-modal-bg" @click.self="closeCalendarModal">
+      <form class="task-modal calendar-modal" @submit.prevent="addHoliday">
+        <div class="task-modal-head">
+          <div>
+            <p class="eyebrow">Календарь</p>
+            <h3>Производственный календарь</h3>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" @click="closeCalendarModal">✕</button>
+        </div>
+        <div class="calendar-mode">
+          <button
+            type="button"
+            :class="{ active: snapshot?.diagram?.dayMode === 'working' }"
+            @click="setDayMode('working')"
+          >Рабочие дни</button>
+          <button
+            type="button"
+            :class="{ active: snapshot?.diagram?.dayMode === 'calendar' }"
+            @click="setDayMode('calendar')"
+          >Календарные дни</button>
+        </div>
+        <p class="muted small">Праздники исключаются из расчёта рабочих дней.</p>
+        <div class="task-modal-grid">
+          <label class="field">
+            <span>Дата</span>
+            <input v-model="holidayDate" class="input calendar-date" type="date" required />
+          </label>
+          <label class="field">
+            <span>Название</span>
+            <input v-model="holidayName" class="input calendar-name" maxlength="60" placeholder="Например: Новый год" />
+          </label>
+        </div>
+        <div class="calendar-add-actions">
+          <button class="btn btn-primary" type="submit">Добавить праздник</button>
+          <button class="btn btn-secondary" type="button" @click="addHolidayPreset">Праздники РФ</button>
+        </div>
+        <div class="holiday-list">
+          <div v-for="holiday in sortedHolidays" :key="holiday.id ?? holiday.holidayDate" class="holiday-item">
+            <span class="holiday-date">{{ holiday.holidayDate }}</span>
+            <span class="holiday-name-text">{{ holiday.name || 'Праздник' }}</span>
+            <button class="btn btn-icon btn-ghost holiday-delete" type="button" title="Удалить" @click="deleteHoliday(holiday.holidayDate)">✕</button>
+          </div>
+          <p v-if="!sortedHolidays.length" class="muted small">Праздников нет — все будние дни считаются рабочими.</p>
+        </div>
+        <div class="task-modal-actions">
+          <button class="btn btn-secondary" type="button" @click="closeCalendarModal">Готово</button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="showDirectionModal" class="task-modal-bg" @click.self="closeDirectionModal">
       <form class="task-modal direction-modal" @submit.prevent="saveDirectionEdit">
         <div class="task-modal-head">
@@ -2879,6 +2936,17 @@ onMounted(async () => {
 .task-modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-lg); }
 .direction-modal { width: min(620px, 100%); }
 .diagram-modal { width: min(560px, 100%); }
+.calendar-modal { width: min(560px, 100%); }
+.calendar-mode { display: flex; gap: 4px; padding: 4px; background: var(--color-surface-muted, #f1f5f9); border-radius: var(--radius-lg, 10px); }
+.calendar-mode button { flex: 1; border: 0; background: transparent; padding: 7px 10px; border-radius: var(--radius-md, 8px); color: var(--color-text-muted); cursor: pointer; }
+.calendar-mode button.active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-sm); font-weight: 600; }
+.calendar-add-actions { display: flex; gap: 8px; margin-top: 12px; }
+.holiday-list { display: grid; gap: 2px; margin-top: 12px; max-height: 260px; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg, 10px); padding: 4px; }
+.holiday-item { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--color-border); }
+.holiday-item:last-child { border-bottom: 0; }
+.holiday-date { font-variant-numeric: tabular-nums; color: var(--color-text-muted); font-size: 12px; }
+.holiday-name-text { font-size: 13px; }
+.holiday-delete { color: var(--color-text-muted); }
 .task-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .task-modal-head h3 { margin: 2px 0 0; }
 .task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
