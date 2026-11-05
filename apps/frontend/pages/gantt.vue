@@ -112,6 +112,18 @@ const collapsed = ref([]);
 const showDependencies = ref(true);
 const zoom = ref(1);
 const labelWidth = ref(420);
+const canvasRef = ref(null);
+const canvasWidth = ref(900);
+watchEffect((onCleanup) => {
+  const element = canvasRef.value;
+  if (!element || typeof ResizeObserver === 'undefined') return;
+  canvasWidth.value = element.getBoundingClientRect().width;
+  const observer = new ResizeObserver(([entry]) => {
+    canvasWidth.value = entry.contentRect.width;
+  });
+  observer.observe(element);
+  onCleanup(() => observer.disconnect());
+});
 const linkMode = ref(false);
 const linkFrom = ref('');
 const selectedOwner = ref('');
@@ -1235,27 +1247,45 @@ const directionBars = computed(() => {
 });
 
 const dependencyLines = computed(() => {
-  const bars = new Map(timelineBars.value.map((bar) => [bar.task.id, bar]));
+  const taskBars = new Map(timelineBars.value.map((bar) => [`task:${bar.task.id}`, bar]));
+  const directionBarsById = new Map(
+    directionBars.value.map((bar) => [`direction:${bar.direction.id}`, bar]),
+  );
+  const findBar = (type, id) => taskBars.get(`${type}:${id}`) ?? directionBarsById.get(`${type}:${id}`);
   return (snapshot.value?.dependencies ?? [])
     .map((dependency) => {
-      const from = bars.get(dependency.predecessorId);
-      const to = bars.get(dependency.successorId);
+      const from = findBar(dependency.predecessorType, dependency.predecessorId);
+      const to = findBar(dependency.successorType, dependency.successorId);
       if (!from || !to) return null;
       const fromLeft = Number.parseFloat(from.style.left);
       const fromWidth = Number.parseFloat(from.style.width);
       const fromTop = Number.parseFloat(from.style.top) + 14;
       const toLeft = Number.parseFloat(to.style.left);
       const toTop = Number.parseFloat(to.style.top) + 14;
+      const x1 = ((fromLeft + fromWidth) / 100) * canvasWidth.value;
+      const y1 = fromTop;
+      const x2 = (toLeft / 100) * canvasWidth.value;
+      const y2 = toTop;
+      const midX = (x1 + x2) / 2;
+      const shape = dependency.arrowShape || 'orthogonal';
+      const path =
+        shape === 'curved'
+          ? `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`
+          : shape === 'straight'
+            ? `M ${x1} ${y1} L ${x2} ${y2}`
+            : `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
       return {
         id: dependency.id,
         dependency,
-        x1: fromLeft + fromWidth,
-        y1: fromTop,
-        x2: toLeft,
-        y2: toTop,
+        path,
+        x1,
+        y1,
+        x2,
+        y2,
         critical: dependency.isCritical,
         color: dependency.color || '#94a3b8',
         dash: dependency.lineStyle,
+        shape,
       };
     })
     .filter(Boolean);
@@ -2072,31 +2102,38 @@ onMounted(async () => {
               :style="{ left: week.left, width: week.width }"
             >{{ week.label }}</div>
           </div>
-          <div class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${900 * zoom}px` }">
+          <div ref="canvasRef" class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${900 * zoom}px` }">
             <span class="gantt-today" :style="{ left: todayLeft }"></span>
             <svg v-if="showDependencies" class="deps-overlay">
               <defs>
-                <marker id="dep-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8" />
+                <marker
+                  v-for="line in dependencyLines"
+                  :id="`dep-arrow-${line.id}`"
+                  :key="`arrow-${line.id}`"
+                  markerWidth="7"
+                  markerHeight="7"
+                  refX="6"
+                  refY="3.5"
+                  orient="auto"
+                >
+                  <path d="M0,0 L7,3.5 L0,7 Z" :fill="line.critical ? '#dc2626' : line.color" />
                 </marker>
               </defs>
               <g v-for="line in dependencyLines" :key="line.id">
-                <line
-                  :x1="`${line.x1}%`"
-                  :y1="`${line.y1}px`"
-                  :x2="`${line.x2}%`"
-                  :y2="`${line.y2}px`"
+                <path
+                  class="dep-line"
+                  :d="line.path"
+                  fill="none"
                   :stroke="line.critical ? '#dc2626' : line.color"
                   :stroke-dasharray="line.dash === 'dashed' ? '6 4' : line.dash === 'dotted' ? '2 4' : ''"
+                  :stroke-linecap="line.dash === 'dotted' ? 'round' : 'butt'"
                   :stroke-width="hoveredDependencyId === line.id ? 2.8 : 1.4"
-                  marker-end="url(#dep-arrow)"
+                  :marker-end="`url(#dep-arrow-${line.id})`"
                 />
-                <line
+                <path
                   class="dep-hit"
-                  :x1="`${line.x1}%`"
-                  :y1="`${line.y1}px`"
-                  :x2="`${line.x2}%`"
-                  :y2="`${line.y2}px`"
+                  :d="line.path"
+                  fill="none"
                   stroke="transparent"
                   stroke-width="14"
                   @mouseenter="hoveredDependencyId = line.id"
@@ -2691,7 +2728,7 @@ onMounted(async () => {
               </label>
               <label class="field">
                 <span>Стрелка</span>
-                <select v-model="dependencyEdit.arrowShape" class="input">
+                <select v-model="dependencyEdit.arrowShape" class="input dependency-arrow-shape">
                   <option value="orthogonal">Ортогональная</option>
                   <option value="straight">Прямая</option>
                   <option value="curved">Изогнутая</option>
