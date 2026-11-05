@@ -133,6 +133,7 @@ const dragTaskId = ref('');
 const dragOverId = ref('');
 const dragOverMode = ref('');
 const barDragPreview = ref(null);
+let suppressBarClickUntil = 0;
 const hoveredDependencyId = ref('');
 let syncSocket = null;
 let syncReconnectTimer = null;
@@ -1381,7 +1382,9 @@ function startBarDrag(event, bar, mode) {
   const daysInRange = Math.max(1, (max - min) / dayMs);
   const originalStart = new Date(bar.task.startDate);
   const originalEnd = new Date(bar.task.effectiveEndDate ?? bar.task.endDate ?? bar.task.startDate);
+  let moved = false;
   const onMove = (moveEvent) => {
+    if (Math.abs(moveEvent.clientX - startX) > 3) moved = true;
     const deltaDays = Math.round(((moveEvent.clientX - startX) / width) * daysInRange);
     let start = originalStart;
     let end = originalEnd;
@@ -1415,9 +1418,13 @@ function startBarDrag(event, bar, mode) {
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('keydown', onKey);
     const preview = barDragPreview.value;
+    const changed =
+      preview &&
+      (preview.start !== bar.task.startDate?.slice(0, 10) ||
+        preview.end !== bar.task.endDate?.slice(0, 10));
+    if (moved || changed) suppressBarClickUntil = Date.now() + 500;
     barDragPreview.value = null;
-    if (!apply || !preview) return;
-    if (preview.start === bar.task.startDate?.slice(0, 10) && preview.end === bar.task.endDate?.slice(0, 10)) return;
+    if (!apply || !preview || !changed) return;
     await updateTaskDates(bar.task, preview.start, preview.end);
   };
   const onUp = () => finish(true);
@@ -1428,6 +1435,15 @@ function startBarDrag(event, bar, mode) {
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp, { once: true });
   window.addEventListener('keydown', onKey);
+}
+
+function onBarClick(task) {
+  if (Date.now() < suppressBarClickUntil) return;
+  if (linkMode.value) {
+    pickLink(task);
+  } else {
+    openTaskEditor(task);
+  }
 }
 
 function printChart() {
@@ -2179,7 +2195,7 @@ onMounted(async () => {
               :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id, 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
-              @click="linkMode ? pickLink(bar.task) : openTaskEditor(bar.task)"
+              @click="onBarClick(bar.task)"
             >
               <span class="bar-handle left" @pointerdown.stop="startBarDrag($event, bar, 'start')"></span>
               <span class="bar-handle right" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
