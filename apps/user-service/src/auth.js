@@ -2246,9 +2246,13 @@ export function createUserImplementation({
       const offset = Math.max(Number(call.request.page?.offset ?? 0), 0);
       try {
         const result = await db.query(
-          `SELECT * FROM access.users
-           WHERE ($1 = '' OR display_name ILIKE '%' || $1 || '%' OR email::text ILIKE '%' || $1 || '%')
-           ORDER BY display_name ASC
+          `SELECT u.*,
+                  COALESCE(array_agg(r.role_code) FILTER (WHERE r.role_code IS NOT NULL), '{}') AS role_codes
+           FROM access.users u
+           LEFT JOIN access.user_roles r ON r.user_id = u.id
+           WHERE ($1 = '' OR u.display_name ILIKE '%' || $1 || '%' OR u.email::text ILIKE '%' || $1 || '%')
+           GROUP BY u.id
+           ORDER BY u.display_name ASC
            LIMIT $2 OFFSET $3`,
           [query, limit, offset],
         );
@@ -2265,7 +2269,9 @@ export function createUserImplementation({
             position: row.position ?? '',
             status: row.status === 'blocked' ? 'USER_STATUS_BLOCKED' : 'USER_STATUS_ACTIVE',
             email_verified: Boolean(row.email_verified_at),
-            global_roles: [],
+            global_roles: (row.role_codes ?? [])
+              .filter((role) => role === 'app_admin')
+              .map(() => 'GLOBAL_ROLE_APP_ADMIN'),
           })),
           page: { total: count.rows[0].total, limit, offset },
         });
