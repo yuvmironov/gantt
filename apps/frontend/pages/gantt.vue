@@ -1290,12 +1290,20 @@ const dependencyLines = computed(() => {
       const y2 = toTop;
       const midX = (x1 + x2) / 2;
       const shape = dependency.arrowShape || 'orthogonal';
+      const backward = x2 < x1;
+      const laneRight = Math.max(x1, Math.min(canvasWidth.value - 2, x1 + 24));
+      const laneLeft = Math.min(x2, Math.max(2, x2 - 24));
+      const midY = (y1 + y2) / 2;
       const path =
-        shape === 'curved'
-          ? `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`
-          : shape === 'straight'
-            ? `M ${x1} ${y1} L ${x2} ${y2}`
-            : `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+        shape === 'straight'
+          ? `M ${x1} ${y1} L ${x2} ${y2}`
+          : shape === 'curved'
+            ? backward
+              ? `M ${x1} ${y1} C ${laneRight} ${y1}, ${laneLeft} ${y2}, ${x2} ${y2}`
+              : `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`
+            : backward
+              ? `M ${x1} ${y1} L ${laneRight} ${y1} L ${laneRight} ${midY} L ${laneLeft} ${midY} L ${laneLeft} ${y2} L ${x2} ${y2}`
+              : `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
       return {
         id: dependency.id,
         dependency,
