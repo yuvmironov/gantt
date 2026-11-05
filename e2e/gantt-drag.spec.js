@@ -9,7 +9,7 @@ test('drag task into parent updates hierarchy', async ({ page }) => {
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill('DragPassword123!');
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.projects-page')).toBeVisible({ timeout: 20_000 });
 
   const parentName = `Drag parent ${suffix}`;
   const siblingName = `Drag sibling ${suffix}`;

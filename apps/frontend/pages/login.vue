@@ -55,7 +55,7 @@ async function finishLogin() {
     );
     window.localStorage.removeItem('pendingInvitation');
   }
-  window.location.href = '/';
+  window.location.href = '/projects';
 }
 
 async function submitLogin() {
@@ -150,7 +150,7 @@ onMounted(async () => {
   if (verify || reset || invitation) window.history.replaceState({}, '', '/login');
   try {
     await api('/auth/session');
-    window.location.href = '/';
+    window.location.href = '/projects';
   } catch {
     // Stay on the login page.
   }

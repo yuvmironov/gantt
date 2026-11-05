@@ -80,7 +80,7 @@ async function boot() {
   try {
     user.value = await api('/auth/session');
     if (!(user.value.globalRoles ?? []).includes('app_admin')) {
-      window.location.href = '/';
+      window.location.href = '/projects';
       return;
     }
     await Promise.all([loadUsers(), loadAudit(), loadSettings(), loadExecutors()]);
@@ -150,7 +150,7 @@ onMounted(boot);
   <main class="admin-page">
     <header class="admin-header">
       <div>
-        <a href="/" class="back">← Gantt</a>
+        <a href="/projects" class="back">← Проекты</a>
         <h1>Администрирование</h1>
       </div>
       <span>{{ user?.displayName ?? user?.email }}</span>

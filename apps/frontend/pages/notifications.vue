@@ -69,7 +69,7 @@ onMounted(load);
   <main class="notifications-page">
     <header class="notifications-header">
       <div>
-        <a href="/" class="back">← Gantt</a>
+        <a href="/projects" class="back">← Проекты</a>
         <h1>Уведомления</h1>
       </div>
       <div class="actions">

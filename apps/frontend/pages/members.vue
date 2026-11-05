@@ -127,7 +127,7 @@ onMounted(loadProject);
   <main class="members-page">
     <header class="members-header">
       <div>
-        <a href="/" class="back">← Gantt</a>
+        <a href="/projects" class="back">← Проекты</a>
         <h1>Участники проекта</h1>
       </div>
       <select v-model="projectId" @change="loadMembers">

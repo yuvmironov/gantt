@@ -122,7 +122,7 @@ async function revokeSession(id) {
 async function logoutAll() {
   await run(async () => {
     await api('/auth/logout-all', { method: 'POST' });
-    window.location.href = '/';
+    window.location.href = '/login';
   });
 }
 
@@ -133,7 +133,7 @@ onMounted(load);
   <main class="profile-page">
     <header class="profile-header">
       <div>
-        <a href="/" class="back">← Gantt</a>
+        <a href="/projects" class="back">← Проекты</a>
         <h1>Профиль</h1>
       </div>
       <span>{{ user?.email }}</span>

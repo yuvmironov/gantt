@@ -16,15 +16,19 @@ test('local Vue MVP workflow', async ({ page }) => {
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.projects-page')).toBeVisible({ timeout: 20_000 });
 
-  await page.getByPlaceholder('Название проекта').fill(projectName);
-  await page.locator('.empty-project button').click();
-  await expect(page.locator('.empty-project')).toContainText('диаграмм');
-  await page.locator('.empty-project button').click();
-  await expect(page.locator('.diagram-modal')).toBeVisible();
-  await page.locator('.diagram-modal-name').fill(diagramName);
-  await page.locator('.diagram-modal button').filter({ hasText: 'Создать диаграмму' }).click();
+  await page.getByRole('button', { name: '＋ Создать проект' }).click();
+  await expect(page.locator('.modal-card')).toBeVisible();
+  await page.locator('.modal-card input').fill(projectName);
+  await page.locator('.modal-card button[type=submit]').click();
+  await expect(page.locator('.project-row')).toContainText(projectName);
+  await page.locator('.project-row').filter({ hasText: projectName }).click();
+  await expect(page.locator('.project-page')).toBeVisible();
+  await page.getByRole('button', { name: '＋ Диаграмма' }).click();
+  await expect(page.locator('.modal-card')).toBeVisible();
+  await page.locator('.modal-card input').fill(diagramName);
+  await page.locator('.modal-card button[type=submit]').click();
   await expect(page.locator('.gantt-page')).toContainText(diagramName);
 
   await page.locator('.gantt-toolbar button').filter({ hasText: 'Направление' }).click();
