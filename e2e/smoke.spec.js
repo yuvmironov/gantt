@@ -40,6 +40,6 @@ test('local Vue MVP workflow', async ({ page }) => {
     .filter({ hasText: taskName })
     .locator('.label-name')
     .click();
-  await expect(page.locator('.drawer')).toBeVisible();
-  await expect(page.locator('.drawer')).toContainText(taskName);
+  await expect(page.locator('.task-modal')).toBeVisible();
+  await expect(page.locator('.task-modal-name')).toHaveValue(taskName);
 });

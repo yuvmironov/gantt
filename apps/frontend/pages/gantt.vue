@@ -65,6 +65,17 @@ const directionEdit = reactive({
 });
 const taskForm = reactive({ name: '', directionId: '', parentTaskId: '' });
 const showTaskModal = ref(false);
+const editingTaskId = ref('');
+const modalPeople = computed(() => [
+  ...members.value.map((member) => ({
+    value: `user:${member.userId}`,
+    label: member.user?.displayName || member.user?.email || member.userId,
+  })),
+  ...executors.value.map((executor) => ({
+    value: `executor:${executor.id}`,
+    label: executor.fullName || executor.displayName || executor.id,
+  })),
+]);
 const newTask = reactive({
   directionId: '',
   parentTaskId: '',
@@ -76,6 +87,7 @@ const newTask = reactive({
   jiraNumber: '',
   startDate: '',
   endDate: '',
+  actualEndDate: '',
   responsibleId: '',
   executorId: '',
   coExecutorId: '',
@@ -197,6 +209,7 @@ function openTaskModal(prefill = {}) {
     jiraNumber: '',
     startDate: '',
     endDate: '',
+    actualEndDate: '',
     responsibleId: '',
     executorId: '',
     coExecutorId: '',
@@ -204,11 +217,127 @@ function openTaskModal(prefill = {}) {
     bpFlag: false,
     spFlag: false,
   });
+  editingTaskId.value = '';
   showTaskModal.value = true;
+}
+
+function assignmentValue(role) {
+  const assignment = (selectedTask.value?.assignments ?? []).find((item) => item.role === role);
+  return assignment ? `${assignment.assigneeType}:${assignment.assigneeId}` : '';
+}
+
+async function openTaskEditor(task) {
+  editingTaskId.value = task.id;
+  Object.assign(newTask, {
+    directionId: task.directionId,
+    parentTaskId: task.parentTaskId || '',
+    name: task.name ?? '',
+    description: task.description ?? '',
+    status: task.status ?? 'planned',
+    progress: Number(task.progress) || 0,
+    priority: task.priority ?? 'medium',
+    jiraNumber: task.jiraNumber ?? '',
+    startDate: task.startDate ? task.startDate.slice(0, 10) : '',
+    endDate: task.endDate ? task.endDate.slice(0, 10) : '',
+    actualEndDate: task.actualEndDate ? task.actualEndDate.slice(0, 10) : '',
+    responsibleId: '',
+    executorId: '',
+    coExecutorId: '',
+    predecessorId: '',
+    bpFlag: Boolean(task.bpFlag),
+    spFlag: Boolean(task.spFlag),
+  });
+  showTaskModal.value = true;
+  await selectTask(task);
+  newTask.responsibleId = assignmentValue('responsible');
+  newTask.executorId = assignmentValue('executor');
+  newTask.coExecutorId = assignmentValue('co_executor');
 }
 
 function closeTaskModal() {
   showTaskModal.value = false;
+  editingTaskId.value = '';
+  selectedTask.value = null;
+}
+
+function parseModalPerson(value) {
+  const [assigneeType, ...rest] = String(value).split(':');
+  return { assigneeType, assigneeId: rest.join(':') };
+}
+
+function modalAssignments() {
+  return [
+    ['responsible', newTask.responsibleId],
+    ['executor', newTask.executorId],
+    ['co_executor', newTask.coExecutorId],
+  ]
+    .filter(([, value]) => value)
+    .map(([role, value]) => ({ role, ...parseModalPerson(value) }));
+}
+
+async function saveTaskModal() {
+  if (editingTaskId.value) {
+    await saveTaskEdit();
+  } else {
+    await createTaskFromModal();
+  }
+}
+
+async function saveTaskEdit() {
+  if (!selectedTask.value) return;
+  try {
+    let task = await api(`/tasks/${selectedTask.value.id}`, {
+      method: 'PATCH',
+      body: {
+        expectedVersion: selectedTask.value.version,
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+        name: newTask.name,
+        description: newTask.description,
+        priority: newTask.priority,
+        jiraNumber: newTask.jiraNumber,
+        startDate: newTask.startDate || null,
+        endDate: newTask.endDate || null,
+        actualEndDate: newTask.actualEndDate || null,
+        bpFlag: newTask.bpFlag,
+        spFlag: newTask.spFlag,
+      },
+    });
+    if (task.directionId !== newTask.directionId || (task.parentTaskId || '') !== newTask.parentTaskId) {
+      task = await api(`/tasks/${task.id}/move`, {
+        method: 'POST',
+        body: {
+          directionId: newTask.directionId,
+          parentTaskId: newTask.parentTaskId || '',
+          sortOrder: task.sortOrder ?? 0,
+          expectedVersion: task.version,
+          baseRevision: snapshot.value?.currentRevision ?? 0,
+        },
+      });
+    }
+    task = await api(`/tasks/${task.id}/progress`, {
+      method: 'PATCH',
+      body: {
+        status: newTask.status,
+        progress: Number(newTask.progress) || 0,
+        expectedVersion: task.version,
+      },
+    });
+    task = await api(`/tasks/${task.id}/assignments`, {
+      method: 'PUT',
+      body: {
+        assignments: modalAssignments(),
+        baseRevision: snapshot.value?.currentRevision ?? 0,
+      },
+    });
+    closeTaskModal();
+    await loadSnapshot(true);
+  } catch (reason) {
+    error.value = reason.message;
+  }
+}
+
+async function deleteTaskFromModal() {
+  if (await deleteTask()) closeTaskModal();
 }
 
 function focusNewTask() {
@@ -241,23 +370,7 @@ async function createTaskFromModal() {
         expectedVersion: task.version,
       },
     });
-    const assignments = [
-      newTask.responsibleId && {
-        role: 'responsible',
-        assigneeType: 'user',
-        assigneeId: newTask.responsibleId,
-      },
-      newTask.executorId && {
-        role: 'executor',
-        assigneeType: 'executor',
-        assigneeId: newTask.executorId,
-      },
-      newTask.coExecutorId && {
-        role: 'co_executor',
-        assigneeType: 'executor',
-        assigneeId: newTask.coExecutorId,
-      },
-    ].filter(Boolean);
+    const assignments = modalAssignments();
     if (assignments.length) {
       task = await api(`/tasks/${task.id}/assignments`, {
         method: 'PUT',
@@ -557,16 +670,18 @@ async function saveTask() {
 }
 
 async function deleteTask() {
-  if (!selectedTask.value) return;
-  if (!window.confirm(`Удалить задачу «${selectedTask.value.name}»?`)) return;
+  if (!selectedTask.value) return false;
+  if (!window.confirm(`Удалить задачу «${selectedTask.value.name}»?`)) return false;
   try {
     await api(
       `/tasks/${selectedTask.value.id}?expectedVersion=${selectedTask.value.version}&baseRevision=${snapshot.value?.currentRevision ?? 0}`,
       { method: 'DELETE' },
     );
     await loadSnapshot();
+    return true;
   } catch (reason) {
     error.value = reason.message;
+    return false;
   }
 }
 
@@ -1910,7 +2025,7 @@ onMounted(async () => {
               @dragstart="onTaskDragStart($event, row.task)"
               @dragover.prevent="onTaskDragOver($event, row)"
               @drop.stop="onTaskDrop($event, row)"
-              @click="selectTask(row.task)"
+              @click="openTaskEditor(row.task)"
             >
               <span
                 v-if="row.task.childrenCount"
@@ -1918,7 +2033,7 @@ onMounted(async () => {
                 @click.stop="toggleCollapse(row.task.id)"
               >{{ collapsed.includes(row.task.id) ? '›' : '⌄' }}</span>
               <span v-else class="caret">·</span>
-              <span class="label-name" @click.stop="selectTask(row.task)">
+              <span class="label-name" @click.stop="openTaskEditor(row.task)">
                 {{ row.task.wbsCode }}. {{ row.task.name }}
                 <span v-if="row.task.startDate || row.task.endDate" class="row-dates">
                   {{ formatShortDate(row.task.startDate) }}–{{ formatShortDate(row.task.effectiveEndDate ?? row.task.endDate) }}
@@ -1927,7 +2042,7 @@ onMounted(async () => {
               <span class="label-meta">
                 <span class="priority-dot" :class="priorityClass(row.task.priority)" :title="row.task.priority"></span>
                 <button v-if="row.task.jiraNumber" class="row-chip" type="button">{{ row.task.jiraNumber }}</button>
-                <button v-if="row.task.commentsCount" class="row-chip" type="button" @click.stop="selectTask(row.task)">💬 {{ row.task.commentsCount }}</button>
+                <button v-if="row.task.commentsCount" class="row-chip" type="button" @click.stop="openTaskEditor(row.task)">💬 {{ row.task.commentsCount }}</button>
                 <button class="row-chip" :class="{ 'flag-on': row.task.bpFlag }" type="button" @click.stop="toggleFlag(row.task, 'bpFlag')">БП</button>
                 <button class="row-chip" :class="{ 'flag-on': row.task.spFlag }" type="button" @click.stop="toggleFlag(row.task, 'spFlag')">СП</button>
                 <span v-if="responsibleName(row.task)" class="badge badge-neutral">{{ responsibleName(row.task) }}</span>
@@ -2003,7 +2118,7 @@ onMounted(async () => {
               :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id, 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
-              @click="linkMode ? pickLink(bar.task) : selectTask(bar.task)"
+              @click="linkMode ? pickLink(bar.task) : openTaskEditor(bar.task)"
             >
               <span class="bar-handle left" @pointerdown.stop="startBarDrag($event, bar, 'start')"></span>
               <span class="bar-handle right" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
@@ -2152,7 +2267,7 @@ onMounted(async () => {
       </section>
     </main>
 
-    <aside v-if="selectedTask" class="gantt-drawer drawer">
+    <aside v-if="selectedTask && !showTaskModal" class="gantt-drawer drawer">
       <div class="drawer-head">
         <div><h3>Задача</h3><p class="muted small">{{ selectedTask.wbsCode }}. {{ selectedTask.name }}</p></div>
         <button class="btn btn-icon btn-ghost" type="button" @click="selectedTask = null">✕</button>
@@ -2257,11 +2372,11 @@ onMounted(async () => {
     </aside>
 
     <div v-if="showTaskModal" class="task-modal-bg" @click.self="closeTaskModal">
-      <form class="task-modal" @submit.prevent="createTaskFromModal">
+      <form class="task-modal" @submit.prevent="saveTaskModal">
         <div class="task-modal-head">
           <div>
-            <p class="eyebrow">Новая запись</p>
-            <h3>Создание задачи</h3>
+            <p class="eyebrow">{{ editingTaskId ? 'Задача' : 'Новая запись' }}</p>
+            <h3>{{ editingTaskId ? 'Редактирование задачи' : 'Создание задачи' }}</h3>
           </div>
           <button class="btn btn-icon btn-ghost" type="button" @click="closeTaskModal">✕</button>
         </div>
@@ -2287,7 +2402,9 @@ onMounted(async () => {
             <select v-model="newTask.parentTaskId" class="input">
               <option value="">Верхний уровень</option>
               <option
-                v-for="task in (snapshot?.tasks ?? []).filter((item) => item.level === 2 && item.directionId === newTask.directionId)"
+                v-for="task in (snapshot?.tasks ?? []).filter(
+                (item) => item.level === 2 && item.directionId === newTask.directionId && item.id !== editingTaskId,
+              )"
                 :key="task.id"
                 :value="task.id"
               >{{ task.wbsCode }} {{ task.name }}</option>
@@ -2295,7 +2412,7 @@ onMounted(async () => {
           </label>
           <label class="field">
             <span>Статус</span>
-            <select v-model="newTask.status" class="input">
+            <select v-model="newTask.status" class="input task-modal-status">
               <option value="planned">Планируется</option>
               <option value="in_progress">В работе</option>
               <option value="done">Готово</option>
@@ -2305,7 +2422,7 @@ onMounted(async () => {
           </label>
           <label class="field">
             <span>Процент</span>
-            <input v-model.number="newTask.progress" class="input" type="number" min="0" max="100" step="5" />
+            <input v-model.number="newTask.progress" class="input task-modal-progress" type="number" min="0" max="100" step="5" />
           </label>
           <label class="field">
             <span>Приоритет</span>
@@ -2328,12 +2445,16 @@ onMounted(async () => {
             <span>Окончание</span>
             <input v-model="newTask.endDate" class="input" type="date" />
           </label>
+          <label v-if="editingTaskId" class="field">
+            <span>Факт завершения</span>
+            <input v-model="newTask.actualEndDate" class="input" type="date" />
+          </label>
           <label class="field">
             <span>Ответственный</span>
             <select v-model="newTask.responsibleId" class="input">
               <option value="">Не назначен</option>
-              <option v-for="member in members" :key="member.userId" :value="member.userId">
-                {{ member.user?.displayName || member.user?.email || member.userId }}
+              <option v-for="person in modalPeople" :key="person.value" :value="person.value">
+                {{ person.label }}
               </option>
             </select>
           </label>
@@ -2341,8 +2462,8 @@ onMounted(async () => {
             <span>Исполнитель</span>
             <select v-model="newTask.executorId" class="input">
               <option value="">Не назначен</option>
-              <option v-for="executor in executors" :key="executor.id" :value="executor.id">
-                {{ executor.fullName || executor.displayName }}
+              <option v-for="person in modalPeople" :key="person.value" :value="person.value">
+                {{ person.label }}
               </option>
             </select>
           </label>
@@ -2350,12 +2471,12 @@ onMounted(async () => {
             <span>Соисполнитель</span>
             <select v-model="newTask.coExecutorId" class="input">
               <option value="">Не назначен</option>
-              <option v-for="executor in executors" :key="executor.id" :value="executor.id">
-                {{ executor.fullName || executor.displayName }}
+              <option v-for="person in modalPeople" :key="person.value" :value="person.value">
+                {{ person.label }}
               </option>
             </select>
           </label>
-          <label class="field">
+          <label v-if="!editingTaskId" class="field">
             <span>Зависит от</span>
             <select v-model="newTask.predecessorId" class="input">
               <option value="">Без зависимости</option>
@@ -2367,9 +2488,40 @@ onMounted(async () => {
           <label class="checkbox-line"><input v-model="newTask.bpFlag" type="checkbox" /> БП</label>
           <label class="checkbox-line"><input v-model="newTask.spFlag" type="checkbox" /> СП</label>
         </div>
+        <div v-if="editingTaskId" class="task-modal-comments">
+          <div class="comments-head"><strong>Комментарии</strong><span class="muted">{{ comments.length }}</span></div>
+          <div class="comment-list">
+            <div v-for="comment in comments" :key="comment.id" class="comment">
+              <div class="comment-meta">
+                <strong>{{ comment.authorUserId }}</strong>
+                <span>{{ formatShortDate(comment.createdAt) }}</span>
+              </div>
+              <template v-if="editingCommentId === comment.id">
+                <textarea v-model="editCommentBody" class="textarea" rows="2" />
+                <div class="comment-actions">
+                  <button class="btn btn-sm btn-secondary" type="button" @click="editingCommentId = ''">Отмена</button>
+                  <button class="btn btn-sm btn-primary" type="button" @click="saveComment(comment)">Сохранить</button>
+                </div>
+              </template>
+              <template v-else>
+                <p>{{ comment.body }}</p>
+                <div class="comment-actions">
+                  <button class="btn btn-sm btn-ghost" type="button" @click="startEditComment(comment)">Изменить</button>
+                  <button class="btn btn-sm btn-ghost" type="button" @click="deleteComment(comment.id)">Удалить</button>
+                </div>
+              </template>
+            </div>
+            <p v-if="!comments.length" class="muted">Комментариев пока нет.</p>
+          </div>
+          <textarea v-model="commentBody" class="textarea" rows="2" placeholder="Новый комментарий" />
+          <button class="btn btn-secondary btn-sm" type="button" @click="addComment">Добавить комментарий</button>
+        </div>
         <div class="task-modal-actions">
+          <button v-if="editingTaskId" class="btn btn-danger" type="button" @click="deleteTaskFromModal">
+            Удалить
+          </button>
           <button class="btn btn-secondary" type="button" @click="closeTaskModal">Отмена</button>
-          <button class="btn btn-primary" type="submit">Создать задачу</button>
+          <button class="btn btn-primary" type="submit">{{ editingTaskId ? 'Сохранить' : 'Создать задачу' }}</button>
         </div>
       </form>
     </div>
@@ -2663,6 +2815,11 @@ onMounted(async () => {
 .task-modal-head h3 { margin: 2px 0 0; }
 .task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .task-modal-grid .full { grid-column: 1 / -1; }
+.task-modal-comments { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); display: grid; gap: 8px; }
+.task-modal-comments .comment > div { flex: 1; }
+.task-modal-comments .comment p { margin: 4px 0; font-size: 13px; }
+.comments-head { display: flex; align-items: baseline; gap: 8px; }
+.btn-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 .task-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
 .dependency-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); }
 .dependency-modal { width: min(520px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; box-shadow: var(--shadow-lg); }

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
+test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   const suffix = Date.now();
   const email = `gantt-${suffix}@smart-oati.test`;
   const password = 'GanttPassword123!';
@@ -85,22 +85,41 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .first()
     .locator('.label-name')
     .click();
-  await expect(page.locator('.drawer')).toBeVisible();
-  await page.locator('.drawer .inline input[type=number]').fill('25');
-  await page.locator('.drawer .inline select').selectOption('done');
-  await expect(page.locator('.drawer .inline select')).toHaveValue('done');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.locator('.drawer .inline input[type=number]')).toHaveValue('25');
-  await expect(page.locator('.drawer .inline select')).toHaveValue('done');
+  await expect(page.locator('.task-modal')).toBeVisible();
+  await expect(page.locator('.task-modal')).toContainText('Редактирование задачи');
+  await page.locator('.task-modal-progress').fill('25');
+  await page.locator('.task-modal-status').selectOption('done');
+  await page
+    .locator('.task-modal-actions')
+    .getByRole('button', { name: 'Сохранить', exact: true })
+    .click();
+  await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).toContainText('Готово');
-  await page.locator('.drawer .inline select').selectOption('postponed');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.locator('.drawer .inline select')).toHaveValue('postponed');
+  await page
+    .locator('.gantt-row-label')
+    .filter({ hasText: taskName })
+    .first()
+    .locator('.label-name')
+    .click();
+  await page.locator('.task-modal-status').selectOption('postponed');
+  await page
+    .locator('.task-modal-actions')
+    .getByRole('button', { name: 'Сохранить', exact: true })
+    .click();
+  await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).toContainText('Отложено');
-  await page.locator('.comment-form textarea').fill('Vue comment');
-  await page.locator('.comment-form button').click();
-  await expect(page.locator('.comments')).toContainText('Vue comment');
-  await page.locator('.gantt-drawer .btn-icon').click();
+  await page
+    .locator('.gantt-row-label')
+    .filter({ hasText: taskName })
+    .first()
+    .locator('.label-name')
+    .click();
+  await page
+    .locator('.task-modal-comments textarea[placeholder="Новый комментарий"]')
+    .fill('Vue comment');
+  await page.getByRole('button', { name: 'Добавить комментарий' }).click();
+  await expect(page.locator('.task-modal-comments')).toContainText('Vue comment');
+  await page.locator('.task-modal-head .btn-icon').click();
   const linkButton = page.locator('.gantt-toolbar button').filter({ hasText: 'Связать' });
   await linkButton.click();
   const bars = page.locator('.gantt-bar:not(.direction-bar)');
@@ -141,8 +160,10 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .filter({ hasText: createdName })
     .locator('.label-name')
     .click();
-  await page.locator('.drawer input[placeholder="Название задачи"]').fill(`${createdName} edited`);
-  await page.locator('.drawer-footer').getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.locator('.task-modal')).toBeVisible();
+  await page.locator('.task-modal-name').fill(`${createdName} edited`);
+  await page.locator('.task-modal-actions').getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).toContainText(`${createdName} edited`);
   await page
     .locator('.gantt-row-label')
@@ -150,7 +171,8 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
     .locator('.label-name')
     .click();
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('.drawer-footer .danger').click();
+  await page.locator('.task-modal .btn-danger').click();
+  await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).not.toContainText(`${createdName} edited`);
   await expect(page.locator('nav')).toContainText('Участники');
 });
