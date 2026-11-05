@@ -92,6 +92,15 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.locator('.comment-form button').click();
   await expect(page.locator('.comments')).toContainText('Vue comment');
   await page.locator('.gantt-drawer .btn-icon').click();
+  const linkButton = page.locator('.gantt-toolbar button').filter({ hasText: 'Связать' });
+  await linkButton.click();
+  const bars = page.locator('.gantt-bar:not(.direction-bar)');
+  await bars.first().click();
+  await expect(page.locator('.gantt-bar.link-source')).toHaveCount(1);
+  await expect(page.locator('.link-hint')).toContainText('последователя');
+  await bars.nth(1).click();
+  await expect(linkButton).not.toHaveClass(/active/);
+  await expect(page.locator('.gantt-bar.link-source')).toHaveCount(0);
   await page.locator('.dep-predecessor').selectOption(ids.taskId);
   await page.locator('.dep-successor').selectOption(ids.successorId);
   await page.locator('.manage button').filter({ hasText: 'Добавить связь' }).click();

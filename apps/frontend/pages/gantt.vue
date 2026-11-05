@@ -815,6 +815,7 @@ async function pickLink(task) {
       },
     });
     linkFrom.value = '';
+    linkMode.value = false;
     await loadSnapshot(true);
   } catch (reason) {
     error.value = reason.message;
@@ -986,6 +987,7 @@ async function updateTaskDates(task, startDate, endDate) {
 }
 
 function startBarDrag(event, bar, mode) {
+  if (linkMode.value) return;
   event.preventDefault();
   event.stopPropagation();
   const container = event.currentTarget.closest('.gantt-canvas');
@@ -1496,6 +1498,9 @@ onMounted(async () => {
         </select>
         <button v-if="filterQuery || filterStatus || selectedOwner" class="gantt-chip" type="button" @click="filterQuery = ''; filterStatus = ''; selectedOwner = ''">Сбросить</button>
         <button class="gantt-chip" :class="{ active: linkMode }" type="button" @click="linkMode = !linkMode; linkFrom = ''">Связать</button>
+        <span v-if="linkMode" class="gantt-chip active link-hint">
+          {{ linkFrom ? 'Выберите задачу-последователя' : 'Выберите задачу-предшественника' }}
+        </span>
         <label class="gantt-chip"><input v-model="showDependencies" type="checkbox" /> Стрелки</label>
         <span class="gantt-chip day-mode">
           <button type="button" :class="{ active: snapshot.diagram?.dayMode === 'calendar' }" @click="setDayMode('calendar')">Календарные</button>
@@ -1597,6 +1602,7 @@ onMounted(async () => {
               :class="{
                 selected: selectedTask?.id === row.task.id,
                 context: row.isContext,
+                'link-source': linkFrom === row.task.id,
                 'drop-before': dragOverId === row.key && dragOverMode === 'before',
                 'drop-after': dragOverId === row.key && dragOverMode === 'after',
                 'drop-inside': dragOverId === row.key && dragOverMode === 'inside',
@@ -1686,7 +1692,7 @@ onMounted(async () => {
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
-              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id }]"
+              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
               @click="linkMode ? pickLink(bar.task) : selectTask(bar.task)"
@@ -2008,6 +2014,9 @@ onMounted(async () => {
 .gantt-bar.direction-bar.done { background: #166534; border-color: #14532d; }
 .gantt-bar.direction-bar.blocked { background: #991b1b; border-color: #7f1d1d; }
 .gantt-bar.dragging { opacity: 0.28; }
+.gantt-bar.link-source { outline: 3px solid #2563eb; outline-offset: 2px; box-shadow: 0 0 0 5px rgb(37 99 235 / 18%); }
+.gantt-row-label.link-source { background: #dbeafe; outline: 2px solid #60a5fa; outline-offset: -2px; }
+.link-hint { border-style: dashed; }
 .gantt-bar-preview { position: absolute; height: 28px; z-index: 6; display: flex; align-items: center; padding: 0 8px; border: 2px dashed #2563eb; border-radius: var(--radius-md); background: rgb(219 234 254 / 82%); color: #1d4ed8; font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px rgb(37 99 235 / 18%); }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
 .gantt-row-label.task .label-meta { flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
