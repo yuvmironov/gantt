@@ -117,9 +117,11 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.locator('.manage button').filter({ hasText: 'Добавить праздник' }).click();
   await expect(page.locator('.manage')).toContainText('E2E holiday');
   const createdName = `Created ${suffix}`;
-  await page.locator('.task-direction').selectOption(ids.directionId);
-  await page.locator('.manage input[placeholder="Название задачи"]').fill(createdName);
-  await page.locator('.manage button').filter({ hasText: 'Создать задачу' }).click();
+  await page.locator('.gantt-toolbar button').filter({ hasText: 'Задача' }).click();
+  await page.locator('.task-modal-direction').selectOption(ids.directionId);
+  await page.locator('.task-modal-name').fill(createdName);
+  await page.locator('.task-modal button').filter({ hasText: 'Создать задачу' }).click();
+  await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).toContainText(createdName);
   await page
     .locator('.gantt-row-label')
