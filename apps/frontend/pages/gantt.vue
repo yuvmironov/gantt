@@ -65,6 +65,7 @@ const dragTaskId = ref('');
 const dragOverId = ref('');
 const dragOverMode = ref('');
 const barDragPreview = ref(null);
+const hoveredDependencyId = ref('');
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -962,6 +963,26 @@ const dependencyLines = computed(() => {
     .filter(Boolean);
 });
 
+const hoveredTaskIds = computed(() => {
+  const dependency = (snapshot.value?.dependencies ?? []).find(
+    (item) => item.id === hoveredDependencyId.value,
+  );
+  const ids = new Set();
+  if (!dependency) return ids;
+  const add = (type, id) => {
+    if (type === 'task') {
+      ids.add(id);
+    } else if (type === 'direction') {
+      for (const task of snapshot.value?.tasks ?? []) {
+        if (task.directionId === id) ids.add(task.id);
+      }
+    }
+  };
+  add(dependency.predecessorType, dependency.predecessorId);
+  add(dependency.successorType, dependency.successorId);
+  return ids;
+});
+
 function snapWorkday(value, direction = 1) {
   if (snapshot.value?.diagram?.dayMode !== 'working') return value;
   const holidays = new Set((snapshot.value?.holidays ?? []).map((item) => item.holidayDate));
@@ -1640,6 +1661,7 @@ onMounted(async () => {
                 selected: selectedTask?.id === row.task.id,
                 context: row.isContext,
                 'link-source': linkFrom === row.task.id,
+                'dep-linked': hoveredTaskIds.has(row.task.id),
                 'drop-before': dragOverId === row.key && dragOverMode === 'before',
                 'drop-after': dragOverId === row.key && dragOverMode === 'after',
                 'drop-inside': dragOverId === row.key && dragOverMode === 'inside',
@@ -1707,7 +1729,7 @@ onMounted(async () => {
                   :y2="`${line.y2}px`"
                   :stroke="line.critical ? '#dc2626' : line.color"
                   :stroke-dasharray="line.dash === 'dashed' ? '6 4' : line.dash === 'dotted' ? '2 4' : ''"
-                  stroke-width="1.4"
+                  :stroke-width="hoveredDependencyId === line.id ? 2.8 : 1.4"
                   marker-end="url(#dep-arrow)"
                 />
                 <line
@@ -1718,6 +1740,8 @@ onMounted(async () => {
                   :y2="`${line.y2}px`"
                   stroke="transparent"
                   stroke-width="14"
+                  @mouseenter="hoveredDependencyId = line.id"
+                  @mouseleave="hoveredDependencyId = ''"
                   @click.stop="openDependency(line.dependency)"
                 />
               </g>
@@ -1739,7 +1763,7 @@ onMounted(async () => {
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
-              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id }]"
+              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id, 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
               @click="linkMode ? pickLink(bar.task) : selectTask(bar.task)"
@@ -2109,7 +2133,9 @@ onMounted(async () => {
 .gantt-bar.direction-bar.blocked { background: #991b1b; border-color: #7f1d1d; }
 .gantt-bar.dragging { opacity: 0.28; }
 .gantt-bar.link-source { outline: 3px solid #2563eb; outline-offset: 2px; box-shadow: 0 0 0 5px rgb(37 99 235 / 18%); }
+.gantt-bar.dep-linked { outline: 3px solid #0ea5e9; outline-offset: 2px; box-shadow: 0 0 0 5px rgb(14 165 233 / 20%); z-index: 5; }
 .gantt-row-label.link-source { background: #dbeafe; outline: 2px solid #60a5fa; outline-offset: -2px; }
+.gantt-row-label.dep-linked { background: #e0f2fe; box-shadow: inset 3px 0 0 #0ea5e9; }
 .link-hint { border-style: dashed; }
 .gantt-bar-preview { position: absolute; height: 28px; z-index: 6; display: flex; align-items: center; padding: 0 8px; border: 2px dashed #2563eb; border-radius: var(--radius-md); background: rgb(219 234 254 / 82%); color: #1d4ed8; font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px rgb(37 99 235 / 18%); }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
