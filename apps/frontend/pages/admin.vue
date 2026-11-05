@@ -97,7 +97,8 @@ async function run(action) {
 
 async function createUser() {
   await run(async () => {
-    await api('/admin/users', { method: 'POST', body: newUser.value });
+    const created = await api('/admin/users', { method: 'POST', body: newUser.value });
+    search.value = created.email;
     newUser.value = { email: '', lastName: '', firstName: '', appAdmin: false };
     await loadUsers();
   });

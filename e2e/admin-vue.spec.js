@@ -1,6 +1,10 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 
-test('nuxt admin page renders users and settings', async ({ page }) => {
+test('admin can create admins and promote users', async ({ page }) => {
+  const suffix = Date.now();
+  const createdEmail = `admin-created-${suffix}@smart-oati.test`;
+  const promotedEmail = `admin-promoted-${suffix}@smart-oati.test`;
+
   await page.goto('/login');
   await page.locator('#login-form input[name=email]').fill('admin@smart-oati.local');
   await page.locator('#login-form input[name=password]').fill('ChangeMeDevOnly!');
@@ -8,10 +12,26 @@ test('nuxt admin page renders users and settings', async ({ page }) => {
   await expect(page.locator('.gantt-page')).toBeVisible();
 
   await page.goto('/admin');
-  await expect(page.locator('.admin-page')).toBeVisible();
-  await expect(page.locator('.admin-page table').first()).toBeVisible();
-  await expect(page.locator('.admin-page textarea')).toBeVisible();
-  await expect(page.locator('.admin-page .list')).toBeVisible();
-  await page.locator('.admin-page .back').click();
-  await expect(page.locator('.gantt-page')).toBeVisible();
+  const userForm = page
+    .locator('form.inline')
+    .filter({ has: page.locator('input[placeholder=Email]') });
+  await userForm.locator('input[placeholder=Email]').fill(createdEmail);
+  await userForm.locator('input[placeholder=Фамилия]').fill('Created');
+  await userForm.locator('input[placeholder=Имя]').fill('Admin');
+  await userForm.locator('input[type=checkbox]').check();
+  await userForm.getByRole('button', { name: 'Создать' }).click();
+  let row = page.locator('tr').filter({ hasText: createdEmail });
+  await expect(row).toBeVisible();
+  await expect(row.locator('td').nth(3)).toHaveText('админ');
+
+  await userForm.locator('input[placeholder=Email]').fill(promotedEmail);
+  await userForm.locator('input[placeholder=Фамилия]').fill('Promoted');
+  await userForm.locator('input[placeholder=Имя]').fill('User');
+  await userForm.locator('input[type=checkbox]').uncheck();
+  await userForm.getByRole('button', { name: 'Создать' }).click();
+  row = page.locator('tr').filter({ hasText: promotedEmail });
+  await expect(row).toBeVisible();
+  await expect(row.locator('td').nth(3)).toHaveText('пользователь');
+  await row.getByRole('button', { name: 'Сделать админом' }).click();
+  await expect(row.locator('td').nth(3)).toHaveText('админ');
 });
