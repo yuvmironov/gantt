@@ -106,6 +106,8 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   await page.locator('.dependency-modal select').first().selectOption('dashed');
   await page.locator('.dependency-modal button').filter({ hasText: 'Сохранить' }).click();
   await expect(page.locator('.dependency-modal')).toHaveCount(0);
+  await page.locator('.dep-hit').first().hover({ force: true });
+  await expect(page.locator('.gantt-bar.dep-linked')).toHaveCount(2);
   await page.locator('.dep-predecessor').selectOption(ids.taskId);
   await page.locator('.dep-successor').selectOption(ids.successorId);
   await page.locator('.manage button').filter({ hasText: 'Добавить связь' }).click();
