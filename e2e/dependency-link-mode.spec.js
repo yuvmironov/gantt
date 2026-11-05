@@ -87,7 +87,7 @@ test('link mode supports directions and task-to-direction', async ({ page }) => 
   await linkButton.click();
   await directionBar('First direction').click();
   await taskBar.click();
-  await expect(page.locator('.error')).toContainText('только к направлению');
+  await expect(page.locator('.toast-item.error')).toContainText('только к направлению');
   await expect.poll(dependencyCount).toBe(2);
   await linkButton.click();
 

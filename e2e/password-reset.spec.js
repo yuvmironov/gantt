@@ -55,7 +55,7 @@ test('password reset through local mail', async ({ page, context }) => {
   await expect(page.locator('.reset-form input').first()).not.toHaveValue('');
   await page.locator('.reset-form input[type=password]').fill(newPassword);
   await page.locator('.reset-form button[type=submit]').click();
-  await expect(page.locator('.message')).toContainText('Пароль сброшен');
+  await expect(page.locator('.toast-item.success')).toContainText('Пароль сброшен');
 
   await page.locator('#login-tab').click();
   await page.locator('#login-form input[name=email]').fill(email);

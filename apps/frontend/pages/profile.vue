@@ -6,6 +6,11 @@ const preferences = ref({ internal: true, email: true, telegram: false });
 const profile = ref({ displayName: '', lastName: '', firstName: '', position: '' });
 const telegramCode = ref('');
 const error = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+
 const loading = ref(true);
 
 function csrfToken() {
@@ -135,7 +140,6 @@ onMounted(load);
     </header>
 
     <p v-if="loading">Загрузка...</p>
-    <p v-if="error" class="error">{{ error }}</p>
 
     <section class="card">
       <h2>Профиль</h2>

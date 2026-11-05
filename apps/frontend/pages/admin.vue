@@ -4,6 +4,11 @@ const users = ref([]);
 const audit = ref([]);
 const settings = ref('[]');
 const error = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+
 const loading = ref(true);
 const search = ref('');
 const auditAction = ref('');
@@ -152,7 +157,6 @@ onMounted(boot);
     </header>
 
     <p v-if="loading">Загрузка...</p>
-    <p v-if="error" class="error">{{ error }}</p>
 
     <section class="card">
       <h2>Пользователи</h2>

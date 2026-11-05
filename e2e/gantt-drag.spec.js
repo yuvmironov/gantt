@@ -70,5 +70,5 @@ test('drag task into parent updates hierarchy', async ({ page }) => {
   await expect(page.locator('.gantt-labels')).toContainText(`1.1. ${siblingName}`);
   await expect(page.locator('.gantt-labels')).toContainText(`1.2. ${parentName}`);
   await expect(page.locator('.gantt-labels')).toContainText('1.2.1');
-  await expect(page.locator('.error')).toHaveCount(0);
+  await expect(page.locator('.toast-item.error')).toHaveCount(0);
 });
