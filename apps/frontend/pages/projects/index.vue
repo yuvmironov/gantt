@@ -112,6 +112,10 @@ async function logout() {
 }
 
 function openProject(project) {
+  navigateTo(`/projects/${project.id}`);
+}
+
+function openGantt(project) {
   navigateTo(`/gantt?project=${project.id}`);
 }
 
@@ -328,7 +332,8 @@ onMounted(boot);
             <span class="actions-cell">
               <button class="btn btn-icon btn-ghost" type="button" @click.stop="toggleMenu(project)">⋯</button>
               <span v-if="openMenuId === project.id" class="project-menu" @click.stop>
-                <button type="button" @click="openProject(project)">Открыть</button>
+                <button type="button" @click="openProject(project)">Открыть проект</button>
+                <button type="button" @click="openGantt(project)">Открыть Gantt</button>
                 <button v-if="project.status === 'active'" type="button" @click="archiveProject(project)">Архивировать</button>
                 <button v-if="project.status === 'archived'" type="button" @click="restoreProject(project)">Вернуть из архива</button>
                 <button v-if="project.status === 'deleted'" type="button" @click="restoreProject(project)">Восстановить</button>
