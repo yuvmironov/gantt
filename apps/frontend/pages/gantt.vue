@@ -1978,7 +1978,7 @@ onMounted(async () => {
 .gantt-title { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
 .gantt-top-actions { display: flex; gap: 10px; align-items: center; }
 .small { font-size: 12px; }
-.gantt-toolbar { display: flex; gap: 8px; align-items: center; padding: 10px 12px; margin-bottom: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); flex-wrap: wrap; }
+.gantt-toolbar { position: sticky; top: var(--header-height); z-index: 19; display: flex; gap: 8px; align-items: center; padding: 10px 12px; margin-bottom: 14px; background: rgb(255 255 255 / 96%); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); backdrop-filter: blur(10px); flex-wrap: wrap; }
 .gantt-chip { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; padding: 6px 11px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: 12px; cursor: pointer; text-decoration: none; }
 .gantt-chip.active { background: var(--color-primary-soft); border-color: #bfdbfe; color: var(--color-primary); }
 .file-chip input { display: none; }
