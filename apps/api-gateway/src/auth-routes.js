@@ -101,8 +101,9 @@ export function mapExecutor(executor) {
 export function sendProblem(reply, request, error) {
   const grpcCode = error.code ?? 13;
   const status = GRPC_STATUS[grpcCode] ?? 500;
-  const code = status >= 500 ? 'internal_error' : error.message || 'request_failed';
-  const detail = status >= 500 ? 'Internal server error' : error.message || 'Request failed';
+  const message = String(error.message ?? '').replace(/^\d+\s+[A-Z_]+:\s*/, '');
+  const code = status >= 500 ? 'internal_error' : message || 'request_failed';
+  const detail = status >= 500 ? 'Internal server error' : message || 'Request failed';
 
   request.log.warn({ grpcCode, code }, 'gateway request failed');
   return reply

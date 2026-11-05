@@ -1513,6 +1513,22 @@ function dependencyEntities(type) {
   }));
 }
 
+function onDependencyPredecessorTypeChange() {
+  dependencyEdit.predecessorId = '';
+  if (dependencyEdit.predecessorType === 'direction' && dependencyEdit.successorType === 'task') {
+    dependencyEdit.successorType = 'direction';
+    dependencyEdit.successorId = '';
+  }
+}
+
+function onDependencySuccessorTypeChange() {
+  dependencyEdit.successorId = '';
+  if (dependencyEdit.successorType === 'task' && dependencyEdit.predecessorType === 'direction') {
+    dependencyEdit.predecessorType = 'task';
+    dependencyEdit.predecessorId = '';
+  }
+}
+
 function resetDependencyDraft() {
   Object.assign(dependencyEdit, {
     id: '',
@@ -2692,15 +2708,15 @@ onMounted(async () => {
             <div class="dependency-form-grid">
               <label class="field">
                 <span>Предшественник</span>
-                <select v-model="dependencyEdit.predecessorType" class="input" @change="dependencyEdit.predecessorId = ''">
+                <select v-model="dependencyEdit.predecessorType" class="input" @change="onDependencyPredecessorTypeChange">
                   <option value="task">Задача</option>
                   <option value="direction">Направление</option>
                 </select>
               </label>
               <label class="field">
                 <span>Последователь</span>
-                <select v-model="dependencyEdit.successorType" class="input" @change="dependencyEdit.successorId = ''">
-                  <option value="task">Задача</option>
+                <select v-model="dependencyEdit.successorType" class="input" @change="onDependencySuccessorTypeChange">
+                  <option value="task" :disabled="dependencyEdit.predecessorType === 'direction'">Задача</option>
                   <option value="direction">Направление</option>
                 </select>
               </label>
@@ -2718,6 +2734,11 @@ onMounted(async () => {
                   <option v-for="entity in dependencyEntities(dependencyEdit.successorType)" :key="entity.id" :value="entity.id">{{ entity.label }}</option>
                 </select>
               </label>
+            </div>
+            <p v-if="dependencyEdit.predecessorType === 'direction'" class="muted small">
+              От направления можно строить связь только к направлению.
+            </p>
+            <div class="dependency-form-grid">
               <label class="field">
                 <span>Цвет</span>
                 <input v-model="dependencyEdit.color" class="dependency-color" type="color" />
