@@ -42,6 +42,25 @@ const showProjectForm = ref(false);
 const diagramForm = reactive({ name: '', description: '', dayMode: 'working' });
 const directionForm = reactive({ name: '' });
 const taskForm = reactive({ name: '', directionId: '', parentTaskId: '' });
+const showTaskModal = ref(false);
+const newTask = reactive({
+  directionId: '',
+  parentTaskId: '',
+  name: '',
+  description: '',
+  status: 'planned',
+  progress: 0,
+  priority: 'medium',
+  jiraNumber: '',
+  startDate: '',
+  endDate: '',
+  responsibleId: '',
+  executorId: '',
+  coExecutorId: '',
+  predecessorId: '',
+  bpFlag: false,
+  spFlag: false,
+});
 const moveForm = reactive({ directionId: '', sortOrder: 0 });
 const taskEdit = reactive({
   name: '',
@@ -144,9 +163,104 @@ async function loadUnread() {
   }
 }
 
+function openTaskModal(prefill = {}) {
+  Object.assign(newTask, {
+    directionId: prefill.directionId || snapshot.value?.directions?.[0]?.id || '',
+    parentTaskId: prefill.parentTaskId || '',
+    name: '',
+    description: '',
+    status: 'planned',
+    progress: 0,
+    priority: 'medium',
+    jiraNumber: '',
+    startDate: '',
+    endDate: '',
+    responsibleId: '',
+    executorId: '',
+    coExecutorId: '',
+    predecessorId: '',
+    bpFlag: false,
+    spFlag: false,
+  });
+  showTaskModal.value = true;
+}
+
+function closeTaskModal() {
+  showTaskModal.value = false;
+}
+
 function focusNewTask() {
-  document.querySelector('.manage-card')?.setAttribute('open', '');
-  setTimeout(() => document.querySelector('.manage-card input[placeholder="Название задачи"]')?.focus(), 0);
+  openTaskModal();
+}
+
+async function createTaskFromModal() {
+  if (!newTask.name.trim() || !newTask.directionId) return;
+  try {
+    let task = await api(`/diagrams/${diagramId.value}/tasks`, {
+      method: 'POST',
+      body: {
+        directionId: newTask.directionId,
+        parentTaskId: newTask.parentTaskId || null,
+        name: newTask.name,
+        description: newTask.description,
+        priority: newTask.priority,
+        startDate: newTask.startDate || null,
+        endDate: newTask.endDate || null,
+        jiraNumber: newTask.jiraNumber,
+        bpFlag: newTask.bpFlag,
+        spFlag: newTask.spFlag,
+      },
+    });
+    task = await api(`/tasks/${task.id}/progress`, {
+      method: 'PATCH',
+      body: {
+        status: newTask.status,
+        progress: Number(newTask.progress) || 0,
+        expectedVersion: task.version,
+      },
+    });
+    const assignments = [
+      newTask.responsibleId && {
+        role: 'responsible',
+        assigneeType: 'user',
+        assigneeId: newTask.responsibleId,
+      },
+      newTask.executorId && {
+        role: 'executor',
+        assigneeType: 'executor',
+        assigneeId: newTask.executorId,
+      },
+      newTask.coExecutorId && {
+        role: 'co_executor',
+        assigneeType: 'executor',
+        assigneeId: newTask.coExecutorId,
+      },
+    ].filter(Boolean);
+    if (assignments.length) {
+      task = await api(`/tasks/${task.id}/assignments`, {
+        method: 'PUT',
+        body: {
+          assignments,
+          baseRevision: snapshot.value?.currentRevision ?? 0,
+        },
+      });
+    }
+    if (newTask.predecessorId) {
+      await api(`/diagrams/${diagramId.value}/dependencies`, {
+        method: 'POST',
+        body: {
+          predecessorType: 'task',
+          predecessorId: newTask.predecessorId,
+          successorType: 'task',
+          successorId: task.id,
+        },
+      });
+    }
+    showTaskModal.value = false;
+    await loadSnapshot();
+  } catch (reason) {
+    error.value = reason.message;
+  }
 }
 
 async function createProject() {
@@ -842,9 +956,7 @@ async function toggleFlag(task, key) {
 }
 
 function startSubtask(task) {
-  taskForm.directionId = task.directionId;
-  taskForm.parentTaskId = task.id;
-  focusNewTask();
+  openTaskModal({ directionId: task.directionId, parentTaskId: task.id });
 }
 
 function taskFlags(task) {
@@ -1537,7 +1649,7 @@ onMounted(async () => {
       </div>
 
       <div v-if="snapshot" class="gantt-toolbar">
-        <button class="btn btn-primary btn-sm" type="button" @click="focusNewTask">＋ Направление / задача</button>
+        <button class="btn btn-primary btn-sm" type="button" @click="focusNewTask">＋ Задача</button>
         <div class="divider"></div>
         <input v-model="filterQuery" class="input toolbar-input" placeholder="Поиск по задаче или WBS" />
         <select v-model="filterStatus" class="input toolbar-input">
@@ -2019,6 +2131,124 @@ onMounted(async () => {
       </div>
     </aside>
 
+    <div v-if="showTaskModal" class="task-modal-bg" @click.self="closeTaskModal">
+      <form class="task-modal" @submit.prevent="createTaskFromModal">
+        <div class="task-modal-head">
+          <div>
+            <p class="eyebrow">Новая запись</p>
+            <h3>Создание задачи</h3>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" @click="closeTaskModal">✕</button>
+        </div>
+        <div class="task-modal-grid">
+          <label class="field full">
+            <span>Название *</span>
+            <input v-model="newTask.name" class="input task-modal-name" required />
+          </label>
+          <label class="field full">
+            <span>Описание</span>
+            <textarea v-model="newTask.description" class="textarea" rows="2" />
+          </label>
+          <label class="field">
+            <span>Направление *</span>
+            <select v-model="newTask.directionId" class="input task-modal-direction" required>
+              <option v-for="direction in snapshot?.directions ?? []" :key="direction.id" :value="direction.id">
+                {{ direction.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Родительская задача</span>
+            <select v-model="newTask.parentTaskId" class="input">
+              <option value="">Верхний уровень</option>
+              <option
+                v-for="task in (snapshot?.tasks ?? []).filter((item) => item.level === 2 && item.directionId === newTask.directionId)"
+                :key="task.id"
+                :value="task.id"
+              >{{ task.wbsCode }} {{ task.name }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Статус</span>
+            <select v-model="newTask.status" class="input">
+              <option value="planned">Планируется</option>
+              <option value="in_progress">В работе</option>
+              <option value="done">Готово</option>
+              <option value="blocked">Блокировано</option>
+              <option value="postponed">Отложено</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Процент</span>
+            <input v-model.number="newTask.progress" class="input" type="number" min="0" max="100" step="5" />
+          </label>
+          <label class="field">
+            <span>Приоритет</span>
+            <select v-model="newTask.priority" class="input">
+              <option value="low">Низкий</option>
+              <option value="medium">Средний</option>
+              <option value="high">Высокий</option>
+              <option value="critical">Критический</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Jira</span>
+            <input v-model="newTask.jiraNumber" class="input" placeholder="OATI-123" />
+          </label>
+          <label class="field">
+            <span>Начало</span>
+            <input v-model="newTask.startDate" class="input" type="date" />
+          </label>
+          <label class="field">
+            <span>Окончание</span>
+            <input v-model="newTask.endDate" class="input" type="date" />
+          </label>
+          <label class="field">
+            <span>Ответственный</span>
+            <select v-model="newTask.responsibleId" class="input">
+              <option value="">Не назначен</option>
+              <option v-for="member in members" :key="member.userId" :value="member.userId">
+                {{ member.user?.displayName || member.user?.email || member.userId }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Исполнитель</span>
+            <select v-model="newTask.executorId" class="input">
+              <option value="">Не назначен</option>
+              <option v-for="executor in executors" :key="executor.id" :value="executor.id">
+                {{ executor.fullName || executor.displayName }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Соисполнитель</span>
+            <select v-model="newTask.coExecutorId" class="input">
+              <option value="">Не назначен</option>
+              <option v-for="executor in executors" :key="executor.id" :value="executor.id">
+                {{ executor.fullName || executor.displayName }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Зависит от</span>
+            <select v-model="newTask.predecessorId" class="input">
+              <option value="">Без зависимости</option>
+              <option v-for="task in snapshot?.tasks ?? []" :key="task.id" :value="task.id">
+                {{ task.wbsCode }} {{ task.name }}
+              </option>
+            </select>
+          </label>
+          <label class="checkbox-line"><input v-model="newTask.bpFlag" type="checkbox" /> БП</label>
+          <label class="checkbox-line"><input v-model="newTask.spFlag" type="checkbox" /> СП</label>
+        </div>
+        <div class="task-modal-actions">
+          <button class="btn btn-secondary" type="button" @click="closeTaskModal">Отмена</button>
+          <button class="btn btn-primary" type="submit">Создать задачу</button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="editingDependency" class="dependency-modal-bg" @click.self="closeDependency">
       <div class="dependency-modal">
         <div class="dependency-modal-head">
@@ -2192,6 +2422,13 @@ onMounted(async () => {
 .composer { margin-top: 12px; }
 .composer-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 .empty-project { max-width: 440px; margin: 40px auto; }
+.task-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); overflow: auto; }
+.task-modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-lg); }
+.task-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.task-modal-head h3 { margin: 2px 0 0; }
+.task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.task-modal-grid .full { grid-column: 1 / -1; }
+.task-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
 .dependency-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); }
 .dependency-modal { width: min(520px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; box-shadow: var(--shadow-lg); }
 .dependency-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
@@ -2211,5 +2448,6 @@ onMounted(async () => {
   .gantt-frame { grid-template-columns: 1fr; }
   .gantt-labels { border-right: 0; }
   .manage-grid { grid-template-columns: 1fr; }
+  .task-modal-grid { grid-template-columns: 1fr; }
 }
 </style>
