@@ -2152,7 +2152,7 @@ onMounted(async () => {
                 class="caret"
                 @click.stop="toggleCollapse(row.task.id)"
               >{{ collapsed.includes(row.task.id) ? '›' : '⌄' }}</span>
-              <span v-else class="caret">·</span>
+              <span v-else class="caret placeholder">·</span>
               <span class="label-name" @click.stop="openTaskEditor(row.task)">
                 {{ row.task.wbsCode }}. {{ row.task.name }}
                 <span v-if="row.task.startDate || row.task.endDate" class="row-dates">
@@ -2849,7 +2849,7 @@ onMounted(async () => {
 .gantt-label-head, .gantt-row-label { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; height: 38px; min-height: 38px; max-height: 38px; overflow: hidden; padding: 0 12px; border-bottom: 1px solid var(--color-border); }
 .gantt-label-head { height: 56px; min-height: 56px; max-height: 56px; background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .gantt-label-head .wbs { margin-left: auto; }
-.gantt-row-label { cursor: pointer; font-size: 13px; }
+.gantt-row-label { cursor: pointer; font-size: 13px; grid-template-columns: 24px minmax(0, 1fr) auto; }
 .gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: pointer; }
 .gantt-row-label.context { opacity: 0.55; }
 .gantt-row-label.drop-before { box-shadow: inset 0 2px 0 var(--color-primary); }
@@ -2885,8 +2885,24 @@ onMounted(async () => {
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
 .gantt-row-label.task .label-meta { flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
 .gantt-row-label.direction .caret { color: var(--color-text-muted); }
+.gantt-row-label .caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -3px;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+}
+.gantt-row-label .caret:hover { background: #e2e8f0; color: #0f172a; }
+.gantt-row-label .caret.placeholder { cursor: default; }
+.gantt-row-label .caret.placeholder:hover { background: transparent; color: var(--color-text-muted); }
 .gantt-row-label:hover, .gantt-row-label.selected { background: #eff6ff; }
-.gantt-row-label .caret { color: var(--color-text-muted); }
 .label-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .label-meta { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; white-space: nowrap; }
 .gantt-timeline { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
