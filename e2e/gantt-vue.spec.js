@@ -153,10 +153,14 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   await page.locator('.dep-successor').selectOption(ids.successorId);
   await page.locator('.manage button').filter({ hasText: 'Добавить связь' }).click();
   await expect(page.locator('.manage')).toContainText('→');
-  await page.locator('.manage input[type=date]').fill('2026-01-02');
-  await page.locator('.manage input[placeholder=Название]').fill('E2E holiday');
-  await page.locator('.manage button').filter({ hasText: 'Добавить праздник' }).click();
-  await expect(page.locator('.manage')).toContainText('E2E holiday');
+  await page.locator('.gantt-toolbar button').filter({ hasText: 'Календарь' }).click();
+  await expect(page.locator('.calendar-modal')).toBeVisible();
+  await page.locator('.calendar-date').fill('2026-01-02');
+  await page.locator('.calendar-name').fill('E2E holiday');
+  await page.locator('.calendar-modal button').filter({ hasText: 'Добавить праздник' }).click();
+  await expect(page.locator('.holiday-list')).toContainText('E2E holiday');
+  await page.locator('.calendar-modal button').filter({ hasText: 'Готово' }).click();
+  await expect(page.locator('.calendar-modal')).toHaveCount(0);
   const createdName = `Created ${suffix}`;
   await page.locator('.gantt-toolbar button').filter({ hasText: 'Задача' }).click();
   await page.locator('.task-modal-direction').selectOption(ids.directionId);
