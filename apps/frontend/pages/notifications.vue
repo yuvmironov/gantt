@@ -2,6 +2,11 @@
 const items = ref([]);
 const unreadOnly = ref(false);
 const error = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+
 const loading = ref(true);
 
 function csrfToken() {
@@ -74,7 +79,6 @@ onMounted(load);
     </header>
 
     <p v-if="loading">Загрузка...</p>
-    <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="!loading" class="list">
       <article v-for="item in items" :key="item.id" class="notification" :class="{ unread: !item.isRead }">

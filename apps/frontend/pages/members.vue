@@ -4,6 +4,11 @@ const projectId = ref('');
 const members = ref([]);
 const invitations = ref([]);
 const error = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+
 const loading = ref(true);
 const form = ref({ email: '', role: 'editor' });
 
@@ -133,7 +138,6 @@ onMounted(loadProject);
     </header>
 
     <p v-if="loading">Загрузка...</p>
-    <p v-if="error" class="error">{{ error }}</p>
 
     <section class="card">
       <h2>Добавить участника</h2>

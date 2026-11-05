@@ -6,6 +6,14 @@ const lastName = ref('');
 const firstName = ref('');
 const error = ref('');
 const message = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+watch(message, (value) => {
+  if (value) toast.success(value);
+});
+
 const resetToken = ref('');
 const newPassword = ref('');
 const showReset = ref(false);
@@ -218,8 +226,6 @@ onMounted(async () => {
           <button class="btn btn-primary btn-lg btn-block" type="submit">Обновить пароль</button>
         </form>
 
-        <p v-if="message" class="message">{{ message }}</p>
-        <p v-if="error" id="toast" class="error">{{ error }}</p>
         <p class="hint">Локальный администратор: admin@smart-oati.local</p>
       </div>
     </section>

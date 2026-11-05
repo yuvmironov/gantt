@@ -14,6 +14,11 @@ const status = ref('planned');
 const savingProgress = ref(false);
 const savingTask = ref(false);
 const error = ref('');
+const toast = useToast();
+watch(error, (value) => {
+  if (value) toast.error(value);
+});
+
 const loading = ref(true);
 const syncConnected = ref(false);
 const currentUser = ref(null);
@@ -2073,7 +2078,7 @@ onMounted(async () => {
 
       <p v-if="loading" class="muted">Загрузка...</p>
       <p v-if="snapshot?.schedule?.cycles?.length" class="error">Обнаружен цикл зависимостей — проверьте связи.</p>
-      <p v-if="error" class="error">{{ error }}</p>
+  
 
       <section v-if="!loading && !projects.length" class="card empty-project">
         <h2>Создайте первый проект</h2>
