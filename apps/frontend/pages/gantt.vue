@@ -18,6 +18,8 @@ const loading = ref(true);
 const syncConnected = ref(false);
 const currentUser = ref(null);
 const dependencyForm = reactive({ predecessorId: '', successorId: '', lineStyle: 'solid', arrowShape: 'orthogonal' });
+const editingDependency = ref(null);
+const dependencyEdit = reactive({ color: '#94a3b8', lineStyle: 'solid', arrowShape: 'orthogonal' });
 const holidayDate = ref('');
 const holidayName = ref('');
 const importJob = ref(null);
@@ -947,6 +949,7 @@ const dependencyLines = computed(() => {
       const toTop = Number.parseFloat(to.style.top) + 14;
       return {
         id: dependency.id,
+        dependency,
         x1: fromLeft + fromWidth,
         y1: fromTop,
         x2: toLeft,
@@ -1126,6 +1129,40 @@ async function addDependency() {
   } catch (reason) {
     error.value = reason.message;
   }
+}
+
+function openDependency(dependency) {
+  editingDependency.value = dependency;
+  dependencyEdit.color = dependency.color || '#94a3b8';
+  dependencyEdit.lineStyle = dependency.lineStyle || 'solid';
+  dependencyEdit.arrowShape = dependency.arrowShape || 'orthogonal';
+}
+
+function closeDependency() {
+  editingDependency.value = null;
+}
+
+async function saveDependency() {
+  if (!editingDependency.value) return;
+  await updateDependencyStyle(editingDependency.value, {
+    color: dependencyEdit.color,
+    lineStyle: dependencyEdit.lineStyle,
+    arrowShape: dependencyEdit.arrowShape,
+  });
+  closeDependency();
+}
+
+async function resetDependencyStyle() {
+  dependencyEdit.color = '#94a3b8';
+  dependencyEdit.lineStyle = 'solid';
+  dependencyEdit.arrowShape = 'orthogonal';
+}
+
+async function removeEditingDependency() {
+  if (!editingDependency.value) return;
+  const id = editingDependency.value.id;
+  closeDependency();
+  await deleteDependency(id);
 }
 
 async function updateDependencyStyle(dependency, patch) {
@@ -1662,18 +1699,28 @@ onMounted(async () => {
                   <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8" />
                 </marker>
               </defs>
-              <line
-                v-for="line in dependencyLines"
-                :key="line.id"
-                :x1="`${line.x1}%`"
-                :y1="`${line.y1}px`"
-                :x2="`${line.x2}%`"
-                :y2="`${line.y2}px`"
-                :stroke="line.critical ? '#dc2626' : line.color"
-                :stroke-dasharray="line.dash === 'dashed' ? '6 4' : line.dash === 'dotted' ? '2 4' : ''"
-                stroke-width="1.4"
-                marker-end="url(#dep-arrow)"
-              />
+              <g v-for="line in dependencyLines" :key="line.id">
+                <line
+                  :x1="`${line.x1}%`"
+                  :y1="`${line.y1}px`"
+                  :x2="`${line.x2}%`"
+                  :y2="`${line.y2}px`"
+                  :stroke="line.critical ? '#dc2626' : line.color"
+                  :stroke-dasharray="line.dash === 'dashed' ? '6 4' : line.dash === 'dotted' ? '2 4' : ''"
+                  stroke-width="1.4"
+                  marker-end="url(#dep-arrow)"
+                />
+                <line
+                  class="dep-hit"
+                  :x1="`${line.x1}%`"
+                  :y1="`${line.y1}px`"
+                  :x2="`${line.x2}%`"
+                  :y2="`${line.y2}px`"
+                  stroke="transparent"
+                  stroke-width="14"
+                  @click.stop="openDependency(line.dependency)"
+                />
+              </g>
             </svg>
             <div
               v-for="bar in directionBars"
@@ -1947,6 +1994,53 @@ onMounted(async () => {
         </button>
       </div>
     </aside>
+
+    <div v-if="editingDependency" class="dependency-modal-bg" @click.self="closeDependency">
+      <div class="dependency-modal">
+        <div class="dependency-modal-head">
+          <div>
+            <h3>Связь</h3>
+            <p class="muted small">
+              {{ taskLabel(editingDependency.predecessorId) }} →
+              {{ taskLabel(editingDependency.successorId) }}
+            </p>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" @click="closeDependency">✕</button>
+        </div>
+        <div class="stack">
+          <label class="field">
+            <span>Цвет</span>
+            <input v-model="dependencyEdit.color" class="dependency-color" type="color" />
+          </label>
+          <label class="field">
+            <span>Стиль линии</span>
+            <select v-model="dependencyEdit.lineStyle" class="input">
+              <option value="solid">Сплошная</option>
+              <option value="dashed">Пунктир</option>
+              <option value="dotted">Точки</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Стрелка</span>
+            <select v-model="dependencyEdit.arrowShape" class="input">
+              <option value="orthogonal">Ортогональная</option>
+              <option value="straight">Прямая</option>
+              <option value="curved">Изогнутая</option>
+            </select>
+          </label>
+        </div>
+        <div class="dependency-modal-actions">
+          <div>
+            <button class="btn btn-ghost danger" type="button" @click="removeEditingDependency">Удалить связь</button>
+            <button class="btn btn-ghost" type="button" @click="resetDependencyStyle">Сбросить стиль</button>
+          </div>
+          <div>
+            <button class="btn btn-secondary" type="button" @click="closeDependency">Отмена</button>
+            <button class="btn btn-primary" type="button" @click="saveDependency">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2033,6 +2127,7 @@ onMounted(async () => {
 .gantt-time-head { display: grid; grid-template-columns: 1.2fr repeat(8, 1fr); height: 56px; min-height: 56px; max-height: 56px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-subtle); font-size: 11px; color: var(--color-text-muted); }
 .gantt-time-head > * { display: flex; align-items: center; padding: 0 8px; border-right: 1px solid var(--color-border); }
 .deps-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+.dep-hit { pointer-events: stroke; cursor: pointer; }
 .gantt-canvas { position: relative; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(14.285% - 1px), var(--color-border) calc(14.285% - 1px), var(--color-border) 14.285%); }
 .gantt-today { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid var(--color-danger); z-index: 1; }
 .gantt-bar { position: absolute; height: 28px; border-radius: var(--radius-md); background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; cursor: pointer; overflow: hidden; z-index: 2; }
@@ -2071,6 +2166,13 @@ onMounted(async () => {
 .composer { margin-top: 12px; }
 .composer-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 .empty-project { max-width: 440px; margin: 40px auto; }
+.dependency-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); }
+.dependency-modal { width: min(520px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; box-shadow: var(--shadow-lg); }
+.dependency-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.dependency-modal-head h3 { margin: 0; }
+.dependency-modal-actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+.dependency-modal-actions > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.dependency-color { width: 52px; height: 36px; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 @media print {
   .app-header, .gantt-toolbar, .project-bar, .gantt-top-actions, .manage-card, .gantt-drawer, .summary-card .muted { display: none !important; }
   .gantt-shell { min-height: 0; }
