@@ -1807,6 +1807,12 @@ onMounted(async () => {
                 <span class="badge badge-dot" :class="statusBadgeClass(row.direction.status)">{{ statusLabel(row.direction.status) }}</span>
                 <span class="badge badge-neutral">{{ row.direction.progress ?? 0 }}%</span>
                 <span class="badge badge-neutral">{{ row.tasksCount }} задач</span>
+                <button
+                  class="row-action"
+                  type="button"
+                  title="Создать задачу в направлении"
+                  @click.stop="openTaskModal({ directionId: row.direction.id })"
+                >＋</button>
               </span>
             </div>
             <div
