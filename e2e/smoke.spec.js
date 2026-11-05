@@ -20,9 +20,11 @@ test('local Vue MVP workflow', async ({ page }) => {
 
   await page.getByPlaceholder('Название проекта').fill(projectName);
   await page.locator('.empty-project button').click();
-  await expect(page.locator('.empty-project')).toContainText('диаграмму');
-  await page.getByPlaceholder('Название диаграммы').fill(diagramName);
+  await expect(page.locator('.empty-project')).toContainText('диаграмм');
   await page.locator('.empty-project button').click();
+  await expect(page.locator('.diagram-modal')).toBeVisible();
+  await page.locator('.diagram-modal-name').fill(diagramName);
+  await page.locator('.diagram-modal button').filter({ hasText: 'Создать диаграмму' }).click();
   await expect(page.locator('.gantt-page')).toContainText(diagramName);
 
   await page.locator('.manage input[placeholder="Название направления"]').fill(directionName);
