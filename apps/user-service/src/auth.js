@@ -217,11 +217,11 @@ async function findUserByEmail(db, email) {
 }
 
 function invitationLink(publicAppUrl, token) {
-  return `${publicAppUrl.replace(/\/$/, '')}/?invitation=${encodeURIComponent(token)}`;
+  return `${publicAppUrl.replace(/\/$/, '')}/login?invitation=${encodeURIComponent(token)}`;
 }
 
 function resetLink(publicAppUrl, token) {
-  return `${publicAppUrl.replace(/\/$/, '')}/?reset=${encodeURIComponent(token)}`;
+  return `${publicAppUrl.replace(/\/$/, '')}/login?reset=${encodeURIComponent(token)}`;
 }
 
 async function sendMail(mailer, message) {
