@@ -52,7 +52,6 @@ const projectForm = reactive({ name: '', description: '' });
 const showProjectForm = ref(false);
 const diagramForm = reactive({ name: '', description: '', dayMode: 'working' });
 const showDiagramModal = ref(false);
-const directionForm = reactive({ name: '' });
 const showDirectionModal = ref(false);
 const directionEdit = reactive({
   id: '',
@@ -583,18 +582,22 @@ async function createDiagram() {
   }
 }
 
-async function createDirection() {
-  if (!directionForm.name.trim() || !diagramId.value) return;
-  try {
-    await api(`/diagrams/${diagramId.value}/directions`, {
-      method: 'POST',
-      body: { name: directionForm.name },
-    });
-    directionForm.name = '';
-    await loadSnapshot(true);
-  } catch (reason) {
-    error.value = reason.message;
-  }
+function openDirectionCreateModal() {
+  Object.assign(directionEdit, {
+    id: '',
+    version: 0,
+    name: '',
+    description: '',
+    result: '',
+    priority: 'medium',
+    startDate: '',
+    endDate: '',
+    jiraNumber: '',
+    bpFlag: false,
+    spFlag: false,
+    responsibleId: '',
+  });
+  showDirectionModal.value = true;
 }
 
 function openDirectionModal(direction) {
@@ -619,26 +622,38 @@ function closeDirectionModal() {
 }
 
 async function saveDirectionEdit() {
-  if (!directionEdit.name.trim()) return;
+  if (!directionEdit.name.trim() || !diagramId.value) return;
   try {
-    await api(`/directions/${directionEdit.id}`, {
-      method: 'PATCH',
-      body: {
-        expectedVersion: directionEdit.version,
-        baseRevision: snapshot.value?.currentRevision ?? 0,
-        name: directionEdit.name,
-        description: directionEdit.description,
-        result: directionEdit.result,
-        priority: directionEdit.priority,
-        startDate: directionEdit.startDate || null,
-        endDate: directionEdit.endDate || null,
-        jiraNumber: directionEdit.jiraNumber,
-        bpFlag: directionEdit.bpFlag,
-        spFlag: directionEdit.spFlag,
-      },
-    });
+    const payload = {
+      name: directionEdit.name,
+      description: directionEdit.description,
+      result: directionEdit.result,
+      priority: directionEdit.priority,
+      startDate: directionEdit.startDate || null,
+      endDate: directionEdit.endDate || null,
+      jiraNumber: directionEdit.jiraNumber,
+      bpFlag: directionEdit.bpFlag,
+      spFlag: directionEdit.spFlag,
+    };
+    let directionId = directionEdit.id;
+    if (directionId) {
+      await api(`/directions/${directionId}`, {
+        method: 'PATCH',
+        body: {
+          ...payload,
+          expectedVersion: directionEdit.version,
+          baseRevision: snapshot.value?.currentRevision ?? 0,
+        },
+      });
+    } else {
+      const created = await api(`/diagrams/${diagramId.value}/directions`, {
+        method: 'POST',
+        body: payload,
+      });
+      directionId = created.id;
+    }
     if (directionEdit.responsibleId) {
-      await api(`/directions/${directionEdit.id}/responsible`, {
+      await api(`/directions/${directionId}/responsible`, {
         method: 'PUT',
         body: {
           assignment: { assigneeType: 'user', assigneeId: directionEdit.responsibleId },
@@ -1945,6 +1960,7 @@ onMounted(async () => {
 
       <div v-if="snapshot" class="gantt-toolbar">
         <button class="btn btn-primary btn-sm" type="button" @click="focusNewTask">＋ Задача</button>
+        <button class="btn btn-secondary btn-sm" type="button" @click="openDirectionCreateModal">＋ Направление</button>
         <div class="divider"></div>
         <input v-model="filterQuery" class="input toolbar-input" placeholder="Поиск по задаче или WBS" />
         <select v-model="filterStatus" class="input toolbar-input">
@@ -2195,11 +2211,8 @@ onMounted(async () => {
         <h2>Управление задачами, связями и календарём</h2>
         <div class="manage-grid">
           <div>
-            <h3>Новое направление</h3>
-            <form class="stack" @submit.prevent="createDirection">
-              <input v-model="directionForm.name" class="input" placeholder="Название направления" required />
-              <button class="btn btn-secondary" type="submit">Создать направление</button>
-            </form>
+            <h3>Направление</h3>
+            <button class="btn btn-secondary" type="button" @click="openDirectionCreateModal">Создать направление</button>
             <h3>Новая задача</h3>
             <form class="stack" @submit.prevent="createTask">
               <select v-model="taskForm.directionId" class="input task-direction" required>
@@ -2654,8 +2667,8 @@ onMounted(async () => {
       <form class="task-modal direction-modal" @submit.prevent="saveDirectionEdit">
         <div class="task-modal-head">
           <div>
-            <p class="eyebrow">Направление</p>
-            <h3>Редактирование направления</h3>
+            <p class="eyebrow">{{ directionEdit.id ? 'Направление' : 'Новое направление' }}</p>
+            <h3>{{ directionEdit.id ? 'Редактирование направления' : 'Создание направления' }}</h3>
           </div>
           <button class="btn btn-icon btn-ghost" type="button" @click="closeDirectionModal">✕</button>
         </div>
@@ -2707,7 +2720,7 @@ onMounted(async () => {
         </div>
         <div class="task-modal-actions">
           <button class="btn btn-secondary" type="button" @click="closeDirectionModal">Отмена</button>
-          <button class="btn btn-primary" type="submit">Сохранить</button>
+          <button class="btn btn-primary" type="submit">{{ directionEdit.id ? 'Сохранить' : 'Создать направление' }}</button>
         </div>
       </form>
     </div>

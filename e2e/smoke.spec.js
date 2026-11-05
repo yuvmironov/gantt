@@ -27,8 +27,11 @@ test('local Vue MVP workflow', async ({ page }) => {
   await page.locator('.diagram-modal button').filter({ hasText: 'Создать диаграмму' }).click();
   await expect(page.locator('.gantt-page')).toContainText(diagramName);
 
-  await page.locator('.manage input[placeholder="Название направления"]').fill(directionName);
-  await page.locator('.manage button').filter({ hasText: 'Создать направление' }).click();
+  await page.locator('.gantt-toolbar button').filter({ hasText: 'Направление' }).click();
+  await expect(page.locator('.direction-modal')).toBeVisible();
+  await page.locator('.direction-modal-name').fill(directionName);
+  await page.locator('.direction-modal button').filter({ hasText: 'Создать направление' }).click();
+  await expect(page.locator('.direction-modal')).toHaveCount(0);
   await expect(page.locator('.task-direction')).toContainText(directionName);
 
   const directionValue = await page.locator('.task-direction option').nth(1).getAttribute('value');
