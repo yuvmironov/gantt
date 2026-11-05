@@ -70,6 +70,10 @@ test('nuxt gantt page renders tasks and drawer', async ({ page }) => {
   });
   expect(alignment.headerDelta).toBeLessThanOrEqual(1);
   expect(alignment.rowBarDelta).toBeLessThanOrEqual(5);
+  await page.locator('.gantt-row-label.direction .row-action').first().click();
+  await expect(page.locator('.task-modal')).toBeVisible();
+  await expect(page.locator('.task-modal-direction')).toHaveValue(ids.directionId);
+  await page.locator('.task-modal-head .btn-icon').click();
   await page
     .locator('.gantt-row-label')
     .filter({ hasText: taskName })
