@@ -1084,10 +1084,6 @@ function toggleCollapse(id) {
   localStorage.setItem('oati_gantt_collapsed_v1', JSON.stringify(collapsed.value));
 }
 
-function saveLabelWidth() {
-  localStorage.setItem('oati_gantt_label_w_v1', String(labelWidth.value));
-}
-
 function taskTooltip(task) {
   const parts = [
     `${task.wbsCode} · ${task.name}`,
@@ -1967,25 +1963,27 @@ onMounted(async () => {
     </header>
 
     <main class="page gantt-page">
-      <div class="breadcrumbs"><a href="/gantt">Рабочее пространство</a><span class="sep">/</span><span>{{ projectName }}</span><span class="sep">/</span><strong>{{ snapshot?.diagram?.name || 'Gantt' }}</strong></div>
+      <div class="gantt-context">
+        <div class="breadcrumbs"><a href="/gantt">Проекты</a><span class="sep">/</span><span>{{ projectName }}</span><span class="sep">/</span><strong>{{ snapshot?.diagram?.name || 'Gantt' }}</strong></div>
 
-      <div v-if="projects.length" class="project-bar">
-        <label>
-          <span>Проект</span>
-          <select v-model="projectId" class="input" @change="selectProject()">
-            <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
-          </select>
-        </label>
-        <label v-if="diagrams.length">
-          <span>Диаграмма</span>
-          <select v-model="diagramId" class="input" @change="loadSnapshot()">
-            <option v-for="diagram in diagrams" :key="diagram.id" :value="diagram.id">{{ diagram.name }}</option>
-          </select>
-        </label>
-        <button class="btn btn-secondary btn-sm" type="button" @click="openDiagramModal">＋ Новая диаграмма</button>
-        <button class="btn btn-secondary btn-sm project-create-toggle" type="button" @click="showProjectForm = !showProjectForm">
-          ＋ Новый проект
-        </button>
+        <div v-if="projects.length" class="project-bar">
+          <label>
+            <span>Проект</span>
+            <select v-model="projectId" class="input" @change="selectProject()">
+              <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+            </select>
+          </label>
+          <label v-if="diagrams.length">
+            <span>Диаграмма</span>
+            <select v-model="diagramId" class="input" @change="loadSnapshot()">
+              <option v-for="diagram in diagrams" :key="diagram.id" :value="diagram.id">{{ diagram.name }}</option>
+            </select>
+          </label>
+          <button class="btn btn-secondary btn-sm" type="button" @click="openDiagramModal">＋ Новая диаграмма</button>
+          <button class="btn btn-secondary btn-sm project-create-toggle" type="button" @click="showProjectForm = !showProjectForm">
+            ＋ Новый проект
+          </button>
+        </div>
       </div>
 
       <form v-if="showProjectForm" class="card project-create-form" @submit.prevent="createProject">
@@ -1998,7 +1996,14 @@ onMounted(async () => {
         <div class="gantt-title-row">
           <div>
             <div class="title-line"><h1 class="gantt-title">{{ snapshot.diagram?.name }}</h1><span class="badge badge-primary badge-dot">В работе</span></div>
-            <div class="muted small">Ревизия {{ snapshot.currentRevision }} · {{ snapshot.tasks?.length || 0 }} задач · {{ members.length }} участников</div>
+            <div class="muted small">
+              Ревизия {{ snapshot.currentRevision }} · {{ snapshot.tasks?.length || 0 }} задач · {{ members.length }} участников
+              <template v-if="snapshot.schedule">
+                · готовность {{ snapshot.schedule.overallProgress }}% · {{ formatShortDate(snapshot.schedule.projectStart) }}–{{
+                  formatShortDate(snapshot.schedule.projectEnd)
+                }}
+              </template>
+            </div>
           </div>
         </div>
         <div class="gantt-top-actions">
@@ -2009,8 +2014,8 @@ onMounted(async () => {
       </div>
 
       <div v-if="snapshot" class="gantt-toolbar">
-        <button class="btn btn-primary btn-sm" type="button" @click="focusNewTask">＋ Задача</button>
-        <button class="btn btn-secondary btn-sm" type="button" @click="openDirectionCreateModal">＋ Направление</button>
+        <button class="btn btn-primary btn-sm" type="button" @click="openDirectionCreateModal">＋ Направление</button>
+        <button class="btn btn-secondary btn-sm" type="button" @click="focusNewTask">＋ Задача</button>
         <div class="divider"></div>
         <input v-model="filterQuery" class="input toolbar-input" placeholder="Поиск по задаче или WBS" />
         <select v-model="filterStatus" class="input toolbar-input">
@@ -2044,36 +2049,12 @@ onMounted(async () => {
         <button class="gantt-chip" type="button" @click="changeZoom(-0.25)">−</button>
         <span class="gantt-chip">{{ Math.round(zoom * 100) }}%</span>
         <button class="gantt-chip" type="button" @click="changeZoom(0.25)">+</button>
-        <input
-          v-model.number="labelWidth"
-          class="width-range"
-          type="range"
-          min="360"
-          max="800"
-          step="20"
-          title="Ширина колонки названий"
-          @input="saveLabelWidth"
-        />
         <button class="gantt-chip" type="button" @click="exportPdf">PDF</button>
         <button class="gantt-chip" type="button" @click="printChart">Печать</button>
-        <button class="gantt-chip" type="button" @click="loadSnapshot(true)">Обновить</button>
         <div class="toolbar-spacer"></div>
-        <select v-model="importFormat" class="input toolbar-input">
-          <option value="json">JSON</option>
-          <option value="csv">CSV</option>
-        </select>
         <label class="gantt-chip file-chip">Импорт<input type="file" accept=".json,.csv" :disabled="importing" @change="importFile" /></label>
         <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=json&compat=standalone`">Экспорт JSON</a>
         <a class="gantt-chip" :href="`/api/v1/diagrams/${diagramId}/export?format=csv&compat=standalone`">CSV</a>
-      </div>
-
-      <div v-if="snapshot?.schedule" class="summary-cards">
-        <div class="summary-card"><span>Готовность</span><strong>{{ snapshot.schedule.overallProgress }}%</strong></div>
-        <div class="summary-card"><span>Период</span><strong>{{ formatShortDate(snapshot.schedule.projectStart) }}–{{ formatShortDate(snapshot.schedule.projectEnd) }}</strong></div>
-        <div class="summary-card"><span>Длительность</span><strong>{{ snapshot.schedule.durationDays }} дн.</strong></div>
-        <div class="summary-card"><span>Критических</span><strong>{{ snapshot.schedule.criticalTaskIds?.length || 0 }}</strong></div>
-        <div class="summary-card"><span>Просрочено</span><strong>{{ snapshot.schedule.counts?.overdue || 0 }}</strong></div>
-        <div class="summary-card"><span>Досрочно</span><strong>{{ snapshot.schedule.counts?.early || 0 }}</strong></div>
       </div>
 
       <p v-if="loading" class="muted">Загрузка...</p>
@@ -2112,7 +2093,6 @@ onMounted(async () => {
               <span class="label-meta">
                 <span class="badge badge-dot" :class="statusBadgeClass(row.direction.status)">{{ statusLabel(row.direction.status) }}</span>
                 <span class="badge badge-neutral">{{ row.direction.progress ?? 0 }}%</span>
-                <span class="badge badge-neutral">{{ row.tasksCount }} задач</span>
                 <button
                   class="row-action"
                   type="button"
@@ -2163,8 +2143,8 @@ onMounted(async () => {
                 <span class="priority-dot" :class="priorityClass(row.task.priority)" :title="row.task.priority"></span>
                 <button v-if="row.task.jiraNumber" class="row-chip" type="button">{{ row.task.jiraNumber }}</button>
                 <button v-if="row.task.commentsCount" class="row-chip" type="button" @click.stop="openTaskEditor(row.task)">💬 {{ row.task.commentsCount }}</button>
-                <button class="row-chip" :class="{ 'flag-on': row.task.bpFlag }" type="button" @click.stop="toggleFlag(row.task, 'bpFlag')">БП</button>
-                <button class="row-chip" :class="{ 'flag-on': row.task.spFlag }" type="button" @click.stop="toggleFlag(row.task, 'spFlag')">СП</button>
+                <button class="row-chip flag-toggle" :class="{ 'flag-on': row.task.bpFlag }" type="button" @click.stop="toggleFlag(row.task, 'bpFlag')">БП</button>
+                <button class="row-chip flag-toggle" :class="{ 'flag-on': row.task.spFlag }" type="button" @click.stop="toggleFlag(row.task, 'spFlag')">СП</button>
                 <span v-if="responsibleName(row.task)" class="badge badge-neutral">{{ responsibleName(row.task) }}</span>
                 <span class="badge badge-dot" :class="statusBadgeClass(row.task.status)">{{ statusLabel(row.task.status) }}</span>
                 <span class="badge badge-neutral">{{ row.task.progress }}%</span>
@@ -2820,11 +2800,10 @@ onMounted(async () => {
 .brand-mark { display: inline-grid; place-items: center; }
 .sync-status { font-size: 12px; color: var(--color-text-muted); }
 .sync-status.online { color: var(--color-success); }
-.summary-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
-.summary-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 10px 12px; display: grid; gap: 3px; box-shadow: var(--shadow-sm); }
-.summary-card span { color: var(--color-text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-.summary-card strong { font-size: 16px; }
-.project-bar { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; margin: 0 0 16px; }
+.gantt-context { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.gantt-context .breadcrumbs { margin: 0; }
+.gantt-context .project-bar { margin: 0; align-items: center; gap: 8px; }
+.project-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .project-create-toggle { margin-bottom: 1px; }
 .project-create-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .project-create-form .input { max-width: 280px; }
@@ -2832,8 +2811,9 @@ onMounted(async () => {
 .row-dates { color: var(--color-text-muted); font-size: 10px; margin-left: 6px; }
 .notification-icon { position: relative; text-decoration: none; }
 .notice-dot { position: absolute; top: -4px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--color-danger); color: #fff; font-size: 9px; display: grid; place-items: center; }
-.project-bar label { display: grid; gap: 5px; min-width: 240px; }
-.project-bar label span { color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.project-bar label { display: flex; align-items: center; min-width: 0; }
+.project-bar label span { display: none; }
+.project-bar select { min-width: 180px; min-height: 32px; padding: 5px 8px; font-size: 12px; }
 .gantt-topline { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 18px; }
 .gantt-title-row { display: flex; gap: 12px; align-items: center; }
 .title-line { display: flex; gap: 10px; align-items: center; }
@@ -2848,6 +2828,7 @@ onMounted(async () => {
 .gantt-labels { border-right: 1px solid var(--color-border); min-width: 0; }
 .gantt-label-head, .gantt-row-label { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; height: 38px; min-height: 38px; max-height: 38px; overflow: hidden; padding: 0 12px; border-bottom: 1px solid var(--color-border); }
 .gantt-label-head { height: 56px; min-height: 56px; max-height: 56px; background: var(--color-surface-subtle); color: var(--color-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.gantt-label-head { grid-template-columns: minmax(0, 1fr) auto; }
 .gantt-label-head .wbs { margin-left: auto; }
 .gantt-row-label { cursor: pointer; font-size: 13px; grid-template-columns: 24px minmax(0, 1fr) auto; }
 .gantt-row-label.direction { background: var(--color-surface-subtle); font-weight: 600; cursor: pointer; }
@@ -2855,9 +2836,17 @@ onMounted(async () => {
 .gantt-row-label.drop-before { box-shadow: inset 0 2px 0 var(--color-primary); }
 .gantt-row-label.drop-after { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .gantt-row-label.drop-inside { background: var(--color-primary-soft); outline: 1px dashed var(--color-primary); outline-offset: -2px; }
-.width-range { width: 90px; accent-color: var(--color-primary); }
 .row-chip, .row-action { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 5px; padding: 1px 5px; font-size: 10px; cursor: pointer; }
 .row-chip.flag-on { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.row-chip.flag-toggle { width: 0; min-width: 0; padding: 0; border: 0; margin: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+.gantt-row-label:hover .row-chip.flag-toggle, .gantt-row-label:focus-within .row-chip.flag-toggle, .row-chip.flag-toggle.flag-on {
+  width: auto;
+  min-width: 24px;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border);
+  opacity: 1;
+  pointer-events: auto;
+}
 .badge-postponed { background: #e5e7eb; color: #4b5563; }
 .priority-dot { width: 8px; height: 8px; transform: rotate(45deg); border-radius: 1px; display: inline-block; }
 .priority-low { background: #94a3b8; }
@@ -2916,6 +2905,7 @@ onMounted(async () => {
 .dep-hit { pointer-events: stroke; cursor: pointer; }
 .gantt-canvas { position: relative; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(14.285% - 1px), var(--color-border) calc(14.285% - 1px), var(--color-border) 14.285%); }
 .gantt-today { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid var(--color-danger); z-index: 1; }
+.gantt-today::before { content: "Сегодня"; position: absolute; top: 2px; left: 4px; padding: 1px 4px; border-radius: 4px; background: var(--color-surface); color: var(--color-danger); font-size: 10px; font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-xs); }
 .weekend-column { position: absolute; top: 0; bottom: 0; background: rgb(148 163 184 / 18%); border-right: 1px solid rgb(100 116 139 / 10%); pointer-events: none; z-index: 0; }
 .gantt-bar { position: absolute; height: 28px; border-radius: var(--radius-md); background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; cursor: pointer; overflow: hidden; z-index: 2; }
 .gantt-bar .fill { position: absolute; inset: 0 auto 0 0; background: rgb(37 99 235 / 18%); }
