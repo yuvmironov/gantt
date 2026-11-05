@@ -1,6 +1,6 @@
 # SMART OATI
 
-Планировщик SMART OATI: API Gateway, User & Access, Project / Diagram и минимальный web-интерфейс для локального запуска.
+Планировщик SMART OATI: API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt web-интерфейс для локального запуска.
 
 ## Требования
 
@@ -70,7 +70,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 pnpm local:up       # запуск infra + apps
 pnpm local:status   # состояние контейнеров
 pnpm local:health   # проверка app, sync и Mailpit
-pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи
+pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи (demo.owner@smart-oati.local / DemoPassword123!)
 pnpm local:logs     # логи
 pnpm local:down     # остановка
 pnpm local:reset    # остановка с удалением volumes
@@ -87,11 +87,12 @@ Traefik использует собственный самоподписанны
 
 ## Адреса
 
-- `app.localhost` — web-интерфейс;
+- `app.localhost` — Nuxt web-интерфейс;
 - `api.localhost` — API Gateway;
 - `mail.localhost` — Mailpit UI;
 - `kafka.localhost` — Kafka UI;
-- `sync.localhost`, `notify.localhost` — зарезервированы под следующие сервисы.
+- `sync.localhost` — Sync Service WebSocket;
+- `notify.localhost` — Notification Service WebSocket.
 
 ## Команды разработки
 
@@ -113,11 +114,14 @@ pnpm start:project-service
 ## Структура
 
 ```text
-apps/api-gateway/      # HTTP API Gateway + REST auth proxy + health/config/errors
+apps/api-gateway/      # HTTP API Gateway, REST API, health/config/errors
 apps/user-service/     # User & Access: auth, sessions, HTTP health + gRPC
 apps/project-service/  # Project/Diagram: HTTP health + gRPC
-apps/frontend/         # Nuxt frontend + same-origin proxy к API
-apps/web/              # предыдущий static bootstrap UI (legacy)
+apps/frontend/         # Nuxt SPA + same-origin proxy к API
+apps/web/              # legacy static UI; Compose его не запускает
+apps/notification-service/ # уведомления, Email/Telegram delivery, preferences
+apps/audit-service/    # аудит и privileged events
+apps/sync-service/     # WebSocket-синхронизация Gantt
 packages/service-kit/  # общий каркас Fastify/gRPC-сервисов
 packages/shared/       # общие утилиты
 contracts/             # REST/gRPC mapping, import/export
@@ -133,7 +137,7 @@ tools/                 # проверки контрактов
 
 ## Документация
 
-В репозитории находятся код, контракты и инженерные артефакты. Продуктовые постановки, P0-пакет, ADR и visual design ведутся в отдельном рабочем каталоге проекта. При необходимости их можно добавить в `docs/`.
+Актуальная техническая документация — README сервисов, `openapi/`, `proto/` и `events/`. Продуктовые постановки, P0-пакет, ADR и visual design ведутся в отдельном рабочем каталоге проекта; при необходимости их можно добавить в `docs/`.
 
 ## Статус
 
@@ -147,13 +151,13 @@ tools/                 # проверки контрактов
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import.
-- [x] Web-интерфейс MVP: вход, проекты, диаграммы, Gantt, карточка задачи, назначения, комментарии, зависимости, праздники, перемещение, фильтры, сессии, экспорт.
-- [x] Nuxt frontend shell with the existing Gantt SPA.
+- [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт.
+- [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
 - [x] Componentized Nuxt pages: /gantt (root), /login, /admin, /profile, /notifications and /members.
-- [x] Vue Gantt MVP: task CRUD, assignments, progress, comments, dependencies, calendar, import/export, realtime, bulk updates and project/diagram/direction creation.
+- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies with styles, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading.
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.
-- [x] Playwright smoke E2E.
+- [x] Playwright E2E: auth, admin, Gantt, import, members, notifications, profile and password reset.
 - [x] Security headers, CSP, API rate limiting and auth audit events.
 - [x] Project members, invitations, password reset/change and resend verification.
 - [x] Real-time Gantt synchronization through `sync-service`.

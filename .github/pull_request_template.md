@@ -16,6 +16,7 @@
 - [ ] `pnpm format:check`
 - [ ] `pnpm test:unit`
 - [ ] `pnpm test:contract`
+- [ ] `pnpm test:e2e` (для UI/API изменений)
 - [ ] `pnpm build`
 - [ ] Проверены права и негативные сценарии
 - [ ] Обновлены audit events
