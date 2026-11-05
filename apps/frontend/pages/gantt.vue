@@ -1946,7 +1946,7 @@ onMounted(async () => {
 <template>
   <div class="app-shell gantt-shell">
     <header class="app-header">
-      <a class="app-brand" href="/gantt"><span class="brand-mark">▥</span><span>SMART OATI</span></a>
+      <a class="app-brand" href="/projects"><span class="brand-mark">▥</span><span>SMART OATI</span></a>
       <nav class="app-nav">
         <a href="/projects">Проекты</a>
         <a href="/members">Участники</a>
@@ -1964,7 +1964,7 @@ onMounted(async () => {
 
     <main class="page gantt-page">
       <div class="gantt-context">
-        <div class="breadcrumbs"><a href="/gantt">Проекты</a><span class="sep">/</span><span>{{ projectName }}</span><span class="sep">/</span><strong>{{ snapshot?.diagram?.name || 'Gantt' }}</strong></div>
+        <div class="breadcrumbs"><a href="/projects">Проекты</a><span class="sep">/</span><span>{{ projectName }}</span><span class="sep">/</span><strong>{{ snapshot?.diagram?.name || 'Gantt' }}</strong></div>
 
         <div v-if="projects.length" class="project-bar">
           <label>

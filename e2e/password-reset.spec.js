@@ -14,7 +14,7 @@ test('password reset through local mail', async ({ page, context }) => {
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.projects-page')).toBeVisible({ timeout: 20_000 });
   await page.context().clearCookies();
   await page.goto('/login', { waitUntil: 'domcontentloaded' }).catch((error) => {
     if (!String(error.message).includes('ERR_ABORTED')) throw error;
@@ -61,5 +61,5 @@ test('password reset through local mail', async ({ page, context }) => {
   await page.locator('#login-form input[name=email]').fill(email);
   await page.locator('#login-form input[name=password]').fill(newPassword);
   await page.locator('#login-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible();
+  await expect(page.locator('.projects-page')).toBeVisible();
 });

@@ -13,7 +13,7 @@ test('nuxt members page renders project owner', async ({ page }) => {
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill(password);
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.projects-page')).toBeVisible({ timeout: 20_000 });
 
   const project = await page.evaluate(async (name) => {
     const csrf = document.cookie
@@ -35,5 +35,5 @@ test('nuxt members page renders project owner', async ({ page }) => {
   await expect(page.locator('.members-page .list-item')).toContainText(email);
   await expect(page.locator('.members-page h1')).toContainText('Участники');
   await page.locator('.back').click();
-  await expect(page.locator('.gantt-page')).toBeVisible();
+  await expect(page.locator('.projects-page')).toBeVisible();
 });

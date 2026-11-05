@@ -11,7 +11,7 @@ test('dragging a task bar does not open the editor', async ({ page }) => {
   await page.locator('#register-form input[name=firstName]').fill('Drag');
   await page.locator('#register-form input[name=password]').fill('BarDrag123!');
   await page.locator('#register-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.projects-page')).toBeVisible({ timeout: 20_000 });
 
   const ids = await page.evaluate(async () => {
     const csrf = document.cookie

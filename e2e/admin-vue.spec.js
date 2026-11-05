@@ -9,7 +9,7 @@ test('admin can create admins and promote users', async ({ page }) => {
   await page.locator('#login-form input[name=email]').fill('admin@smart-oati.local');
   await page.locator('#login-form input[name=password]').fill('ChangeMeDevOnly!');
   await page.locator('#login-form button[type=submit]').click();
-  await expect(page.locator('.gantt-page')).toBeVisible();
+  await expect(page.locator('.projects-page')).toBeVisible();
 
   await page.goto('/admin');
   const userForm = page
