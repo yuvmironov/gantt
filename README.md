@@ -150,16 +150,17 @@ tools/                 # проверки контрактов
 - [x] Helm service template и API Gateway chart.
 - [x] API Gateway REST auth proxy.
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
-- [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import.
-- [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт.
+- [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import. Разрешены direction→direction и task→direction; direction→task запрещён на API и в БД.
+- [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт, toast-уведомления.
 - [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
 - [x] Componentized Nuxt pages: /gantt (root), /login, /admin, /profile, /notifications and /members.
-- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies with styles, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading.
+- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления.
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.
-- [x] Playwright E2E: auth, admin, Gantt, import, members, notifications, profile and password reset.
+- [x] Playwright E2E: auth, admin roles, Gantt, dependency rules/link mode, bar drag, import, members, notifications, profile and password reset.
 - [x] Security headers, CSP, API rate limiting and auth audit events.
 - [x] Project members, invitations, password reset/change and resend verification.
+- [x] Global admin roles: создание администратора и повышение существующего пользователя.
 - [x] Real-time Gantt synchronization through `sync-service`.
 - [x] Multi-user Playwright E2E with invitation and real-time updates.
 - [x] Project-scoped real-time sync tokens and authenticated WebSocket.

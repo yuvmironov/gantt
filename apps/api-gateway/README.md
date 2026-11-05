@@ -65,6 +65,8 @@
 
 - `GET /api/v1/diagrams/{diagramId}/dependencies`, `POST /api/v1/diagrams/{diagramId}/dependencies`;
 - `PATCH /api/v1/dependencies/{dependencyId}`, `DELETE /api/v1/dependencies/{dependencyId}`;
+- разрешены `direction → direction` и `task → direction`; `direction → task` отклоняется с `400 direction_to_task_dependency_forbidden`;
+- циклические зависимости отклоняются с `dependency_cycle`;
 - `GET /api/v1/comments`, `POST /api/v1/comments`;
 - `PATCH /api/v1/comments/{commentId}`, `DELETE /api/v1/comments/{commentId}`;
 - `GET /api/v1/diagrams/{diagramId}/holidays`, `PUT /api/v1/diagrams/{diagramId}/holidays`.
