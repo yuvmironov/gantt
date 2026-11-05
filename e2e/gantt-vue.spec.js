@@ -57,6 +57,14 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   await page.goto(`/gantt?project=${ids.projectId}&diagram=${ids.diagramId}`);
   await expect(page.locator('.gantt-page')).toBeVisible();
   await expect(page.locator('.sync-status')).toHaveText('Синхронизировано');
+  await expect(page.locator('.weekend-column').first()).toBeVisible();
+  expect(await page.locator('.weekend-column').count()).toBeGreaterThan(0);
+  expect(
+    await page
+      .locator('.weekend-column')
+      .first()
+      .evaluate((element) => window.getComputedStyle(element).backgroundColor),
+  ).not.toBe('rgba(0, 0, 0, 0)');
   const alignment = await page.evaluate(() => {
     const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
     const labelHead = rect('.gantt-label-head');

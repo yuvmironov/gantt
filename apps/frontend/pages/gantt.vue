@@ -1191,6 +1191,30 @@ const timelineWeeks = computed(() => {
   });
 });
 
+const weekendColumns = computed(() => {
+  const { min, max } = timelineRange.value;
+  const span = Math.max(max - min, 1000 * 60 * 60 * 24);
+  const dayMs = 1000 * 60 * 60 * 24;
+  const cursor = new Date(min);
+  cursor.setUTCHours(0, 0, 0, 0);
+  const columns = [];
+  for (let time = cursor.getTime(); time < max; time += dayMs) {
+    const day = new Date(time).getUTCDay();
+    if (day !== 0 && day !== 6) continue;
+    const left = Math.max(time, min);
+    const right = Math.min(time + dayMs, max);
+    if (right <= left) continue;
+    columns.push({
+      key: time,
+      style: {
+        left: `${((left - min) / span) * 100}%`,
+        width: `${((right - left) / span) * 100}%`,
+      },
+    });
+  }
+  return columns;
+});
+
 const todayLeft = computed(() => {
   const { min, max } = timelineRange.value;
   return `${Math.min(100, Math.max(0, ((Date.now() - min) / (max - min)) * 100))}%`;
@@ -2088,6 +2112,7 @@ onMounted(async () => {
           </div>
           <div ref="canvasRef" class="gantt-canvas" :style="{ minHeight: `${Math.max(320, ganttRows.length * 38 + 24)}px`, minWidth: `${900 * zoom}px` }">
             <span class="gantt-today" :style="{ left: todayLeft }"></span>
+            <span v-for="column in weekendColumns" :key="column.key" class="weekend-column" :style="column.style"></span>
             <svg v-if="showDependencies" class="deps-overlay">
               <defs>
                 <marker
@@ -2794,6 +2819,7 @@ onMounted(async () => {
 .dep-hit { pointer-events: stroke; cursor: pointer; }
 .gantt-canvas { position: relative; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(14.285% - 1px), var(--color-border) calc(14.285% - 1px), var(--color-border) 14.285%); }
 .gantt-today { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid var(--color-danger); z-index: 1; }
+.weekend-column { position: absolute; top: 0; bottom: 0; background: rgb(148 163 184 / 18%); border-right: 1px solid rgb(100 116 139 / 10%); pointer-events: none; z-index: 0; }
 .gantt-bar { position: absolute; height: 28px; border-radius: var(--radius-md); background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; cursor: pointer; overflow: hidden; z-index: 2; }
 .gantt-bar .fill { position: absolute; inset: 0 auto 0 0; background: rgb(37 99 235 / 18%); }
 .gantt-bar-label { position: relative; z-index: 1; display: block; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
