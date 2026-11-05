@@ -30,9 +30,6 @@ const importPreview = ref(null);
 const members = ref([]);
 const executors = ref([]);
 const unreadCount = ref(0);
-const selectedIds = ref([]);
-const bulkStatus = ref('planned');
-const bulkProgress = ref(0);
 const filterQuery = ref('');
 const filterStatus = ref('');
 const assignmentDraft = ref([]);
@@ -371,26 +368,6 @@ async function saveAssignments() {
         baseRevision: snapshot.value?.currentRevision ?? 0,
       },
     });
-    await loadSnapshot(true);
-  } catch (reason) {
-    error.value = reason.message;
-  }
-}
-
-async function applyBulk() {
-  const tasks = (snapshot.value?.tasks ?? []).filter((task) => selectedIds.value.includes(task.id));
-  try {
-    for (const task of tasks) {
-      await api(`/tasks/${task.id}/progress`, {
-        method: 'PATCH',
-        body: {
-          status: bulkStatus.value,
-          progress: Number(bulkProgress.value),
-          expectedVersion: task.version,
-        },
-      });
-    }
-    selectedIds.value = [];
     await loadSnapshot(true);
   } catch (reason) {
     error.value = reason.message;
@@ -1693,15 +1670,6 @@ onMounted(async () => {
         <button class="gantt-chip" type="button" @click="printChart">Печать</button>
         <button class="gantt-chip" type="button" @click="loadSnapshot(true)">Обновить</button>
         <div class="toolbar-spacer"></div>
-        <select v-model="bulkStatus" class="input toolbar-input">
-          <option value="planned">Планируется</option>
-          <option value="in_progress">В работе</option>
-          <option value="done">Готово</option>
-          <option value="blocked">Блокировано</option>
-            <option value="postponed">Отложено</option>
-        </select>
-        <input v-model.number="bulkProgress" class="input toolbar-input progress-input" type="number" min="0" max="100" step="5" />
-        <button class="gantt-chip" type="button" :disabled="!selectedIds.length" @click="applyBulk">Применить к {{ selectedIds.length }}</button>
         <select v-model="importFormat" class="input toolbar-input">
           <option value="json">JSON</option>
           <option value="csv">CSV</option>
@@ -1810,7 +1778,6 @@ onMounted(async () => {
                 <span v-if="row.task.autoProgress" class="badge badge-primary" title="Рассчитывается по подзадачам">авто</span>
                 <span v-if="isTaskDoneEarly(row.task)" class="badge badge-success">досрочно</span>
                 <button v-if="row.depth === 1" class="row-action" type="button" title="Добавить подзадачу" @click.stop="startSubtask(row.task)">＋</button>
-                <input v-model="selectedIds" type="checkbox" :value="row.task.id" @click.stop />
               </span>
             </div>
           </template>
@@ -2314,7 +2281,6 @@ onMounted(async () => {
 .project-create-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .project-create-form .input { max-width: 280px; }
 .toolbar-input { width: 170px; min-height: 32px; padding: 5px 8px; font-size: 12px; }
-.progress-input { width: 76px; }
 .row-dates { color: var(--color-text-muted); font-size: 10px; margin-left: 6px; }
 .notification-icon { position: relative; text-decoration: none; }
 .notice-dot { position: absolute; top: -4px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--color-danger); color: #fff; font-size: 9px; display: grid; place-items: center; }
