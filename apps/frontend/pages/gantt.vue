@@ -19,7 +19,17 @@ const syncConnected = ref(false);
 const currentUser = ref(null);
 const dependencyForm = reactive({ predecessorId: '', successorId: '', lineStyle: 'solid', arrowShape: 'orthogonal' });
 const editingDependency = ref(null);
-const dependencyEdit = reactive({ color: '#94a3b8', lineStyle: 'solid', arrowShape: 'orthogonal' });
+const showDependencyModal = ref(false);
+const dependencyEdit = reactive({
+  id: '',
+  predecessorType: 'task',
+  predecessorId: '',
+  successorType: 'task',
+  successorId: '',
+  color: '#94a3b8',
+  lineStyle: 'solid',
+  arrowShape: 'orthogonal',
+});
 const holidayDate = ref('');
 const holidayName = ref('');
 const importJob = ref(null);
@@ -1241,36 +1251,100 @@ async function addDependency() {
   }
 }
 
-function openDependency(dependency) {
+function entityLabel(type, id) {
+  if (type === 'direction') {
+    return (snapshot.value?.directions ?? []).find((item) => item.id === id)?.name ?? id;
+  }
+  const task = (snapshot.value?.tasks ?? []).find((item) => item.id === id);
+  return task ? `${task.wbsCode} ${task.name}` : id;
+}
+
+function dependencyEntities(type) {
+  if (type === 'direction') {
+    return (snapshot.value?.directions ?? []).map((item) => ({ id: item.id, label: item.name }));
+  }
+  return (snapshot.value?.tasks ?? []).map((item) => ({
+    id: item.id,
+    label: `${item.wbsCode} ${item.name}`,
+  }));
+}
+
+function resetDependencyDraft() {
+  Object.assign(dependencyEdit, {
+    id: '',
+    predecessorType: 'task',
+    predecessorId: '',
+    successorType: 'task',
+    successorId: '',
+    color: '#94a3b8',
+    lineStyle: 'solid',
+    arrowShape: 'orthogonal',
+  });
+}
+
+function openDependency(dependency = null) {
+  showDependencyModal.value = true;
   editingDependency.value = dependency;
-  dependencyEdit.color = dependency.color || '#94a3b8';
-  dependencyEdit.lineStyle = dependency.lineStyle || 'solid';
-  dependencyEdit.arrowShape = dependency.arrowShape || 'orthogonal';
+  if (!dependency) {
+    resetDependencyDraft();
+    return;
+  }
+  Object.assign(dependencyEdit, {
+    id: dependency.id,
+    predecessorType: dependency.predecessorType,
+    predecessorId: dependency.predecessorId,
+    successorType: dependency.successorType,
+    successorId: dependency.successorId,
+    color: dependency.color || '#94a3b8',
+    lineStyle: dependency.lineStyle || 'solid',
+    arrowShape: dependency.arrowShape || 'orthogonal',
+  });
 }
 
 function closeDependency() {
+  showDependencyModal.value = false;
   editingDependency.value = null;
 }
 
 async function saveDependency() {
-  if (!editingDependency.value) return;
-  await updateDependencyStyle(editingDependency.value, {
+  if (!dependencyEdit.predecessorId || !dependencyEdit.successorId) return;
+  const payload = {
+    predecessorType: dependencyEdit.predecessorType,
+    predecessorId: dependencyEdit.predecessorId,
+    successorType: dependencyEdit.successorType,
+    successorId: dependencyEdit.successorId,
     color: dependencyEdit.color,
     lineStyle: dependencyEdit.lineStyle,
     arrowShape: dependencyEdit.arrowShape,
-  });
-  closeDependency();
+  };
+  try {
+    if (dependencyEdit.id) {
+      await api(`/dependencies/${dependencyEdit.id}`, {
+        method: 'PATCH',
+        body: { ...payload, baseRevision: snapshot.value?.currentRevision ?? 0 },
+      });
+    } else {
+      await api(`/diagrams/${diagramId.value}/dependencies`, {
+        method: 'POST',
+        body: payload,
+      });
+    }
+    await loadSnapshot(true);
+    closeDependency();
+  } catch (reason) {
+    error.value = reason.message;
+  }
 }
 
-async function resetDependencyStyle() {
+function resetDependencyStyle() {
   dependencyEdit.color = '#94a3b8';
   dependencyEdit.lineStyle = 'solid';
   dependencyEdit.arrowShape = 'orthogonal';
 }
 
 async function removeEditingDependency() {
-  if (!editingDependency.value) return;
-  const id = editingDependency.value.id;
+  if (!dependencyEdit.id) return;
+  const id = dependencyEdit.id;
   closeDependency();
   await deleteDependency(id);
 }
@@ -1644,6 +1718,7 @@ onMounted(async () => {
           </option>
         </select>
         <button v-if="filterQuery || filterStatus || selectedOwner" class="gantt-chip" type="button" @click="filterQuery = ''; filterStatus = ''; selectedOwner = ''">Сбросить</button>
+        <button class="gantt-chip" type="button" @click="openDependency()">Связи</button>
         <button class="gantt-chip" :class="{ active: linkMode }" type="button" @click="linkMode = !linkMode; linkFrom = ''">Связать</button>
         <span v-if="linkMode" class="gantt-chip active link-hint">
           {{ linkFrom ? 'Выберите задачу-последователя' : 'Выберите задачу-предшественника' }}
@@ -2216,48 +2291,96 @@ onMounted(async () => {
       </form>
     </div>
 
-    <div v-if="editingDependency" class="dependency-modal-bg" @click.self="closeDependency">
-      <div class="dependency-modal">
+    <div v-if="showDependencyModal" class="dependency-modal-bg" @click.self="closeDependency">
+      <div class="dependency-modal dependency-modal-wide">
         <div class="dependency-modal-head">
           <div>
-            <h3>Связь</h3>
-            <p class="muted small">
-              {{ taskLabel(editingDependency.predecessorId) }} →
-              {{ taskLabel(editingDependency.successorId) }}
-            </p>
+            <p class="eyebrow">Связи проекта</p>
+            <h3>Управление связями</h3>
+            <p class="muted small">{{ snapshot?.dependencies?.length ?? 0 }} связей</p>
           </div>
-          <button class="btn btn-icon btn-ghost" type="button" @click="closeDependency">✕</button>
-        </div>
-        <div class="stack">
-          <label class="field">
-            <span>Цвет</span>
-            <input v-model="dependencyEdit.color" class="dependency-color" type="color" />
-          </label>
-          <label class="field">
-            <span>Стиль линии</span>
-            <select v-model="dependencyEdit.lineStyle" class="input">
-              <option value="solid">Сплошная</option>
-              <option value="dashed">Пунктир</option>
-              <option value="dotted">Точки</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Стрелка</span>
-            <select v-model="dependencyEdit.arrowShape" class="input">
-              <option value="orthogonal">Ортогональная</option>
-              <option value="straight">Прямая</option>
-              <option value="curved">Изогнутая</option>
-            </select>
-          </label>
-        </div>
-        <div class="dependency-modal-actions">
-          <div>
-            <button class="btn btn-ghost danger" type="button" @click="removeEditingDependency">Удалить связь</button>
-            <button class="btn btn-ghost" type="button" @click="resetDependencyStyle">Сбросить стиль</button>
+          <div class="dependency-head-actions">
+            <button class="btn btn-secondary btn-sm" type="button" @click="openDependency()">＋ Новая связь</button>
+            <button class="btn btn-icon btn-ghost" type="button" @click="closeDependency">✕</button>
           </div>
-          <div>
-            <button class="btn btn-secondary" type="button" @click="closeDependency">Отмена</button>
-            <button class="btn btn-primary" type="button" @click="saveDependency">Сохранить</button>
+        </div>
+        <div class="dependency-manager">
+          <div class="dependency-manager-list">
+            <button
+              v-for="dependency in snapshot?.dependencies ?? []"
+              :key="dependency.id"
+              class="dependency-list-item"
+              :class="{ active: dependencyEdit.id === dependency.id }"
+              type="button"
+              @click="openDependency(dependency)"
+            >
+              <span>{{ entityLabel(dependency.predecessorType, dependency.predecessorId) }} → {{ entityLabel(dependency.successorType, dependency.successorId) }}</span>
+              <small>{{ dependency.lineStyle }} · {{ dependency.arrowShape }}</small>
+            </button>
+            <p v-if="!snapshot?.dependencies?.length" class="muted small">Связей пока нет.</p>
+          </div>
+          <div class="dependency-manager-form">
+            <h4>{{ dependencyEdit.id ? 'Редактирование связи' : 'Новая связь' }}</h4>
+            <div class="dependency-form-grid">
+              <label class="field">
+                <span>Предшественник</span>
+                <select v-model="dependencyEdit.predecessorType" class="input" @change="dependencyEdit.predecessorId = ''">
+                  <option value="task">Задача</option>
+                  <option value="direction">Направление</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Последователь</span>
+                <select v-model="dependencyEdit.successorType" class="input" @change="dependencyEdit.successorId = ''">
+                  <option value="task">Задача</option>
+                  <option value="direction">Направление</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>От</span>
+                <select v-model="dependencyEdit.predecessorId" class="input">
+                  <option value="" disabled>Выберите</option>
+                  <option v-for="entity in dependencyEntities(dependencyEdit.predecessorType)" :key="entity.id" :value="entity.id">{{ entity.label }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>К</span>
+                <select v-model="dependencyEdit.successorId" class="input">
+                  <option value="" disabled>Выберите</option>
+                  <option v-for="entity in dependencyEntities(dependencyEdit.successorType)" :key="entity.id" :value="entity.id">{{ entity.label }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Цвет</span>
+                <input v-model="dependencyEdit.color" class="dependency-color" type="color" />
+              </label>
+              <label class="field">
+                <span>Стиль линии</span>
+                <select v-model="dependencyEdit.lineStyle" class="input dependency-line-style">
+                  <option value="solid">Сплошная</option>
+                  <option value="dashed">Пунктир</option>
+                  <option value="dotted">Точки</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Стрелка</span>
+                <select v-model="dependencyEdit.arrowShape" class="input">
+                  <option value="orthogonal">Ортогональная</option>
+                  <option value="straight">Прямая</option>
+                  <option value="curved">Изогнутая</option>
+                </select>
+              </label>
+            </div>
+            <div class="dependency-modal-actions">
+              <div>
+                <button v-if="dependencyEdit.id" class="btn btn-ghost danger" type="button" @click="removeEditingDependency">Удалить связь</button>
+                <button class="btn btn-ghost" type="button" @click="resetDependencyStyle">Сбросить стиль</button>
+              </div>
+              <div>
+                <button class="btn btn-secondary" type="button" @click="closeDependency">Отмена</button>
+                <button class="btn btn-primary" type="button" @click="saveDependency">Сохранить</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2397,7 +2520,16 @@ onMounted(async () => {
 .task-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
 .dependency-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); }
 .dependency-modal { width: min(520px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; box-shadow: var(--shadow-lg); }
+.dependency-modal-wide { width: min(960px, 100%); }
 .dependency-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.dependency-head-actions { display: flex; gap: 8px; align-items: center; }
+.dependency-manager { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr); gap: 18px; }
+.dependency-manager-list { display: grid; align-content: start; gap: 6px; max-height: 480px; overflow: auto; padding-right: 4px; }
+.dependency-list-item { display: grid; gap: 3px; padding: 9px 10px; text-align: left; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); cursor: pointer; font-size: 12px; }
+.dependency-list-item small { color: var(--color-text-muted); }
+.dependency-list-item.active { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.dependency-manager-form h4 { margin: 0 0 12px; }
+.dependency-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dependency-modal-head h3 { margin: 0; }
 .dependency-modal-actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
 .dependency-modal-actions > div { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -2415,5 +2547,7 @@ onMounted(async () => {
   .gantt-labels { border-right: 0; }
   .manage-grid { grid-template-columns: 1fr; }
   .task-modal-grid { grid-template-columns: 1fr; }
+  .dependency-manager, .dependency-form-grid { grid-template-columns: 1fr; }
+  .dependency-manager-list { max-height: 240px; }
 }
 </style>
