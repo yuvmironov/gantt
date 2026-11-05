@@ -20,6 +20,15 @@ function toStatus(value) {
   );
 }
 
+function projectStatusEnum(value) {
+  return (
+    {
+      archived: 'PROJECT_STATUS_ARCHIVED',
+      deleted: 'PROJECT_STATUS_DELETED',
+    }[value] ?? 'PROJECT_STATUS_ACTIVE'
+  );
+}
+
 function toRole(value) {
   return (
     {
@@ -38,6 +47,13 @@ export function mapProject(project) {
     name: project.name,
     description: project.description,
     ownerUserId: project.owner_user_id,
+    owner: project.owner
+      ? {
+          userId: project.owner.user_id,
+          displayName: project.owner.display_name,
+          resolved: project.owner.resolved,
+        }
+      : undefined,
     status: toStatus(project.status),
     settings: project.settings ?? {},
     myRole: toRole(project.my_role),
@@ -48,6 +64,8 @@ export function mapProject(project) {
     archivedAt: fromTimestamp(project.archived_at),
     deletedAt: fromTimestamp(project.deleted_at),
     purgeAfter: fromTimestamp(project.purge_after),
+    namesResolved: Boolean(project.names_resolved),
+    diagramsCount: Number(project.diagrams_count ?? 0),
   };
 }
 
@@ -553,6 +571,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       const response = await call(projectClient, 'ListProjects', {
         user_id: current.user_id,
         page: { limit, offset },
+        status: projectStatusEnum(request.query.status),
       });
       return reply.send({
         items: (response.items ?? []).map(mapProject),
