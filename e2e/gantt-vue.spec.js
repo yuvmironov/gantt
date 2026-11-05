@@ -174,5 +174,13 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   await page.locator('.task-modal .btn-danger').click();
   await expect(page.locator('.task-modal')).toHaveCount(0);
   await expect(page.locator('.gantt-labels')).not.toContainText(`${createdName} edited`);
+  const secondDiagram = `Second diagram ${suffix}`;
+  await page.getByRole('button', { name: '＋ Новая диаграмма' }).click();
+  await expect(page.locator('.diagram-modal')).toBeVisible();
+  await page.locator('.diagram-modal-name').fill(secondDiagram);
+  await page.locator('.diagram-modal button').filter({ hasText: 'Создать диаграмму' }).click();
+  await expect(page.locator('.diagram-modal')).toHaveCount(0);
+  await expect(page.locator('.gantt-title')).toHaveText(secondDiagram);
+  await expect(page.locator('.gantt-row-label.direction')).toHaveCount(0);
   await expect(page.locator('nav')).toContainText('Участники');
 });

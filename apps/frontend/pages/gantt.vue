@@ -47,6 +47,7 @@ const assignmentForm = reactive({ role: 'responsible', assigneeType: 'user', ass
 const projectForm = reactive({ name: '', description: '' });
 const showProjectForm = ref(false);
 const diagramForm = reactive({ name: '', description: '', dayMode: 'working' });
+const showDiagramModal = ref(false);
 const directionForm = reactive({ name: '' });
 const showDirectionModal = ref(false);
 const directionEdit = reactive({
@@ -535,6 +536,17 @@ async function selectTask(task) {
   comments.value = (await api(`/comments?entityType=task&entityId=${task.id}`)).items ?? [];
 }
 
+function openDiagramModal() {
+  diagramForm.name = '';
+  diagramForm.description = '';
+  diagramForm.dayMode = 'working';
+  showDiagramModal.value = true;
+}
+
+function closeDiagramModal() {
+  showDiagramModal.value = false;
+}
+
 async function createDiagram() {
   if (!diagramForm.name.trim() || !projectId.value) return;
   try {
@@ -548,6 +560,7 @@ async function createDiagram() {
     });
     diagramForm.name = '';
     diagramForm.description = '';
+    showDiagramModal.value = false;
     await loadDiagrams(diagram.id);
   } catch (reason) {
     error.value = reason.message;
@@ -1860,6 +1873,7 @@ onMounted(async () => {
             <option v-for="diagram in diagrams" :key="diagram.id" :value="diagram.id">{{ diagram.name }}</option>
           </select>
         </label>
+        <button class="btn btn-secondary btn-sm" type="button" @click="openDiagramModal">＋ Новая диаграмма</button>
         <button class="btn btn-secondary btn-sm project-create-toggle" type="button" @click="showProjectForm = !showProjectForm">
           ＋ Новый проект
         </button>
@@ -1963,16 +1977,9 @@ onMounted(async () => {
       </section>
 
       <section v-if="!loading && projectId && !snapshot" class="card empty-project">
-        <h2>Создайте первую диаграмму</h2>
-        <form class="stack" @submit.prevent="createDiagram">
-          <input v-model="diagramForm.name" class="input" placeholder="Название диаграммы" required />
-          <input v-model="diagramForm.description" class="input" placeholder="Описание" />
-          <select v-model="diagramForm.dayMode" class="input">
-            <option value="working">Рабочие дни</option>
-            <option value="calendar">Календарные дни</option>
-          </select>
-          <button class="btn btn-primary" type="submit">Создать диаграмму</button>
-        </form>
+        <h2>В проекте пока нет диаграмм</h2>
+        <p class="muted">Создайте диаграмму, чтобы добавить направления и задачи.</p>
+        <button class="btn btn-primary" type="button" @click="openDiagramModal">Создать диаграмму</button>
       </section>
 
       <div v-if="snapshot" class="gantt-frame" :style="{ gridTemplateColumns: `${labelWidth}px minmax(420px, 1fr)` }">
@@ -2136,16 +2143,6 @@ onMounted(async () => {
         <h2>Управление задачами, связями и календарём</h2>
         <div class="manage-grid">
           <div>
-            <h3>Новая диаграмма</h3>
-            <form class="stack" @submit.prevent="createDiagram">
-              <input v-model="diagramForm.name" class="input" placeholder="Название диаграммы" required />
-              <input v-model="diagramForm.description" class="input" placeholder="Описание" />
-              <select v-model="diagramForm.dayMode" class="input">
-                <option value="working">Рабочие дни</option>
-                <option value="calendar">Календарные дни</option>
-              </select>
-              <button class="btn btn-secondary" type="submit">Создать диаграмму</button>
-            </form>
             <h3>Новое направление</h3>
             <form class="stack" @submit.prevent="createDirection">
               <input v-model="directionForm.name" class="input" placeholder="Название направления" required />
@@ -2526,6 +2523,39 @@ onMounted(async () => {
       </form>
     </div>
 
+    <div v-if="showDiagramModal" class="task-modal-bg" @click.self="closeDiagramModal">
+      <form class="task-modal diagram-modal" @submit.prevent="createDiagram">
+        <div class="task-modal-head">
+          <div>
+            <p class="eyebrow">Новая диаграмма</p>
+            <h3>Создание диаграммы</h3>
+          </div>
+          <button class="btn btn-icon btn-ghost" type="button" @click="closeDiagramModal">✕</button>
+        </div>
+        <div class="task-modal-grid">
+          <label class="field full">
+            <span>Название *</span>
+            <input v-model="diagramForm.name" class="input diagram-modal-name" required autofocus />
+          </label>
+          <label class="field full">
+            <span>Описание</span>
+            <textarea v-model="diagramForm.description" class="textarea" rows="2" />
+          </label>
+          <label class="field full">
+            <span>Календарь</span>
+            <select v-model="diagramForm.dayMode" class="input diagram-modal-day-mode">
+              <option value="working">Рабочие дни</option>
+              <option value="calendar">Календарные дни</option>
+            </select>
+          </label>
+        </div>
+        <div class="task-modal-actions">
+          <button class="btn btn-secondary" type="button" @click="closeDiagramModal">Отмена</button>
+          <button class="btn btn-primary" type="submit">Создать диаграмму</button>
+        </div>
+      </form>
+    </div>
+
     <div v-if="showDirectionModal" class="task-modal-bg" @click.self="closeDirectionModal">
       <form class="task-modal direction-modal" @submit.prevent="saveDirectionEdit">
         <div class="task-modal-head">
@@ -2811,6 +2841,7 @@ onMounted(async () => {
 .task-modal-bg { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgb(15 23 42 / 38%); overflow: auto; }
 .task-modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-lg); }
 .direction-modal { width: min(620px, 100%); }
+.diagram-modal { width: min(560px, 100%); }
 .task-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .task-modal-head h3 { margin: 2px 0 0; }
 .task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
