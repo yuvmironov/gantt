@@ -127,7 +127,7 @@ watchEffect((onCleanup) => {
   onCleanup(() => observer.disconnect());
 });
 const linkMode = ref(false);
-const linkFrom = ref('');
+const linkFrom = ref(null);
 const selectedOwner = ref('');
 const dragTaskId = ref('');
 const dragOverId = ref('');
@@ -1109,30 +1109,54 @@ function changeZoom(delta) {
   localStorage.setItem('oati_gantt_zoom_v1', String(zoom.value));
 }
 
-async function pickLink(task) {
+function isLinkSource(type, id) {
+  return linkFrom.value?.type === type && linkFrom.value?.id === id;
+}
+
+function toggleLinkMode() {
+  linkMode.value = !linkMode.value;
+  linkFrom.value = null;
+  error.value = '';
+}
+
+async function pickLink(type, entity) {
   if (!linkFrom.value) {
-    linkFrom.value = task.id;
+    linkFrom.value = { type, id: entity.id };
     return;
   }
-  if (linkFrom.value === task.id) {
-    linkFrom.value = '';
+  const from = linkFrom.value;
+  if (from.type === type && from.id === entity.id) {
+    linkFrom.value = null;
+    return;
+  }
+  if (from.type === 'direction' && type === 'task') {
+    error.value = 'От направления можно строить связь только к направлению';
     return;
   }
   try {
+    error.value = '';
     await api(`/diagrams/${diagramId.value}/dependencies`, {
       method: 'POST',
       body: {
-        predecessorType: 'task',
-        predecessorId: linkFrom.value,
-        successorType: 'task',
-        successorId: task.id,
+        predecessorType: from.type,
+        predecessorId: from.id,
+        successorType: type,
+        successorId: entity.id,
       },
     });
-    linkFrom.value = '';
+    linkFrom.value = null;
     linkMode.value = false;
     await loadSnapshot(true);
   } catch (reason) {
     error.value = reason.message;
+  }
+}
+
+function onDirectionBarClick(direction) {
+  if (linkMode.value) {
+    pickLink('direction', direction);
+  } else {
+    openDirectionModal(direction);
   }
 }
 
@@ -1440,7 +1464,7 @@ function startBarDrag(event, bar, mode) {
 function onBarClick(task) {
   if (Date.now() < suppressBarClickUntil) return;
   if (linkMode.value) {
-    pickLink(task);
+    pickLink('task', task);
   } else {
     openTaskEditor(task);
   }
@@ -2000,9 +2024,15 @@ onMounted(async () => {
         </select>
         <button v-if="filterQuery || filterStatus || selectedOwner" class="gantt-chip" type="button" @click="filterQuery = ''; filterStatus = ''; selectedOwner = ''">Сбросить</button>
         <button class="gantt-chip" type="button" @click="openDependency()">Связи</button>
-        <button class="gantt-chip" :class="{ active: linkMode }" type="button" @click="linkMode = !linkMode; linkFrom = ''">Связать</button>
+        <button class="gantt-chip" :class="{ active: linkMode }" type="button" @click="toggleLinkMode">Связать</button>
         <span v-if="linkMode" class="gantt-chip active link-hint">
-          {{ linkFrom ? 'Выберите задачу-последователя' : 'Выберите задачу-предшественника' }}
+          {{
+            !linkFrom
+              ? 'Выберите задачу или направление-предшественника'
+              : linkFrom.type === 'direction'
+                ? 'Выберите направление-последователя'
+                : 'Выберите задачу или направление-последователя'
+          }}
         </span>
         <label class="gantt-chip"><input v-model="showDependencies" type="checkbox" /> Стрелки</label>
         <button class="gantt-chip" type="button" @click="openCalendarModal">Календарь</button>
@@ -2098,7 +2128,7 @@ onMounted(async () => {
               :class="{
                 selected: selectedTask?.id === row.task.id,
                 context: row.isContext,
-                'link-source': linkFrom === row.task.id,
+                'link-source': isLinkSource('task', row.task.id),
                 'dep-linked': hoveredTaskIds.has(row.task.id),
                 'drop-before': dragOverId === row.key && dragOverMode === 'before',
                 'drop-after': dragOverId === row.key && dragOverMode === 'after',
@@ -2195,8 +2225,9 @@ onMounted(async () => {
               v-for="bar in directionBars"
               :key="`direction-bar-${bar.direction.id}`"
               class="gantt-bar direction-bar"
-              :class="bar.direction.status"
+              :class="[bar.direction.status, { 'link-source': isLinkSource('direction', bar.direction.id) }]"
               :style="bar.style"
+              @click="onDirectionBarClick(bar.direction)"
             >
               <span class="gantt-bar-label">
                 {{ bar.direction.wbsCode ? `${bar.direction.wbsCode}. ` : '' }}{{ bar.direction.name }}
@@ -2208,7 +2239,7 @@ onMounted(async () => {
               v-for="bar in timelineBars"
               :key="bar.task.id"
               class="gantt-bar"
-              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': linkFrom === bar.task.id, 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
+              :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': isLinkSource('task', bar.task.id), 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
               @click="onBarClick(bar.task)"
