@@ -8,8 +8,8 @@
 - gRPC-сервер на `50051`;
 - стандартный `grpc.health.v1.Health` со статусом `SERVING`;
 - загрузка контракта `rpgant.project.v1.ProjectService`;
-- проекты: `CreateProject`, `ListProjects` (active/archived/deleted), `GetProject`, `UpdateProject`, `ArchiveProject`, `UnarchiveProject`, `DeleteProject`, `RestoreProject`;
-- диаграммы: `CreateDiagram`, `ListDiagrams`, `GetDiagram`, `UpdateDiagram`, `DeleteDiagram`;
+- проекты: `CreateProject`, `ListProjects` (active/archived/deleted), `GetProject`, `UpdateProject`, `ArchiveProject`, `UnarchiveProject`, `DeleteProject`, `RestoreProject`, `TransferProjectOwner`, `CheckUserOwnsProjects`, `PurgeExpiredProjects`;
+- диаграммы: `CreateDiagram`, `ListDiagrams`, `GetDiagram`, `UpdateDiagram`, `DeleteDiagram`, `ListDiagramChanges`;
 - направления: `CreateDirection`, `UpdateDirection`, `DeleteDirection`, `ReorderDirections`, `SetDirectionResponsible`;
 - задачи: `CreateTask`, `GetTask`, `UpdateTask`, `MoveTask`, `UpdateTaskProgress`, `SetTaskAssignments`, `DeleteTask`;
 - при `estimated_hours > 0` окончание рассчитывается по 8 ч/день с учётом календаря и праздников; пересчёт выполняется при смене режима календаря и списка праздников;

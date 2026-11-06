@@ -4,12 +4,22 @@
   "title": "WsError",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "code", "message", "recoverable"],
+  "required": [
+    "type",
+    "code"
+  ],
   "properties": {
-    "type": { "const": "error" },
-    "requestId": { "type": ["string", "null"], "format": "uuid" },
-    "code": { "type": "string" },
-    "message": { "type": "string" },
-    "recoverable": { "type": "boolean" }
+    "type": {
+      "const": "error"
+    },
+    "code": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "recoverable": {
+      "type": "boolean"
+    }
   }
 }

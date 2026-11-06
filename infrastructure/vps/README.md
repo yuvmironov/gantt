@@ -84,4 +84,5 @@ docker compose --env-file infrastructure/vps/.env -f infrastructure/vps/docker-c
 - swap в LXC недоступен, поэтому контейнеры ограничены по памяти;
 - Kafka использует один брокер и replication factor 1;
 - TLS и сертификаты обслуживает Jino;
+- WebSocket для уведомлений не реализован: notifications загружаются через REST;
 - перед обновлением БД делать backup PostgreSQL.

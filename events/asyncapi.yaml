@@ -2,7 +2,10 @@ asyncapi: 3.0.0
 info:
   title: RP Gant Event Bus
   version: 1.0.0
-  description: Контракт событий между backend-сервисами RP Gant. Брокер не фиксируется.
+  description: >-
+    Контракт событий между backend-сервисами RP Gant. Брокер не фиксируется.
+    Каталог событий и статусы реализации находятся в event-types.json:
+    implemented — событие публикуется сервисом, planned — зарезервировано.
 channels:
   events:
     address: rp_gant.events

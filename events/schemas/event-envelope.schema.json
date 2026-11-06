@@ -5,96 +5,33 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "eventId",
-    "eventType",
-    "schemaVersion",
-    "occurredAt",
-    "sourceService",
-    "payload",
-    "actorRoles"
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "source_service",
+    "actor_user_id",
+    "actor_roles",
+    "project_id",
+    "diagram_id",
+    "entity_type",
+    "entity_id",
+    "payload"
   ],
   "properties": {
-    "eventId": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "eventType": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
-    },
-    "schemaVersion": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "occurredAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "sourceService": {
-      "type": "string",
-      "enum": [
-        "user",
-        "project",
-        "notification",
-        "audit"
-      ]
-    },
-    "actorUserId": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "uuid"
-    },
-    "actorRoles": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "projectId": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "uuid"
-    },
-    "diagramId": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "uuid"
-    },
-    "entityType": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "entityId": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "uuid"
-    },
-    "requestId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "correlationId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "payload": {
-      "type": "object",
-      "additionalProperties": true
-    }
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source_service": { "type": "string", "enum": ["user", "project"] },
+    "actor_user_id": { "type": "string" },
+    "actor_roles": { "type": "array", "items": { "type": "string" } },
+    "project_id": { "type": "string" },
+    "diagram_id": { "type": "string" },
+    "entity_type": { "type": "string" },
+    "entity_id": { "type": "string" },
+    "request_id": { "type": ["string", "null"] },
+    "correlation_id": { "type": ["string", "null"] },
+    "payload": { "type": "object", "additionalProperties": true }
   }
 }

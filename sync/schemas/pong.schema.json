@@ -4,9 +4,21 @@
   "title": "WsPong",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type"],
+  "required": [
+    "type",
+    "at"
+  ],
   "properties": {
-    "type": { "const": "pong" },
-    "requestId": { "type": "string", "format": "uuid" }
+    "type": {
+      "const": "pong"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    }
   }
 }

@@ -4,17 +4,21 @@
   "rules": {
     "actorRolesRequired": true,
     "atLeastOnce": true,
-    "idempotentConsumers": true
+    "idempotentConsumers": true,
+    "statusValues": [
+      "implemented",
+      "planned"
+    ]
   },
   "events": [
     {
       "type": "user.created",
       "producer": "user",
       "consumers": [
-        "audit",
-        "notification"
+        "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserCreatedPayload",
+      "status": "implemented"
     },
     {
       "type": "user.updated",
@@ -22,7 +26,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserUpdatedPayload",
+      "status": "implemented"
     },
     {
       "type": "user.email_verified",
@@ -30,7 +35,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserEmailVerifiedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserEmailVerifiedPayload",
+      "status": "planned"
     },
     {
       "type": "user.password_changed",
@@ -38,17 +44,17 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserPasswordChangedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserPasswordChangedPayload",
+      "status": "planned"
     },
     {
       "type": "user.blocked",
       "producer": "user",
       "consumers": [
-        "audit",
-        "notification",
-        "sync"
+        "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserBlockedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserBlockedPayload",
+      "status": "implemented"
     },
     {
       "type": "user.unblocked",
@@ -56,18 +62,17 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserUnblockedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserUnblockedPayload",
+      "status": "implemented"
     },
     {
       "type": "user.deleted",
       "producer": "user",
       "consumers": [
-        "project",
-        "notification",
-        "audit",
-        "sync"
+        "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserDeletedPayload",
+      "status": "implemented"
     },
     {
       "type": "auth.login.succeeded",
@@ -75,7 +80,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginSucceededPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginSucceededPayload",
+      "status": "implemented"
     },
     {
       "type": "auth.login.failed",
@@ -83,7 +89,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginFailedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLoginFailedPayload",
+      "status": "implemented"
     },
     {
       "type": "auth.logout",
@@ -91,7 +98,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthLogoutPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthLogoutPayload",
+      "status": "planned"
     },
     {
       "type": "project.created",
@@ -99,7 +107,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectCreatedPayload",
+      "status": "planned"
     },
     {
       "type": "project.updated",
@@ -107,7 +116,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "project.archived",
@@ -118,7 +128,8 @@
         "audit",
         "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectArchivedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectArchivedPayload",
+      "status": "planned"
     },
     {
       "type": "project.unarchived",
@@ -126,7 +137,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectUnarchivedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectUnarchivedPayload",
+      "status": "planned"
     },
     {
       "type": "project.deleted",
@@ -137,7 +149,8 @@
         "audit",
         "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectDeletedPayload",
+      "status": "planned"
     },
     {
       "type": "project.restored",
@@ -147,7 +160,8 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectRestoredPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectRestoredPayload",
+      "status": "planned"
     },
     {
       "type": "project.purged",
@@ -157,44 +171,48 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectPurgedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectPurgedPayload",
+      "status": "planned"
     },
     {
       "type": "project.owner.transferred",
       "producer": "project",
       "consumers": [
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectOwnerTransferredPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectOwnerTransferredPayload",
+      "status": "implemented"
     },
     {
       "type": "project.member.added",
       "producer": "user",
       "consumers": [
-        "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberAddedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberAddedPayload",
+      "status": "implemented"
     },
     {
       "type": "project.member.role_changed",
       "producer": "user",
       "consumers": [
-        "notification",
         "audit",
         "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRoleChangedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRoleChangedPayload",
+      "status": "implemented"
     },
     {
       "type": "project.member.removed",
       "producer": "user",
       "consumers": [
-        "notification",
         "audit",
         "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRemovedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ProjectMemberRemovedPayload",
+      "status": "implemented"
     },
     {
       "type": "invitation.created",
@@ -202,7 +220,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/InvitationCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationCreatedPayload",
+      "status": "implemented"
     },
     {
       "type": "invitation.resent",
@@ -210,7 +229,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/InvitationResentPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationResentPayload",
+      "status": "implemented"
     },
     {
       "type": "invitation.accepted",
@@ -218,7 +238,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/InvitationAcceptedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationAcceptedPayload",
+      "status": "implemented"
     },
     {
       "type": "invitation.revoked",
@@ -226,7 +247,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/InvitationRevokedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/InvitationRevokedPayload",
+      "status": "implemented"
     },
     {
       "type": "executor.created",
@@ -234,16 +256,17 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ExecutorCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorCreatedPayload",
+      "status": "implemented"
     },
     {
       "type": "executor.updated",
       "producer": "user",
       "consumers": [
-        "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUpdatedPayload",
+      "status": "implemented"
     },
     {
       "type": "executor.deleted",
@@ -251,7 +274,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ExecutorDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorDeletedPayload",
+      "status": "implemented"
     },
     {
       "type": "executor.linked",
@@ -259,7 +283,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ExecutorLinkedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorLinkedPayload",
+      "status": "implemented"
     },
     {
       "type": "executor.unlinked",
@@ -267,7 +292,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUnlinkedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/ExecutorUnlinkedPayload",
+      "status": "implemented"
     },
     {
       "type": "diagram.created",
@@ -275,7 +301,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramCreatedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.updated",
@@ -283,7 +310,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.deleted",
@@ -291,7 +319,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramDeletedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.changed",
@@ -300,7 +329,8 @@
         "sync",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramChangedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramChangedPayload",
+      "status": "planned"
     },
     {
       "type": "direction.created",
@@ -308,7 +338,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DirectionCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionCreatedPayload",
+      "status": "planned"
     },
     {
       "type": "direction.updated",
@@ -316,7 +347,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DirectionUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "direction.deleted",
@@ -324,43 +356,49 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DirectionDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DirectionDeletedPayload",
+      "status": "planned"
     },
     {
       "type": "task.created",
       "producer": "project",
       "consumers": [
-        "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TaskCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TaskCreatedPayload",
+      "status": "implemented"
     },
     {
       "type": "task.updated",
       "producer": "project",
       "consumers": [
-        "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TaskUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TaskUpdatedPayload",
+      "status": "implemented"
     },
     {
       "type": "task.deleted",
       "producer": "project",
       "consumers": [
-        "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TaskDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TaskDeletedPayload",
+      "status": "implemented"
     },
     {
       "type": "task.assignments.changed",
       "producer": "project",
       "consumers": [
         "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TaskAssignmentsChangedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TaskAssignmentsChangedPayload",
+      "status": "implemented"
     },
     {
       "type": "dependency.created",
@@ -369,7 +407,8 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DependencyCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyCreatedPayload",
+      "status": "planned"
     },
     {
       "type": "dependency.updated",
@@ -377,7 +416,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DependencyUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "dependency.deleted",
@@ -385,7 +425,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DependencyDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyDeletedPayload",
+      "status": "planned"
     },
     {
       "type": "dependency.violated",
@@ -394,7 +435,8 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DependencyViolatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DependencyViolatedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.critical_path.changed",
@@ -403,16 +445,19 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramCriticalPathChangedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramCriticalPathChangedPayload",
+      "status": "planned"
     },
     {
       "type": "comment.created",
       "producer": "project",
       "consumers": [
         "notification",
-        "audit"
+        "audit",
+        "sync"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/CommentCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/CommentCreatedPayload",
+      "status": "implemented"
     },
     {
       "type": "comment.updated",
@@ -420,7 +465,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/CommentUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/CommentUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "comment.deleted",
@@ -428,7 +474,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/CommentDeletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/CommentDeletedPayload",
+      "status": "planned"
     },
     {
       "type": "holidays.updated",
@@ -436,7 +483,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/HolidaysUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/HolidaysUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.import.started",
@@ -444,7 +492,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportStartedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportStartedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.import.completed",
@@ -453,7 +502,8 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportCompletedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportCompletedPayload",
+      "status": "planned"
     },
     {
       "type": "diagram.import.failed",
@@ -462,7 +512,8 @@
         "notification",
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportFailedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/DiagramImportFailedPayload",
+      "status": "planned"
     },
     {
       "type": "notification.created",
@@ -470,7 +521,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/NotificationCreatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationCreatedPayload",
+      "status": "planned"
     },
     {
       "type": "notification.delivery.sent",
@@ -478,7 +530,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliverySentPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliverySentPayload",
+      "status": "planned"
     },
     {
       "type": "notification.delivery.failed",
@@ -486,7 +539,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliveryFailedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationDeliveryFailedPayload",
+      "status": "planned"
     },
     {
       "type": "notification.preferences.updated",
@@ -494,7 +548,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/NotificationPreferencesUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/NotificationPreferencesUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "auth_email.sent",
@@ -502,7 +557,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailSentPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailSentPayload",
+      "status": "planned"
     },
     {
       "type": "auth_email.failed",
@@ -510,7 +566,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailFailedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthEmailFailedPayload",
+      "status": "planned"
     },
     {
       "type": "telegram.linked",
@@ -518,7 +575,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TelegramLinkedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TelegramLinkedPayload",
+      "status": "planned"
     },
     {
       "type": "telegram.unlinked",
@@ -526,7 +584,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/TelegramUnlinkedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/TelegramUnlinkedPayload",
+      "status": "planned"
     },
     {
       "type": "settings.updated",
@@ -534,7 +593,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/SettingsUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/SettingsUpdatedPayload",
+      "status": "planned"
     },
     {
       "type": "user.roles.updated",
@@ -542,7 +602,8 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/UserRolesUpdatedPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/UserRolesUpdatedPayload",
+      "status": "implemented"
     },
     {
       "type": "auth.session.restored",
@@ -550,7 +611,44 @@
       "consumers": [
         "audit"
       ],
-      "payloadSchema": "payloads.schema.json#/$defs/AuthSessionRestoredPayload"
+      "payloadSchema": "payloads.schema.json#/$defs/AuthSessionRestoredPayload",
+      "status": "planned"
+    },
+    {
+      "type": "auth.password.changed",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthPasswordChangedPayload",
+      "status": "implemented"
+    },
+    {
+      "type": "auth.password.reset",
+      "producer": "user",
+      "consumers": [
+        "audit"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/AuthPasswordResetPayload",
+      "status": "implemented"
+    },
+    {
+      "type": "task.moved",
+      "producer": "project",
+      "consumers": [
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskCreatedPayload",
+      "status": "implemented"
+    },
+    {
+      "type": "task.progress.updated",
+      "producer": "project",
+      "consumers": [
+        "sync"
+      ],
+      "payloadSchema": "payloads.schema.json#/$defs/TaskCreatedPayload",
+      "status": "implemented"
     }
   ]
 }

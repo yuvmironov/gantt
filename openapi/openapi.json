@@ -11,12 +11,8 @@
   },
   "servers": [
     {
-      "url": "https://{host}/api/v1",
-      "variables": {
-        "host": {
-          "default": "api.rp-gant.local"
-        }
-      }
+      "url": "https://app.rp-gant.ru/api/v1",
+      "description": "Production"
     }
   ],
   "tags": [
@@ -63,6 +59,14 @@
     {
       "name": "Audit",
       "description": "Общий и привилегированный журнал аудита"
+    },
+    {
+      "name": "Health",
+      "description": "Проверка состояния сервиса"
+    },
+    {
+      "name": "Realtime",
+      "description": "Токены для WebSocket-синхронизации"
     }
   ],
   "security": [
@@ -593,49 +597,6 @@
             "$ref": "#/components/responses/Forbidden"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "adminCreateUser",
-        "summary": "Создать пользователя",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminCreateUserRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Пользователь создан",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          }
-        }
       }
     },
     "/users/me": {
@@ -705,72 +666,6 @@
         }
       }
     },
-    "/users/batch": {
-      "post": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "getUsersByIds",
-        "summary": "Пользователи по ID",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "userIds"
-                ],
-                "properties": {
-                  "userIds": {
-                    "type": "array",
-                    "maxItems": 200,
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Пользователи",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "items"
-                  ],
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/UserSummary"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          }
-        }
-      }
-    },
     "/users/{userId}": {
       "get": {
         "tags": [
@@ -796,224 +691,6 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "deleteUser",
-        "summary": "Полное удаление пользователя",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeleteUserRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Пользователь удален"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "412": {
-            "$ref": "#/components/responses/Problem"
-          }
-        }
-      }
-    },
-    "/users/{userId}/roles": {
-      "get": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "getUserRoles",
-        "summary": "Глобальные роли пользователя",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/UserId"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Роли",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "items"
-                  ],
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/GlobalRole"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "setUserGlobalRoles",
-        "summary": "Заменить набор глобальных ролей",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "roles"
-                ],
-                "properties": {
-                  "roles": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/GlobalRole"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Роли обновлены",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "412": {
-            "$ref": "#/components/responses/Problem"
-          }
-        }
-      }
-    },
-    "/users/{userId}/block": {
-      "post": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "blockUser",
-        "summary": "Заблокировать пользователя",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BlockUserRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Заблокирован"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/users/{userId}/unblock": {
-      "post": {
-        "tags": [
-          "Users"
-        ],
-        "operationId": "unblockUser",
-        "summary": "Разблокировать пользователя",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/UserId"
-          },
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Разблокирован"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
@@ -1380,10 +1057,8 @@
             "$ref": "#/components/responses/Conflict"
           }
         }
-      }
-    },
-    "/executors/{executorId}/unlink": {
-      "post": {
+      },
+      "delete": {
         "tags": [
           "Executors"
         ],
@@ -1733,63 +1408,6 @@
           },
           "410": {
             "$ref": "#/components/responses/Problem"
-          }
-        }
-      }
-    },
-    "/projects/{projectId}/transfer-owner": {
-      "post": {
-        "tags": [
-          "Projects"
-        ],
-        "operationId": "transferProjectOwner",
-        "summary": "Передать владение проектом",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ProjectId"
-          },
-          {
-            "$ref": "#/components/parameters/CsrfToken"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "newOwnerUserId"
-                ],
-                "properties": {
-                  "newOwnerUserId": {
-                    "type": "string",
-                    "format": "uuid"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Владение передано",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Project"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -2396,74 +2014,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/diagrams/{diagramId}/changes": {
-      "get": {
-        "tags": [
-          "Diagrams"
-        ],
-        "operationId": "listDiagramChanges",
-        "summary": "Изменения диаграммы после ревизии",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/DiagramId"
-          },
-          {
-            "name": "fromRevision",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 0
-            }
-          },
-          {
-            "$ref": "#/components/parameters/Limit"
-          },
-          {
-            "$ref": "#/components/parameters/Offset"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Изменения",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "items",
-                    "page",
-                    "currentRevision"
-                  ],
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/DiagramChange"
-                      }
-                    },
-                    "page": {
-                      "$ref": "#/components/schemas/PageMeta"
-                    },
-                    "currentRevision": {
-                      "type": "integer",
-                      "format": "int64"
-                    },
-                    "snapshotRequired": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -4231,52 +3781,6 @@
         }
       }
     },
-    "/audit/events/{eventId}": {
-      "get": {
-        "tags": [
-          "Audit"
-        ],
-        "operationId": "getAuditEvent",
-        "summary": "Событие общего журнала",
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "occurredAt",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Событие",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuditEvent"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
     "/audit/privileged-events": {
       "get": {
         "tags": [
@@ -4323,52 +3827,6 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/audit/privileged-events/{eventId}": {
-      "get": {
-        "tags": [
-          "Audit"
-        ],
-        "operationId": "getPrivilegedAuditEvent",
-        "summary": "Событие журнала администраторов",
-        "parameters": [
-          {
-            "name": "eventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "occurredAt",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Событие",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuditEvent"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -4448,6 +3906,559 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "adminCreateUser",
+        "summary": "Создать пользователя",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Пользователь создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "deleteUser",
+        "summary": "Полное удаление пользователя",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Пользователь удален"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/roles": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "setUserGlobalRoles",
+        "summary": "Заменить набор глобальных ролей",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "roles"
+                ],
+                "properties": {
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/GlobalRole"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Роли обновлены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/block": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "blockUser",
+        "summary": "Заблокировать пользователя",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Заблокирован"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/unblock": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "unblockUser",
+        "summary": "Разблокировать пользователя",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Разблокирован"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/profile": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "adminUpdateUserProfile",
+        "summary": "Обновить профиль пользователя администратором",
+        "responses": {
+          "200": {
+            "description": "Профиль обновлён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/settings": {
+      "get": {
+        "tags": [
+          "Access"
+        ],
+        "operationId": "getSystemSettings",
+        "summary": "Получить системные настройки",
+        "responses": {
+          "200": {
+            "description": "Системные настройки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Access"
+        ],
+        "operationId": "updateSystemSettings",
+        "summary": "Обновить системные настройки",
+        "responses": {
+          "200": {
+            "description": "Настройки обновлены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/token": {
+      "get": {
+        "tags": [
+          "Realtime"
+        ],
+        "operationId": "getSyncToken",
+        "summary": "Выдать краткоживущий токен для WebSocket sync",
+        "responses": {
+          "200": {
+            "description": "Токен выдан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "token",
+                    "expiresAt",
+                    "expiresIn"
+                  ],
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresIn": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/users/me/contacts": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "getNotificationContacts",
+        "summary": "Контакты пользователя для уведомлений",
+        "responses": {
+          "200": {
+            "description": "Контакты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/users/me/telegram": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "linkTelegram",
+        "summary": "Привязать Telegram",
+        "responses": {
+          "200": {
+            "description": "Telegram привязан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "telegramUserId"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "telegramUserId": {
+                    "type": "integer"
+                  },
+                  "telegramUsername": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "unlinkTelegram",
+        "summary": "Отвязать Telegram",
+        "responses": {
+          "204": {
+            "description": "Telegram отвязан"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/users/me/telegram/link-code": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "operationId": "createTelegramLinkCode",
+        "summary": "Создать код привязки Telegram",
+        "responses": {
+          "200": {
+            "description": "Код создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "operationId": "health",
+        "summary": "Проверка API Gateway",
+        "responses": {
+          "200": {
+            "description": "Сервис работает",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "service",
+                    "version"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "service": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "description": "Внутренняя ошибка"
           }
         }
       }
@@ -5229,6 +5240,10 @@
           },
           "namesResolved": {
             "type": "boolean"
+          },
+          "diagramsCount": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -5393,6 +5408,14 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedByUserId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -5489,6 +5512,21 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "estimatedHours": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedByUserId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -5636,50 +5674,6 @@
           },
           "name": {
             "type": "string"
-          }
-        }
-      },
-      "DiagramChange": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "diagramId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "revision": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "entityType": {
-            "type": "string"
-          },
-          "entityId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "operation": {
-            "type": "string",
-            "enum": [
-              "create",
-              "update",
-              "delete"
-            ]
-          },
-          "payload": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "actorUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },

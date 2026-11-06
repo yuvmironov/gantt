@@ -1,11 +1,19 @@
 asyncapi: 3.0.0
 info:
-  title: RP Gant Notification WebSocket
-  version: 1.0.0
-  description: WebSocket-контракт Notification Service.
+  title: RP Gant Notification WebSocket (planned)
+  version: 1.1.0
+  x-status: planned
+  description: >-
+    Планируемый WebSocket-контракт Notification Service. В текущей реализации
+    WebSocket отсутствует: фронтенд получает уведомления через REST API, а
+    notification-service работает с Kafka и внутренним HTTP API.
 servers:
   production:
-    host: api.rp-gant.local
+    host: notify.rp-gant.ru
+    pathname: /ws/notifications
+    protocol: wss
+  local:
+    host: notify.rp-gant.localhost
     pathname: /ws/notifications
     protocol: wss
 channels:
