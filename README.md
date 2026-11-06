@@ -132,18 +132,20 @@ notifications/         # шаблоны и схемы
 db/                    # миграции и seed
 infrastructure/local/  # Docker Compose, db-init
 infrastructure/helm/   # Helm charts + staging/prod values
+docs/                  # миграция и эксплуатационные заметки
 tools/                 # проверки контрактов
 ```
 
 ## Документация
 
-Актуальная техническая документация — README сервисов, `openapi/`, `proto/` и `events/`. Продуктовые постановки, P0-пакет, ADR и visual design ведутся в отдельном рабочем каталоге проекта; при необходимости их можно добавить в `docs/`.
+Актуальная техническая документация — README сервисов, `openapi/`, `proto/`, `events/` и каталог `docs/`.
+
+- [`docs/MIGRATION-rp-gant.md`](docs/MIGRATION-rp-gant.md) — переход с `smart-oati` на `rp-gant`, перенос БД, volumes, Helm и CI.
 
 ## Статус
 
 - [x] Контракты OpenAPI/proto/events.
 - [x] DDL, seed, diagram export.
-- [x] P0-документы и ADR подготовлены.
 - [x] Базовый CI и проверки контрактов.
 - [x] Docker Compose для инфраструктуры и приложений.
 - [x] Автоматические миграции, seed и development-admin.
@@ -152,19 +154,18 @@ tools/                 # проверки контрактов
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import. Разрешены direction→direction и task→direction; direction→task запрещён на API и в БД.
 - [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт, toast-уведомления.
-- [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
-- [x] Componentized Nuxt pages: /projects, /projects/:id, /gantt, /login, /admin, /profile, /notifications and /members.
-- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления, расчёт окончания задачи по часам (8 ч/день).
-- [x] Notification, Audit, Sync services.
-- [x] Helm charts for services and staging/prod umbrella values.
-- [x] Playwright E2E: auth, admin roles, Gantt, dependency rules/link mode, bar drag, task hours, import, members, notifications, profile and password reset.
-- [x] Security headers, CSP, API rate limiting and auth audit events.
-- [x] Project members, invitations, password reset/change and resend verification.
+- [x] Nuxt SPA — основной интерфейс; legacy static UI больше не обслуживается.
+- [x] Компонентные страницы Nuxt: `/projects`, `/projects/:id`, `/gantt`, `/login`, `/admin`, `/profile`, `/notifications`, `/members`.
+- [x] Vue Gantt: task/direction CRUD, назначения, прогресс, комментарии, зависимости с правилами типов и стилями, календарь, импорт/экспорт, realtime, drag-and-drop, создание проекта/диаграммы/направления, weekend shading, toast-уведомления, расчёт окончания задачи по часам (8 ч/день).
+- [x] Notification, Audit и Sync services.
+- [x] Helm charts для сервисов и umbrella values для staging/prod.
+- [x] Playwright E2E, 18 сценариев: auth, admin roles, Gantt, dependency rules/link mode, bar drag, task hours, import, members, notifications, profile и password reset.
+- [x] Security headers, CSP, API rate limiting и auth audit events.
+- [x] Project members, invitations, password reset/change и resend verification.
 - [x] Global admin roles: создание администратора и повышение существующего пользователя.
-- [x] Real-time Gantt synchronization through `sync-service`.
-- [x] Multi-user Playwright E2E with invitation and real-time updates.
-- [x] Project-scoped real-time sync tokens and authenticated WebSocket.
-- [x] Email/Telegram delivery worker, notification preferences and Telegram linking.
+- [x] Real-time синхронизация Gantt через `sync-service`.
+- [x] Project-scoped sync tokens и authenticated WebSocket.
+- [x] Email/Telegram delivery worker, notification preferences и Telegram linking.
 - [x] Session restore, profile editing and local admin user creation.
 - [x] Executor CRUD, user linking, admin user roles, blocking and user lifecycle.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
@@ -174,11 +175,11 @@ tools/                 # проверки контрактов
 
 ## Observability
 
-All Fastify services expose Prometheus metrics at `/metrics`: request count, request duration, process metrics and the service target status. Helm pods carry `prometheus.io/*` scrape annotations.
+Все Fastify-сервисы отдают Prometheus-метрики на `/metrics`: количество запросов, длительность, процессные метрики и статус цели. Helm-поды получают scrape-аннотации `prometheus.io/*`.
 
-`sync-service` additionally exposes `sync_ws_connections_active`, `sync_ws_auth_failures_total` and `sync_events_sent_total`. Sync tokens are signed with `SYNC_TOKEN_SECRET`; local Compose defaults to a development value, Kubernetes expects a `rp-gant-sync` Secret with key `token`.
+`sync-service` дополнительно отдаёт `sync_ws_connections_active`, `sync_ws_auth_failures_total` и `sync_events_sent_total`. Sync-токены подписаны `SYNC_TOKEN_SECRET`; local Compose использует development-значение, Kubernetes ожидает Secret `rp-gant-sync` с ключом `token`.
 
-Local monitoring:
+Локальный мониторинг:
 
 ```bash
 docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile monitoring up -d prometheus grafana

@@ -2,6 +2,8 @@
 
 Поднимает PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt frontend.
 
+Redis сейчас зарезервирован инфраструктурой, но приложением не используется.
+
 ## Запуск
 
 ```bash
@@ -44,6 +46,27 @@ docker compose --env-file .env.local -f docker-compose.yml --profile infra --pro
 docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps down -v
 ```
 
+## Профили Compose
+
+- `infra` — PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik;
+- `apps` — API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync, frontend;
+- `monitoring` — Prometheus и Grafana.
+
+Для запуска мониторинга:
+
+```bash
+docker compose --env-file .env.local -f docker-compose.yml --profile monitoring up -d prometheus grafana
+```
+
+## Данные и миграция
+
+- `db-init` идемпотентен: повторный `up` не требует ручных миграций.
+- `pnpm local:backup` сохраняет дампы всех БД в `backups/`.
+- `pnpm local:restore -- backups/<file>.sql` восстанавливает дамп.
+- `pnpm local:verify-restore` проверяет восстановление в отдельном контейнере.
+- После перехода с `smart-oati` volumes называются `rp-gant_*`, а БД — `rp_gant_*`.
+  Порядок переноса описан в [`docs/MIGRATION-rp-gant.md`](../../docs/MIGRATION-rp-gant.md).
+
 ## HTTPS
 
 Traefik использует собственный самоподписанный сертификат. Браузер покажет предупреждение — для local его нужно принять один раз.
@@ -64,7 +87,7 @@ Traefik использует собственный самоподписанны
 | Сервис | Host |
 |---|---:|
 | PostgreSQL | 5432 |
-| Redis | 6379 |
+| Redis | 6379 (приложением не используется) |
 | Kafka | 9092 |
 | Kafka UI | 8081 |
 | Mailpit SMTP | 1025 |
