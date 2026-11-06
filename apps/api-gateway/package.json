@@ -1,5 +1,5 @@
 {
-  "name": "@smart-oati/api-gateway",
+  "name": "@rp-gant/api-gateway",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "@fastify/helmet": "13.0.2",
     "@fastify/multipart": "9.0.3",
     "@fastify/rate-limit": "10.2.0",
-    "@smart-oati/service-kit": "workspace:*",
-    "@smart-oati/shared": "workspace:*"
+    "@rp-gant/service-kit": "workspace:*",
+    "@rp-gant/shared": "workspace:*"
   }
 }

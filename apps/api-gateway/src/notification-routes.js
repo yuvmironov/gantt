@@ -3,7 +3,7 @@ import { requireAdmin } from './admin-routes.js';
 
 function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/unauthenticated',
+    type: 'https://rp-gant.local/problems/unauthenticated',
     title: 'Unauthorized',
     status: 401,
     detail: 'Session is required',
@@ -15,7 +15,7 @@ function unauthorized(reply, request) {
 
 function forbidden(reply, request) {
   return reply.code(403).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/csrf_invalid',
+    type: 'https://rp-gant.local/problems/csrf_invalid',
     title: 'Forbidden',
     status: 403,
     detail: 'Invalid CSRF token',

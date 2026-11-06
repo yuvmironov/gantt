@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'https://app.localhost',
+    baseURL: process.env.E2E_BASE_URL ?? 'https://app.rp-gant.localhost',
     channel: 'chrome',
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',

@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: SMART OATI Gantt API
+  title: RP Gant Gantt API
   version: 1.2.0
   description: >-
     ╨Я╤Г╨▒╨╗╨╕╤З╨╜╤Л╨╣ REST API Gateway ╨┤╨╗╤П ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╤П ┬л╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ ╨У╨░╨╜╤В╨░ тАФ ╨┐╤А╨╛╨╡╨║╤В SMART
@@ -12,7 +12,7 @@ servers:
   - url: https://{host}/api/v1
     variables:
       host:
-        default: api.smart-oati.local
+        default: api.rp-gant.local
 tags:
   - name: Auth
     description: ╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П, ╨▓╤Е╨╛╨┤, ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╕ ╨┐╨░╤А╨╛╨╗╨╕

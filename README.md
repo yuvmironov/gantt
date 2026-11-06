@@ -1,6 +1,6 @@
-# SMART OATI
+# RP Gant
 
-Планировщик SMART OATI: API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt web-интерфейс для локального запуска.
+Планировщик RP Gant: API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt web-интерфейс для локального запуска.
 
 ## Требования
 
@@ -26,12 +26,12 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - создаётся development-администратор;
 - Traefik отдаёт локальный самоподписанный сертификат.
 
-Открыть приложение: **https://app.localhost**
+Открыть приложение: **https://app.rp-gant.localhost**
 
 Данные администратора по умолчанию:
 
 ```text
-admin@smart-oati.local
+admin@rp-gant.local
 ChangeMeDevOnly!
 ```
 
@@ -39,8 +39,8 @@ ChangeMeDevOnly!
 
 ```bash
 docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile infra --profile apps ps
-curl -k https://app.localhost/health
-curl -k https://app.localhost/api/v1/health
+curl -k https://app.rp-gant.localhost/health
+curl -k https://app.rp-gant.localhost/api/v1/health
 ```
 
 Повторный запуск после `down` не требует ручных миграций — `db-init` идемпотентен.
@@ -60,7 +60,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 ## Участники, приглашения и пароли
 
 - Кнопка **Участники** в выбранном проекте: добавление существующего пользователя, приглашение по email, смена роли и удаление.
-- Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.localhost**.
+- Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.rp-gant.localhost**.
 - Ссылка сброса открывает форму нового пароля; смена пароля доступна в верхнем меню.
 - Уведомления и Gantt обновляются в реальном времени через `sync-service`.
 
@@ -70,7 +70,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 pnpm local:up       # запуск infra + apps
 pnpm local:status   # состояние контейнеров
 pnpm local:health   # проверка app, sync и Mailpit
-pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи (demo.owner@smart-oati.local / DemoPassword123!)
+pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи (demo.owner@rp-gant.local / DemoPassword123!)
 pnpm local:logs     # логи
 pnpm local:down     # остановка
 pnpm local:reset    # остановка с удалением volumes
@@ -87,12 +87,12 @@ Traefik использует собственный самоподписанны
 
 ## Адреса
 
-- `app.localhost` — Nuxt web-интерфейс;
-- `api.localhost` — API Gateway;
-- `mail.localhost` — Mailpit UI;
-- `kafka.localhost` — Kafka UI;
-- `sync.localhost` — Sync Service WebSocket;
-- `notify.localhost` — Notification Service WebSocket.
+- `app.rp-gant.localhost` — Nuxt web-интерфейс;
+- `api.rp-gant.localhost` — API Gateway;
+- `mail.rp-gant.localhost` — Mailpit UI;
+- `kafka.rp-gant.localhost` — Kafka UI;
+- `sync.rp-gant.localhost` — Sync Service WebSocket;
+- `notify.rp-gant.localhost` — Notification Service WebSocket.
 
 ## Команды разработки
 
@@ -176,7 +176,7 @@ tools/                 # проверки контрактов
 
 All Fastify services expose Prometheus metrics at `/metrics`: request count, request duration, process metrics and the service target status. Helm pods carry `prometheus.io/*` scrape annotations.
 
-`sync-service` additionally exposes `sync_ws_connections_active`, `sync_ws_auth_failures_total` and `sync_events_sent_total`. Sync tokens are signed with `SYNC_TOKEN_SECRET`; local Compose defaults to a development value, Kubernetes expects a `smart-oati-sync` Secret with key `token`.
+`sync-service` additionally exposes `sync_ws_connections_active`, `sync_ws_auth_failures_total` and `sync_events_sent_total`. Sync tokens are signed with `SYNC_TOKEN_SECRET`; local Compose defaults to a development value, Kubernetes expects a `rp-gant-sync` Secret with key `token`.
 
 Local monitoring:
 
@@ -187,4 +187,4 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3001 (`admin` / `admin` locally)
 - Alert rules: `infrastructure/local/monitoring/alerts.yml`
-- Dashboard: `infrastructure/local/monitoring/grafana/dashboards/smart-oati.json`
+- Dashboard: `infrastructure/local/monitoring/grafana/dashboards/rp-gant.json`

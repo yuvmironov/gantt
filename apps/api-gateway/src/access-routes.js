@@ -50,7 +50,7 @@ function mapInvitation(invitation) {
 
 function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/unauthenticated',
+    type: 'https://rp-gant.local/problems/unauthenticated',
     title: 'Unauthorized',
     status: 401,
     detail: 'Session is required',
@@ -62,7 +62,7 @@ function unauthorized(reply, request) {
 
 function csrfInvalid(reply, request) {
   return reply.code(403).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/csrf_invalid',
+    type: 'https://rp-gant.local/problems/csrf_invalid',
     title: 'Forbidden',
     status: 403,
     detail: 'Invalid CSRF token',
@@ -74,7 +74,7 @@ function csrfInvalid(reply, request) {
 
 function forbidden(reply, request) {
   return reply.code(403).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/project_access_denied',
+    type: 'https://rp-gant.local/problems/project_access_denied',
     title: 'Forbidden',
     status: 403,
     detail: 'Project access denied',
@@ -139,7 +139,7 @@ export async function accessRoutes(app, { userClient }) {
       const role = PROJECT_ROLE_CODES[request.body?.role];
       if (!role) {
         return reply.code(400).type('application/problem+json').send({
-          type: 'https://smart-oati.local/problems/invalid_role',
+          type: 'https://rp-gant.local/problems/invalid_role',
           title: 'Bad Request',
           status: 400,
           detail: 'Invalid project role',
@@ -218,7 +218,7 @@ export async function accessRoutes(app, { userClient }) {
       const role = PROJECT_ROLE_CODES[request.body?.role];
       if (!role) {
         return reply.code(400).type('application/problem+json').send({
-          type: 'https://smart-oati.local/problems/invalid_role',
+          type: 'https://rp-gant.local/problems/invalid_role',
           title: 'Bad Request',
           status: 400,
           detail: 'Invalid project role',

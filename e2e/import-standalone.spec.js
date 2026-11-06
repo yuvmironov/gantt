@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('imports standalone HTML JSON format', async ({ page }) => {
   const suffix = Date.now();
-  const email = `import-${suffix}@smart-oati.test`;
+  const email = `import-${suffix}@rp-gant.test`;
   const password = 'ImportPassword123!';
   await page.goto('/login');
   await page.locator('#register-tab').click();

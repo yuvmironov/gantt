@@ -20,7 +20,7 @@ export function startUserOutboxPublisher(db, env = process.env) {
       for (const row of result.rows) {
         const headers = row.headers ?? {};
         await producer.send({
-          topic: env.KAFKA_TOPIC ?? 'smartoati.events',
+          topic: env.KAFKA_TOPIC ?? 'rpgant.events',
           messages: [
             {
               key: row.aggregate_id,

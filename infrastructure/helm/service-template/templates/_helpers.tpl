@@ -1,8 +1,8 @@
-{{- define "smart-oati-service.name" -}}
+{{- define "rp-gant-service.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "smart-oati-service.fullname" -}}
+{{- define "rp-gant-service.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -15,28 +15,28 @@
 {{- end }}
 {{- end }}
 
-{{- define "smart-oati-service.labels" -}}
+{{- define "rp-gant-service.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
-app.kubernetes.io/name: {{ include "smart-oati-service.name" . }}
+app.kubernetes.io/name: {{ include "rp-gant-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{- define "smart-oati-service.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "smart-oati-service.name" . }}
+{{- define "rp-gant-service.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "rp-gant-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "smart-oati-service.serviceAccountName" -}}
+{{- define "rp-gant-service.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "smart-oati-service.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "rp-gant-service.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
-{{- define "smart-oati-service.image" -}}
+{{- define "rp-gant-service.image" -}}
 {{- if .Values.image.digest }}
 {{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
 {{- else }}

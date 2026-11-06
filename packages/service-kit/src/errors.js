@@ -31,7 +31,7 @@ export function problemHandler(error, request, reply) {
     .code(status)
     .type('application/problem+json')
     .send({
-      type: `https://smart-oati.local/problems/${code}`,
+      type: `https://rp-gant.local/problems/${code}`,
       title: TITLES[status] ?? 'Error',
       status,
       detail,
@@ -43,7 +43,7 @@ export function problemHandler(error, request, reply) {
 
 export function notFoundHandler(request, reply) {
   return reply.code(404).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/not_found',
+    type: 'https://rp-gant.local/problems/not_found',
     title: TITLES[404],
     status: 404,
     detail: 'Resource not found',

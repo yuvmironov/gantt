@@ -54,13 +54,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: smart_oati
-          POSTGRES_PASSWORD: smart_oati_dev
-          POSTGRES_DB: smart_oati_user
+          POSTGRES_USER: rp_gant
+          POSTGRES_PASSWORD: rp_gant_dev
+          POSTGRES_DB: rp_gant_user
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U smart_oati"
+          --health-cmd "pg_isready -U rp_gant"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20

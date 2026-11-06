@@ -3,7 +3,7 @@ import { mapExecutor, mapUser, sendProblem } from './auth-routes.js';
 
 export function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/unauthenticated',
+    type: 'https://rp-gant.local/problems/unauthenticated',
     title: 'Unauthorized',
     status: 401,
     detail: 'Session is required',
@@ -15,7 +15,7 @@ export function unauthorized(reply, request) {
 
 export function forbidden(reply, request) {
   return reply.code(403).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/admin_forbidden',
+    type: 'https://rp-gant.local/problems/admin_forbidden',
     title: 'Forbidden',
     status: 403,
     detail: 'Administrator access required',

@@ -1,6 +1,6 @@
 # API Gateway
 
-Тонкий входной слой SMART OATI.
+Тонкий входной слой RP Gant.
 
 Сейчас реализованы:
 
@@ -116,6 +116,6 @@ curl http://localhost:8080/api/v1/health
 Docker:
 
 ```powershell
-docker build -f apps/api-gateway/Dockerfile -t smart-oati/api-gateway:dev .
-docker run --rm -p 8080:8080 smart-oati/api-gateway:dev
+docker build -f apps/api-gateway/Dockerfile -t rp-gant/api-gateway:dev .
+docker run --rm -p 8080:8080 rp-gant/api-gateway:dev
 ```

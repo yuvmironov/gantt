@@ -8,7 +8,7 @@ export async function startSyncConsumer(env = process.env) {
   });
   const consumer = kafka.consumer({ groupId: env.KAFKA_CONSUMER_GROUP_SYNC ?? 'sync' });
   await consumer.connect();
-  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'smartoati.events' });
+  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'rpgant.events' });
   await consumer.run({
     eachMessage: async ({ message }) => {
       if (!message.value) return;

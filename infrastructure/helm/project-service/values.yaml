@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/project-service
+  repository: ghcr.io/yuvmironov/rp-gant/project-service
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -81,7 +81,7 @@ env:
   - name: KAFKA_BROKERS
     value: "kafka:9092"
   - name: KAFKA_TOPIC
-    value: "smartoati.events"
+    value: "rpgant.events"
 
 envFrom:
   - secretRef:
@@ -95,7 +95,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: smart-oati/project-service
+        key: rp-gant/project-service
         property: database_url
 
 

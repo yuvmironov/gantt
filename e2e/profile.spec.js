@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('profile, notification preferences and telegram linking', async ({ page }) => {
   const suffix = Date.now();
-  const email = `profile-${suffix}@smart-oati.test`;
+  const email = `profile-${suffix}@rp-gant.test`;
   const password = 'ProfilePassword123!';
 
   await page.goto('/login');

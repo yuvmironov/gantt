@@ -34,17 +34,17 @@ const command = process.argv[2] ?? 'up';
 if (command === 'up') {
   ensureEnv();
   compose(['--profile', 'infra', '--profile', 'apps', 'up', '-d', '--build']);
-  console.log('\nSMART OATI: https://app.localhost');
-  console.log('Mailpit: https://mail.localhost');
+  console.log('\nRP Gant: https://app.rp-gant.localhost');
+  console.log('Mailpit: https://mail.rp-gant.localhost');
 } else if (command === 'down') {
   compose(['--profile', 'infra', '--profile', 'apps', 'down']);
 } else if (command === 'reset') {
   compose(['--profile', 'infra', '--profile', 'apps', 'down', '-v']);
 } else if (command === 'health') {
   const checks = [
-    ['app', 'https://app.localhost/api/v1/health'],
-    ['sync', 'https://sync.localhost/health/live'],
-    ['mail', 'https://mail.localhost/api/v1/messages'],
+    ['app', 'https://app.rp-gant.localhost/api/v1/health'],
+    ['sync', 'https://sync.rp-gant.localhost/health/live'],
+    ['mail', 'https://mail.rp-gant.localhost/api/v1/messages'],
   ];
   let failed = false;
   for (const [name, url] of checks) {
@@ -64,7 +64,7 @@ if (command === 'up') {
 } else if (command === 'backup') {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   mkdirSync(resolve(root, 'backups'), { recursive: true });
-  const target = resolve(root, `backups/smart-oati-${stamp}.sql`);
+  const target = resolve(root, `backups/rp-gant-${stamp}.sql`);
   const result = spawnSync(
     'docker',
     [
@@ -78,7 +78,7 @@ if (command === 'up') {
       'postgres',
       'pg_dumpall',
       '-U',
-      'smart_oati',
+      'rp_gant',
     ],
     { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' },
   );
@@ -95,7 +95,7 @@ if (command === 'up') {
     process.exit(1);
   }
   compose(
-    ['exec', '-T', 'postgres', 'psql', '-U', 'smart_oati', '-d', 'postgres'],
+    ['exec', '-T', 'postgres', 'psql', '-U', 'rp_gant', '-d', 'postgres'],
     readFileSync(resolve(root, file)),
   );
 } else {

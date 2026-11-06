@@ -1,4 +1,4 @@
-# Локальная инфраструктура SMART OATI
+# Локальная инфраструктура RP Gant
 
 Поднимает PostgreSQL, Redis, Kafka, Kafka UI, Mailpit, mock Telegram, Traefik, API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt frontend.
 
@@ -15,12 +15,12 @@ docker compose --env-file .env.local -f docker-compose.yml --profile infra --pro
 - Traefik отдаёт локальный самоподписанный сертификат;
 - `user-service` создаёт development-администратора из `DEV_ADMIN_*`.
 
-Открыть: **https://app.localhost**
+Открыть: **https://app.rp-gant.localhost**
 
 Администратор по умолчанию:
 
 ```text
-admin@smart-oati.local
+admin@rp-gant.local
 ChangeMeDevOnly!
 ```
 
@@ -28,8 +28,8 @@ ChangeMeDevOnly!
 
 ```bash
 docker compose --env-file .env.local -f docker-compose.yml --profile infra --profile apps ps
-curl -k https://app.localhost/health
-curl -k https://app.localhost/api/v1/health
+curl -k https://app.rp-gant.localhost/health
+curl -k https://app.rp-gant.localhost/api/v1/health
 ```
 
 Остановка:
@@ -52,12 +52,12 @@ Traefik использует собственный самоподписанны
 
 ## Домены
 
-- `app.localhost` — frontend;
-- `api.localhost` — API Gateway;
-- `mail.localhost` — Mailpit UI;
-- `kafka.localhost` — Kafka UI;
-- `sync.localhost` — Sync Service WebSocket;
-- `notify.localhost` — Notification Service WebSocket.
+- `app.rp-gant.localhost` — frontend;
+- `api.rp-gant.localhost` — API Gateway;
+- `mail.rp-gant.localhost` — Mailpit UI;
+- `kafka.rp-gant.localhost` — Kafka UI;
+- `sync.rp-gant.localhost` — Sync Service WebSocket;
+- `notify.rp-gant.localhost` — Notification Service WebSocket.
 
 ## Порты
 
@@ -79,5 +79,5 @@ Traefik использует собственный самоподписанны
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
 - Frontend — Nuxt SPA из `apps/frontend`; legacy `apps/web` Compose не запускает.
-- Sync и Notification обслуживаются через `sync.localhost` и `notify.localhost`.
+- Sync и Notification обслуживаются через `sync.rp-gant.localhost` и `notify.rp-gant.localhost`.
 - Импорт JSON v2/CSV доступен через API и модалку «Импорт» в интерфейсе.

@@ -1407,7 +1407,7 @@ $('#reset-form').addEventListener('submit', async (event) => {
 function syncUrl() {
   if (window.__SYNC_URL__) return window.__SYNC_URL__;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//sync.localhost/ws`;
+  return `${protocol}//sync.rp-gant.localhost/ws`;
 }
 
 async function connectSync() {
@@ -1827,5 +1827,5 @@ $('#delivery-log-toggle').addEventListener('click', async () => {
 });
 
 boot().finally(() => {
-  window.__smartOatiReady = true;
+  window.__rpGantReady = true;
 });

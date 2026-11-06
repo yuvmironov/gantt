@@ -1,4 +1,4 @@
-# SMART OATI — UI/UX prototype package
+# RP Gant — UI/UX prototype package
 
 Визуальный прототип для согласования UI/UX. Не является production-кодом.
 

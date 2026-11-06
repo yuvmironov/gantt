@@ -4,7 +4,7 @@ test('drag task into parent updates hierarchy', async ({ page }) => {
   const suffix = Date.now();
   await page.goto('/login');
   await page.locator('#register-tab').click();
-  await page.locator('#register-form input[name=email]').fill(`drag-${suffix}@smart-oati.test`);
+  await page.locator('#register-form input[name=email]').fill(`drag-${suffix}@rp-gant.test`);
   await page.locator('#register-form input[name=lastName]').fill('Drag');
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill('DragPassword123!');

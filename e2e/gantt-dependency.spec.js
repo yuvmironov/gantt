@@ -2,7 +2,7 @@
 
 test('backward dependency is routed outside task bars', async ({ page }) => {
   const suffix = Date.now();
-  const email = `dependency-${suffix}@smart-oati.test`;
+  const email = `dependency-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
   await page.locator('#register-tab').click();

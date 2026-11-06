@@ -11,7 +11,7 @@ export async function startAuditConsumer(db, env = process.env) {
     groupId: env.KAFKA_CONSUMER_GROUP_AUDIT ?? 'audit',
   });
   await consumer.connect();
-  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'smartoati.events' });
+  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'rpgant.events' });
 
   await consumer.run({
     eachMessage: async ({ message }) => {

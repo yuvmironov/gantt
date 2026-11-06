@@ -232,7 +232,7 @@ onMounted(boot);
 <template>
   <div class="app-shell">
     <header class="app-header">
-      <a class="app-brand" href="/projects"><span class="brand-mark">▥</span><span>SMART OATI</span></a>
+      <a class="app-brand" href="/projects"><span class="brand-mark">▥</span><span>RP Gant</span></a>
       <nav class="app-nav">
         <a class="active" href="/projects">Проекты</a>
         <a href="/members">Участники</a>

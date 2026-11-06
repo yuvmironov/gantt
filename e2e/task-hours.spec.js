@@ -2,7 +2,7 @@
 
 test('task hours calculate end date by calendar', async ({ page }) => {
   const suffix = Date.now();
-  const email = `hours-${suffix}@smart-oati.test`;
+  const email = `hours-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
   await page.locator('#register-tab').click();

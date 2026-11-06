@@ -8,7 +8,7 @@ export const options = {
 };
 
 export default function () {
-  const response = http.get(`${__ENV.BASE_URL || 'https://app.localhost'}/api/v1/health`, {
+  const response = http.get(`${__ENV.BASE_URL || 'https://app.rp-gant.localhost'}/api/v1/health`, {
     insecureSkipTLSVerify: true,
   });
   check(response, { 'health is 200': (r) => r.status === 200 });

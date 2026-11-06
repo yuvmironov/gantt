@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { createGrpcClient } from '@smart-oati/service-kit';
+import { createGrpcClient } from '@rp-gant/service-kit';
 
 const protoRoot = fileURLToPath(new URL('../../../proto', import.meta.url));
 
@@ -7,9 +7,9 @@ export function createUserClient({
   address = process.env.USER_SERVICE_GRPC ?? 'localhost:50051',
 } = {}) {
   return createGrpcClient({
-    protoPath: `${protoRoot}/smartoati/user/v1/user_service.proto`,
+    protoPath: `${protoRoot}/rpgant/user/v1/user_service.proto`,
     includeDirs: [protoRoot],
-    packageName: 'smartoati.user.v1',
+    packageName: 'rpgant.user.v1',
     serviceName: 'UserService',
     address,
   });

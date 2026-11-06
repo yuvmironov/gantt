@@ -1,5 +1,5 @@
 import rateLimit from '@fastify/rate-limit';
-import { createService, loadConfig } from '@smart-oati/service-kit';
+import { createService, loadConfig } from '@rp-gant/service-kit';
 
 const serviceName = 'notification-service';
 const serviceVersion = '0.1.0';

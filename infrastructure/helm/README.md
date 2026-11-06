@@ -1,6 +1,6 @@
 # Helm service template
 
-Универсальный Helm-чарт для сервисов SMART OATI. Используется как основа для `api-gateway`, `user-service`, `project-service`, `notification-service`, `audit-service`, `sync-service` и `frontend`.
+Универсальный Helm-чарт для сервисов RP Gant. Используется как основа для `api-gateway`, `user-service`, `project-service`, `notification-service`, `audit-service`, `sync-service` и `frontend`.
 
 ## Что внутри
 
@@ -28,8 +28,8 @@
 
 ```bash
 helm template api-gateway ./service-template \
-  --namespace smart-oati \
-  --set image.repository=ghcr.io/org/smart-oati/api-gateway \
+  --namespace rp-gant \
+  --set image.repository=ghcr.io/org/rp-gant/api-gateway \
   --set image.digest=sha256:... \
   --set replicaCount=2
 ```
@@ -38,12 +38,12 @@ helm template api-gateway ./service-template \
 
 Чарт `infrastructure/helm/api-gateway` собран из `service-template` и содержит:
 
-- image `ghcr.io/yuvmironov/smart-oati/api-gateway`;
+- image `ghcr.io/yuvmironov/rp-gant/api-gateway`;
 - 2 реплики;
 - HPA 2–6;
 - PDB;
 - probes `/health/live` и `/health/ready`;
-- Yandex ALB ingress для `api.example.com`;
+- Yandex ALB ingress для `api.rp-gant.example.com`;
 - non-root UID 10001.
 
 Проверка:

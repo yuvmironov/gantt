@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { signSyncToken } from '@smart-oati/shared';
+import { signSyncToken } from '@rp-gant/shared';
 import { buildApp } from '../src/app.js';
 
 const secret = 'test-sync-secret';

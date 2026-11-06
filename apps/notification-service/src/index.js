@@ -1,4 +1,4 @@
-import { startService } from '@smart-oati/service-kit';
+import { startService } from '@rp-gant/service-kit';
 import { buildApp } from './app.js';
 import { closePool, createPool } from './db.js';
 import { startNotificationConsumer } from './events.js';

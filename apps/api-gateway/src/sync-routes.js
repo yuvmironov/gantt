@@ -1,10 +1,10 @@
-import { signSyncToken } from '@smart-oati/shared';
+import { signSyncToken } from '@rp-gant/shared';
 import { call } from './user-client.js';
 import { sendProblem } from './auth-routes.js';
 
 function unauthorized(reply, request) {
   return reply.code(401).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/unauthenticated',
+    type: 'https://rp-gant.local/problems/unauthenticated',
     title: 'Unauthorized',
     status: 401,
     detail: 'Session is required',

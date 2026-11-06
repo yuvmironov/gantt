@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('nuxt notifications page renders', async ({ page }) => {
   const suffix = Date.now();
-  const email = `notifications-${suffix}@smart-oati.test`;
+  const email = `notifications-${suffix}@rp-gant.test`;
   const password = 'NotificationsPassword123!';
 
   await page.goto('/login');

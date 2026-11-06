@@ -2,7 +2,7 @@ import { Kafka, logLevel } from 'kafkajs';
 
 export function startOutboxPublisher(db, env = process.env) {
   const brokers = String(env.KAFKA_BROKERS ?? 'kafka:9092').split(',');
-  const topic = env.KAFKA_TOPIC ?? 'smartoati.events';
+  const topic = env.KAFKA_TOPIC ?? 'rpgant.events';
   const kafka = new Kafka({ clientId: 'project-outbox', brokers, logLevel: logLevel.NOTHING });
   const producer = kafka.producer();
   let stopped = false;

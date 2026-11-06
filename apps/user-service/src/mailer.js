@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 export function createMailer(env = process.env) {
   const smtpUrl = String(env.SMTP_URL ?? '').trim();
-  const from = String(env.SMTP_FROM ?? 'SMART OATI <no-reply@smart-oati.local>');
+  const from = String(env.SMTP_FROM ?? 'RP Gant <no-reply@rp-gant.local>');
   const transporter = smtpUrl ? nodemailer.createTransport(smtpUrl) : null;
 
   return {

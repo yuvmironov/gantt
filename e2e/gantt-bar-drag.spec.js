@@ -2,7 +2,7 @@
 
 test('dragging a task bar does not open the editor', async ({ page }) => {
   const suffix = Date.now();
-  const email = `bar-drag-${suffix}@smart-oati.test`;
+  const email = `bar-drag-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
   await page.locator('#register-tab').click();

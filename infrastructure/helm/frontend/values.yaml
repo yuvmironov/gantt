@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/frontend
+  repository: ghcr.io/yuvmironov/rp-gant/frontend
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -95,7 +95,7 @@ ingress:
   className: yandex-alb
   annotations: {}
   hosts:
-    - host: app.example.com
+    - host: app.rp-gant.example.com
       paths:
         - path: /
           pathType: Prefix

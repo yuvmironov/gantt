@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/example/smart-oati/service
+  repository: ghcr.io/example/rp-gant/service
   tag: ""
   digest: ""
   pullPolicy: IfNotPresent

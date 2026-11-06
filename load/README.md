@@ -3,13 +3,13 @@
 Health smoke:
 
 ```bash
-BASE_URL=https://app.localhost VUS=10 DURATION=30s k6 run --insecure-skip-tls-verify load/smoke.js
+BASE_URL=https://app.rp-gant.localhost VUS=10 DURATION=30s k6 run --insecure-skip-tls-verify load/smoke.js
 ```
 
 Authenticated API scenario:
 
 ```bash
-BASE_URL=https://app.localhost EMAIL=demo.owner@smart-oati.local PASSWORD=DemoPassword123! \
+BASE_URL=https://app.rp-gant.localhost EMAIL=demo.owner@rp-gant.local PASSWORD=DemoPassword123! \
   VUS=5 DURATION=30s k6 run --insecure-skip-tls-verify load/authenticated.js
 ```
 

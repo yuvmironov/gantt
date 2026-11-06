@@ -34,7 +34,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Configure hosts
-        run: echo "127.0.0.1 app.localhost api.localhost" | sudo tee -a /etc/hosts
+        run: echo "127.0.0.1 app.rp-gant.localhost api.rp-gant.localhost" | sudo tee -a /etc/hosts
 
       - name: Start local stack
         run: |
@@ -44,7 +44,7 @@ jobs:
       - name: Wait for app
         run: |
           for attempt in $(seq 1 90); do
-            if curl -kfsS https://app.localhost/health >/dev/null; then
+            if curl -kfsS https://app.rp-gant.localhost/health >/dev/null; then
               exit 0
             fi
             sleep 2
