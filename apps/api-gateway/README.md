@@ -59,7 +59,8 @@
 - `GET /api/v1/tasks/{taskId}`, `PATCH /api/v1/tasks/{taskId}`, `DELETE /api/v1/tasks/{taskId}`;
 - `POST /api/v1/tasks/{taskId}/move`;
 - `PATCH /api/v1/tasks/{taskId}/progress`;
-- `PUT /api/v1/tasks/{taskId}/assignments`.
+- `PUT /api/v1/tasks/{taskId}/assignments`;
+- `estimatedHours > 0`: окончание задачи рассчитывается автоматически по 8 часов в день с учётом рабочего/календарного режима.
 
 ### Связи, комментарии и календарь
 

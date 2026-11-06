@@ -149,6 +149,7 @@ message Task {
   google.protobuf.Timestamp created_at = 25;
   google.protobuf.Timestamp updated_at = 26;
   google.protobuf.Timestamp deleted_at = 27;
+  double estimated_hours = 28;
 }
 
 message Dependency {
@@ -511,6 +512,7 @@ message CreateTaskRequest {
   bool bp_flag = 11;
   bool sp_flag = 12;
   int32 sort_order = 13;
+  double estimated_hours = 14;
 }
 
 message CreateTaskResponse {
@@ -539,6 +541,7 @@ message UpdateTaskRequest {
   optional bool sp_flag = 11;
   int32 expected_version = 12;
   int64 base_revision = 13;
+  optional double estimated_hours = 14;
 }
 
 message UpdateTaskResponse {

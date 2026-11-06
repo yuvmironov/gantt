@@ -85,6 +85,7 @@ const modalPeople = computed(() => [
   })),
 ]);
 const newTask = reactive({
+  estimatedHours: null,
   directionId: '',
   parentTaskId: '',
   name: '',
@@ -103,6 +104,22 @@ const newTask = reactive({
   bpFlag: false,
   spFlag: false,
 });
+
+const autoTaskEnd = computed(() => {
+  const hours = Number(newTask.estimatedHours) || 0;
+  if (hours <= 0 || !newTask.startDate) return '';
+  return calculateTaskEndDate(
+    newTask.startDate,
+    hours,
+    snapshot.value?.diagram?.dayMode ?? 'working',
+    snapshot.value?.holidays ?? [],
+  );
+});
+
+watch(autoTaskEnd, (value) => {
+  if (value) newTask.endDate = value;
+});
+
 const moveForm = reactive({ directionId: '', sortOrder: 0 });
 const taskEdit = reactive({
   name: '',
@@ -231,6 +248,7 @@ function openTaskModal(prefill = {}) {
     startDate: '',
     endDate: '',
     actualEndDate: '',
+    estimatedHours: null,
     responsibleId: '',
     executorId: '',
     coExecutorId: '',
@@ -261,6 +279,7 @@ async function openTaskEditor(task) {
     startDate: task.startDate ? task.startDate.slice(0, 10) : '',
     endDate: task.endDate ? task.endDate.slice(0, 10) : '',
     actualEndDate: task.actualEndDate ? task.actualEndDate.slice(0, 10) : '',
+    estimatedHours: task.estimatedHours ?? null,
     responsibleId: '',
     executorId: '',
     coExecutorId: '',
@@ -297,6 +316,10 @@ function modalAssignments() {
 }
 
 async function saveTaskModal() {
+  if (Number(newTask.estimatedHours) > 0 && !newTask.startDate) {
+    error.value = 'Укажите дату начала для расчёта окончания по часам';
+    return;
+  }
   if (editingTaskId.value) {
     await saveTaskEdit();
   } else {
@@ -319,6 +342,7 @@ async function saveTaskEdit() {
         startDate: newTask.startDate || null,
         endDate: newTask.endDate || null,
         actualEndDate: newTask.actualEndDate || null,
+        estimatedHours: newTask.estimatedHours || null,
         bpFlag: newTask.bpFlag,
         spFlag: newTask.spFlag,
       },
@@ -378,6 +402,7 @@ async function createTaskFromModal() {
         priority: newTask.priority,
         startDate: newTask.startDate || null,
         endDate: newTask.endDate || null,
+        estimatedHours: newTask.estimatedHours || null,
         jiraNumber: newTask.jiraNumber,
         bpFlag: newTask.bpFlag,
         spFlag: newTask.spFlag,
@@ -1092,6 +1117,7 @@ function taskTooltip(task) {
       ? `Срок: ${formatShortDate(task.startDate)} — ${formatShortDate(task.effectiveEndDate ?? task.endDate)} (${task.days ?? 0} дн.)`
       : '',
     task.actualEndDate ? `Факт: ${formatShortDate(task.actualEndDate)}` : '',
+    Number(task.estimatedHours) > 0 ? `Часы: ${task.estimatedHours} ч` : '',
     `Статус: ${statusLabel(task.status)} · ${task.progress}% · ${task.priority}`,
     responsibleName(task) ? `Ответственный: ${responsibleName(task)}` : '',
     task.jiraNumber ? `Jira: ${task.jiraNumber}` : '',
@@ -1367,6 +1393,26 @@ const hoveredTaskIds = computed(() => {
   return ids;
 });
 
+function calculateTaskEndDate(startDate, estimatedHours, dayMode, holidays = []) {
+  const totalDays = Math.ceil(Number(estimatedHours) / 8);
+  if (!startDate || !Number.isFinite(totalDays) || totalDays <= 0) return '';
+  const holidaySet = new Set((holidays ?? []).map((item) => item.holidayDate));
+  let date = new Date(`${startDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return '';
+  const isWorking = () =>
+    ![0, 6].includes(date.getUTCDay()) && !holidaySet.has(date.toISOString().slice(0, 10));
+  if (dayMode === 'working') {
+    while (!isWorking()) date = new Date(date.getTime() + 86400000);
+    for (let remaining = totalDays - 1; remaining > 0; ) {
+      date = new Date(date.getTime() + 86400000);
+      if (isWorking()) remaining -= 1;
+    }
+  } else {
+    date = new Date(date.getTime() + (totalDays - 1) * 86400000);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 function snapWorkday(value, direction = 1) {
   if (snapshot.value?.diagram?.dayMode !== 'working') return value;
   const holidays = new Set((snapshot.value?.holidays ?? []).map((item) => item.holidayDate));
@@ -1405,6 +1451,8 @@ function startBarDrag(event, bar, mode) {
   const { min, max } = timelineRange.value;
   const dayMs = 1000 * 60 * 60 * 24;
   const daysInRange = Math.max(1, (max - min) / dayMs);
+  const estimatedHours = Number(bar.task.estimatedHours) || 0;
+  if (mode === 'end' && estimatedHours > 0) return;
   const originalStart = new Date(bar.task.startDate);
   const originalEnd = new Date(bar.task.effectiveEndDate ?? bar.task.endDate ?? bar.task.startDate);
   let moved = false;
@@ -1424,6 +1472,15 @@ function startBarDrag(event, bar, mode) {
       if (end < start) end = start;
     }
     const previewStart = snapWorkday(start.toISOString().slice(0, 10), 1);
+    if (estimatedHours > 0) {
+      const autoEnd = calculateTaskEndDate(
+        previewStart,
+        estimatedHours,
+        snapshot.value?.diagram?.dayMode ?? 'working',
+        snapshot.value?.holidays ?? [],
+      );
+      if (autoEnd) end = new Date(`${autoEnd}T00:00:00Z`);
+    }
     const previewEnd = snapWorkday(end.toISOString().slice(0, 10), -1);
     const previewStartMs = new Date(previewStart).getTime();
     const previewEndMs = new Date(previewEnd).getTime();
@@ -2148,6 +2205,7 @@ onMounted(async () => {
                 <span v-if="responsibleName(row.task)" class="badge badge-neutral">{{ responsibleName(row.task) }}</span>
                 <span class="badge badge-dot" :class="statusBadgeClass(row.task.status)">{{ statusLabel(row.task.status) }}</span>
                 <span class="badge badge-neutral">{{ row.task.progress }}%</span>
+                <span v-if="Number(row.task.estimatedHours) > 0" class="badge badge-neutral">{{ row.task.estimatedHours }} ч</span>
                 <span v-if="row.task.autoProgress" class="badge badge-primary" title="Рассчитывается по подзадачам">авто</span>
                 <span v-if="isTaskDoneEarly(row.task)" class="badge badge-success">досрочно</span>
                 <button v-if="row.depth === 1" class="row-action" type="button" title="Добавить подзадачу" @click.stop="startSubtask(row.task)">＋</button>
@@ -2230,7 +2288,7 @@ onMounted(async () => {
               @click="onBarClick(bar.task)"
             >
               <span class="bar-handle left" @pointerdown.stop="startBarDrag($event, bar, 'start')"></span>
-              <span class="bar-handle right" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
+              <span class="bar-handle right" :class="{ 'auto-end': Number(bar.task.estimatedHours) > 0 }" @pointerdown.stop="startBarDrag($event, bar, 'end')"></span>
               <span class="gantt-bar-label">{{ bar.task.wbsCode }} · {{ bar.task.progress }}%</span>
               <span class="fill" :style="{ width: `${bar.task.progress}%` }"></span>
             </div>
@@ -2401,6 +2459,17 @@ onMounted(async () => {
             <input v-model.number="newTask.progress" class="input task-modal-progress" type="number" min="0" max="100" step="5" />
           </label>
           <label class="field">
+            <span>Часы</span>
+            <input
+              v-model.number="newTask.estimatedHours"
+              class="input task-modal-hours"
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="0"
+            />
+          </label>
+          <label class="field">
             <span>Приоритет</span>
             <select v-model="newTask.priority" class="input">
               <option value="low">Низкий</option>
@@ -2415,11 +2484,11 @@ onMounted(async () => {
           </label>
           <label class="field">
             <span>Начало</span>
-            <input v-model="newTask.startDate" class="input" type="date" />
+            <input v-model="newTask.startDate" class="input task-modal-start" type="date" />
           </label>
           <label class="field">
             <span>Окончание</span>
-            <input v-model="newTask.endDate" class="input" type="date" />
+            <input v-model="newTask.endDate" class="input task-modal-end" type="date" :disabled="Boolean(autoTaskEnd)" />
           </label>
           <label v-if="editingTaskId" class="field">
             <span>Факт завершения</span>
@@ -2464,6 +2533,10 @@ onMounted(async () => {
           <label class="checkbox-line"><input v-model="newTask.bpFlag" type="checkbox" /> БП</label>
           <label class="checkbox-line"><input v-model="newTask.spFlag" type="checkbox" /> СП</label>
         </div>
+        <p v-if="autoTaskEnd" class="muted small">
+          Окончание рассчитано автоматически: {{ formatShortDate(autoTaskEnd) }} ({{ newTask.estimatedHours }} ч,
+          8 ч/день).
+        </p>
         <div v-if="editingTaskId" class="task-modal-comments">
           <div class="comments-head"><strong>Комментарии</strong><span class="muted">{{ comments.length }}</span></div>
           <div class="comment-list">
@@ -2860,6 +2933,7 @@ onMounted(async () => {
 .bar-handle { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 3; }
 .bar-handle.left { left: 0; }
 .bar-handle.right { right: 0; }
+.bar-handle.auto-end { display: none; }
 .gantt-bar.direction-bar { background: #334155; border-color: #1e293b; color: #f8fafc; z-index: 3; }
 .gantt-bar.direction-bar .fill { background: rgb(255 255 255 / 18%); }
 .gantt-bar.direction-bar.done { background: #166534; border-color: #14532d; }
