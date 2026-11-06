@@ -78,6 +78,19 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   });
   expect(alignment.headerDelta).toBeLessThanOrEqual(1);
   expect(alignment.rowBarDelta).toBeLessThanOrEqual(5);
+  const topScroll = page.locator('.gantt-top-scroll-track');
+  await expect(topScroll).toBeVisible();
+  const topScrollBox = await topScroll.boundingBox();
+  const frameBox = await page.locator('.gantt-frame').boundingBox();
+  expect(topScrollBox.y).toBeLessThan(frameBox.y);
+  const timeline = page.locator('.gantt-timeline');
+  await timeline.evaluate((element) => {
+    element.scrollLeft = 120;
+  });
+  await expect.poll(() => topScroll.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await timeline.evaluate((element) => {
+    element.scrollLeft = 0;
+  });
   const firstBar = page.locator('.gantt-bar:not(.direction-bar)').first();
   await firstBar.hover();
   await expect(page.locator('.bar-tooltip')).toBeVisible();
