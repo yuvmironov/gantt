@@ -103,6 +103,7 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
       .sort((a, b) => b - a)[0];
     const ownStart = toDate(direction.startDate);
     const ownEnd = toDate(direction.endDate);
+    const resolvedEnd = ownEnd && end ? new Date(Math.max(ownEnd, end)) : (ownEnd ?? end);
     return {
       ...direction,
       tasksCount: directionTasks.length,
@@ -115,8 +116,8 @@ export function applySchedule(snapshot, dayMode, holidayItems) {
             ? 'in_progress'
             : 'planned',
       startDate: ownStart ? dateKey(ownStart) : start ? dateKey(start) : null,
-      endDate: ownEnd ? dateKey(ownEnd) : end ? dateKey(end) : null,
-      days: countDays(ownStart ?? start, ownEnd ?? end, mode, holidays),
+      endDate: resolvedEnd ? dateKey(resolvedEnd) : null,
+      days: countDays(ownStart ?? start, resolvedEnd, mode, holidays),
     };
   });
 
