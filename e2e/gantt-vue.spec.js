@@ -78,6 +78,13 @@ test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   });
   expect(alignment.headerDelta).toBeLessThanOrEqual(1);
   expect(alignment.rowBarDelta).toBeLessThanOrEqual(5);
+  const firstBar = page.locator('.gantt-bar:not(.direction-bar)').first();
+  await firstBar.hover();
+  await expect(page.locator('.bar-tooltip')).toBeVisible();
+  await expect(page.locator('.bar-tooltip')).toContainText(taskName);
+  await expect(page.locator('.bar-tooltip')).toContainText('Статус:');
+  await page.mouse.move(2, 2);
+  await expect(page.locator('.bar-tooltip')).toHaveCount(0);
   await page.getByTitle('Создать задачу в направлении').first().click();
   await expect(page.locator('.task-modal')).toBeVisible();
   await expect(page.locator('.task-modal-direction')).toHaveValue(ids.directionId);

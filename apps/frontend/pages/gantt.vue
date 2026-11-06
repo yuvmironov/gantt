@@ -159,6 +159,8 @@ const dragOverMode = ref('');
 const barDragPreview = ref(null);
 let suppressBarClickUntil = 0;
 const hoveredDependencyId = ref('');
+const barTooltip = ref(null);
+const barTooltipRef = ref(null);
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -1155,6 +1157,59 @@ function toggleCollapse(id) {
   localStorage.setItem('oati_gantt_collapsed_v1', JSON.stringify(collapsed.value));
 }
 
+function assignmentByRole(task, role) {
+  const assignment = (task.assignments ?? []).find((item) => item.role === role);
+  return assignment ? assignmentName(assignment) : '';
+}
+
+function priorityLabel(value) {
+  return (
+    {
+      low: 'низкий',
+      medium: 'средний',
+      high: 'высокий',
+      critical: 'критический',
+    }[value] ?? value
+  );
+}
+
+function placeBarTooltip() {
+  if (!barTooltip.value) return;
+  const element = barTooltipRef.value;
+  if (!element) return;
+  const { clientX, clientY } = barTooltip.value;
+  const rect = element.getBoundingClientRect();
+  let x = clientX + 16;
+  let y = clientY + 16;
+  if (x + rect.width > window.innerWidth - 8) x = clientX - rect.width - 16;
+  if (y + rect.height > window.innerHeight - 8) y = clientY - rect.height - 16;
+  barTooltip.value.x = Math.max(8, x);
+  barTooltip.value.y = Math.max(8, y);
+}
+
+function showBarTooltip(event, task) {
+  if (barDragPreview.value) return;
+  barTooltip.value = {
+    task,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    x: event.clientX + 16,
+    y: event.clientY + 16,
+  };
+  requestAnimationFrame(placeBarTooltip);
+}
+
+function moveBarTooltip(event) {
+  if (!barTooltip.value) return;
+  barTooltip.value.clientX = event.clientX;
+  barTooltip.value.clientY = event.clientY;
+  placeBarTooltip();
+}
+
+function hideBarTooltip() {
+  barTooltip.value = null;
+}
+
 function taskTooltip(task) {
   const parts = [
     `${task.wbsCode} · ${task.name}`,
@@ -1490,6 +1545,7 @@ function startBarDrag(event, bar, mode) {
   if (linkMode.value) return;
   event.preventDefault();
   event.stopPropagation();
+  hideBarTooltip();
   const container = event.currentTarget.closest('.gantt-canvas');
   if (!container || !bar.task.startDate) return;
   const startX = event.clientX;
@@ -1566,6 +1622,7 @@ function startBarDrag(event, bar, mode) {
 }
 
 function onBarClick(task) {
+  hideBarTooltip();
   if (Date.now() < suppressBarClickUntil) return;
   if (linkMode.value) {
     pickLink('task', task);
@@ -2331,6 +2388,9 @@ onMounted(async () => {
               :class="[bar.task.status, { critical: bar.task.isCritical, dragging: barDragPreview?.taskId === bar.task.id, 'link-source': isLinkSource('task', bar.task.id), 'dep-linked': hoveredTaskIds.has(bar.task.id) }]"
               :style="bar.style"
               @pointerdown="startBarDrag($event, bar, 'move')"
+              @mouseenter="showBarTooltip($event, bar.task)"
+              @mousemove="moveBarTooltip"
+              @mouseleave="hideBarTooltip"
               @click="onBarClick(bar.task)"
             >
               <span class="bar-handle left" @pointerdown.stop="startBarDrag($event, bar, 'start')"></span>
@@ -2908,6 +2968,62 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <div v-if="barTooltip" ref="barTooltipRef" class="bar-tooltip" :style="{ left: `${barTooltip.x}px`, top: `${barTooltip.y}px` }">
+      <div class="bar-tooltip-title">{{ barTooltip.task.wbsCode }} · {{ barTooltip.task.name }}</div>
+      <div v-if="barTooltip.task.description">
+        <span class="bar-tooltip-key">Описание:</span> {{ barTooltip.task.description }}
+      </div>
+      <div>
+        <span class="bar-tooltip-key">Срок:</span>
+        {{ formatShortDate(barTooltip.task.startDate) }} — {{ formatShortDate(barTooltip.task.effectiveEndDate ?? barTooltip.task.endDate) }}
+        <span class="bar-tooltip-key">({{ barTooltip.task.days ?? 0 }} дн.)</span>
+      </div>
+      <div v-if="Number(barTooltip.task.estimatedHours) > 0">
+        <span class="bar-tooltip-key">Часы:</span> {{ barTooltip.task.estimatedHours }} ч
+        <span class="bar-tooltip-key">· 8 ч/день</span>
+      </div>
+      <div v-if="barTooltip.task.actualEndDate">
+        <span class="bar-tooltip-key">Факт:</span> {{ formatShortDate(barTooltip.task.actualEndDate) }}
+        <template v-if="Number(barTooltip.task.doneDeltaDays) > 0">
+          · <span class="bar-tooltip-good">досрочно на {{ barTooltip.task.doneDeltaDays }} дн.</span>
+        </template>
+        <template v-else-if="Number(barTooltip.task.doneDeltaDays) < 0">
+          · <span class="bar-tooltip-bad">просрочка {{ Math.abs(barTooltip.task.doneDeltaDays) }} дн.</span>
+        </template>
+        <template v-else> · точно в срок</template>
+      </div>
+      <div>
+        <span class="bar-tooltip-key">Статус:</span> {{ statusLabel(barTooltip.task.status) }} · {{ barTooltip.task.progress }}%
+        <span class="bar-tooltip-key">· приоритет: {{ priorityLabel(barTooltip.task.priority) }}</span>
+      </div>
+      <div v-if="assignmentByRole(barTooltip.task, 'responsible')">
+        <span class="bar-tooltip-key">Ответственный:</span> {{ assignmentByRole(barTooltip.task, 'responsible') }}
+      </div>
+      <div v-if="assignmentByRole(barTooltip.task, 'executor')">
+        <span class="bar-tooltip-key">Исполнитель:</span> {{ assignmentByRole(barTooltip.task, 'executor') }}
+      </div>
+      <div v-if="assignmentByRole(barTooltip.task, 'co_executor')">
+        <span class="bar-tooltip-key">Соисполнитель:</span> {{ assignmentByRole(barTooltip.task, 'co_executor') }}
+      </div>
+      <div v-if="barTooltip.task.jiraNumber">
+        <span class="bar-tooltip-key">Jira:</span> {{ barTooltip.task.jiraNumber }}
+      </div>
+      <div v-if="barTooltip.task.result">
+        <span class="bar-tooltip-key">Результат:</span> {{ barTooltip.task.result }}
+      </div>
+      <div>
+        <span class="bar-tooltip-key">Документы:</span>
+        {{ barTooltip.task.bpFlag ? 'есть БП' : 'нет БП' }} · {{ barTooltip.task.spFlag ? 'есть СП' : 'нет СП' }}
+      </div>
+      <div v-if="barTooltip.task.commentsCount">
+        <span class="bar-tooltip-key">Комментарии:</span> {{ barTooltip.task.commentsCount }}
+      </div>
+      <div v-if="barTooltip.task.isCritical" class="bar-tooltip-bad">Критическая задача</div>
+      <div v-else-if="barTooltip.task.float != null">
+        <span class="bar-tooltip-key">Резерв:</span> {{ barTooltip.task.float }} дн.
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2989,6 +3105,11 @@ onMounted(async () => {
 .gantt-row-label.link-source { background: #dbeafe; outline: 2px solid #60a5fa; outline-offset: -2px; }
 .gantt-row-label.dep-linked { background: #e0f2fe; box-shadow: inset 3px 0 0 #0ea5e9; }
 .link-hint { border-style: dashed; }
+.bar-tooltip { position: fixed; z-index: 120; max-width: min(420px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 8px; background: #0f172a; color: #e2e8f0; box-shadow: 0 8px 24px rgb(15 23 42 / 35%); font-size: 12px; line-height: 1.5; pointer-events: none; overflow-wrap: anywhere; }
+.bar-tooltip-title { margin-bottom: 4px; color: #fff; font-size: 13px; font-weight: 700; }
+.bar-tooltip-key { color: #94a3b8; }
+.bar-tooltip-good { color: #4ade80; font-weight: 700; }
+.bar-tooltip-bad { color: #fca5a5; font-weight: 700; }
 .gantt-bar-preview { position: absolute; height: 28px; z-index: 6; display: flex; align-items: center; padding: 0 8px; border: 2px dashed #2563eb; border-radius: var(--radius-md); background: rgb(219 234 254 / 82%); color: #1d4ed8; font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px rgb(37 99 235 / 18%); }
 .gantt-bar.critical { border-width: 2px; border-color: #dc2626; }
 .gantt-row-label.task .label-meta { flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
