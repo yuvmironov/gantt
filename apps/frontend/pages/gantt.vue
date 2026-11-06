@@ -7,6 +7,7 @@ const snapshot = ref(null);
 const selectedTask = ref(null);
 const comments = ref([]);
 const commentsLoading = ref(false);
+const commentAuthorNames = new Map();
 const commentBody = ref('');
 const editingCommentId = ref('');
 const editCommentBody = ref('');
@@ -575,6 +576,18 @@ function fillTaskEdit(task) {
   taskEdit.spFlag = Boolean(task.spFlag);
 }
 
+async function commentAuthorName(userId) {
+  if (!userId) return 'Пользователь';
+  if (currentUser.value?.id === userId) {
+    return currentUser.value.displayName || currentUser.value.email || 'Пользователь';
+  }
+  if (commentAuthorNames.has(userId)) return commentAuthorNames.get(userId);
+  const user = await api(`/users/${userId}`).catch(() => null);
+  const name = user?.displayName || user?.email || 'Пользователь';
+  commentAuthorNames.set(userId, name);
+  return name;
+}
+
 async function loadCommentsForTask(taskId) {
   comments.value = [];
   commentBody.value = '';
@@ -583,9 +596,19 @@ async function loadCommentsForTask(taskId) {
   commentsLoading.value = true;
   try {
     const response = await api(`/comments?entityType=task&entityId=${taskId}`);
-    comments.value = (response.items ?? []).filter(
+    const items = (response.items ?? []).filter(
       (comment) => !comment.entityId || comment.entityId === taskId,
     );
+    const authorIds = [...new Set(items.map((comment) => comment.authorUserId).filter(Boolean))];
+    const names = new Map(
+      await Promise.all(
+        authorIds.map(async (userId) => [userId, await commentAuthorName(userId)]),
+      ),
+    );
+    comments.value = items.map((comment) => ({
+      ...comment,
+      authorName: names.get(comment.authorUserId) || 'Пользователь',
+    }));
   } catch (reason) {
     error.value = reason.message;
   } finally {
@@ -2566,7 +2589,7 @@ onMounted(async () => {
             <p v-if="commentsLoading" class="muted small">Загрузка комментариев...</p>
             <div v-for="comment in comments" :key="comment.id" class="comment">
               <div class="comment-meta">
-                <strong>{{ comment.authorUserId }}</strong>
+                <strong>{{ comment.authorName || comment.authorUserId }}</strong>
                 <span>{{ formatShortDate(comment.createdAt) }}</span>
               </div>
               <template v-if="editingCommentId === comment.id">
