@@ -11,7 +11,7 @@
     "@fastify/rate-limit": "10.2.0",
     "@rp-gant/service-kit": "workspace:*",
     "kafkajs": "2.2.4",
-    "nodemailer": "10.0.6",
+    "nodemailer": "10.1.4",
     "pg": "^8.23.1"
   }
 }
