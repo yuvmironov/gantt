@@ -76,6 +76,27 @@ const directionEdit = reactive({
 });
 const showTaskModal = ref(false);
 const editingTaskId = ref('');
+function updateGanttScrollMetrics() {
+  const header = document.querySelector('.app-header');
+  const toolbar = toolbarRef.value;
+  stickyScrollTop.value = (header?.offsetHeight ?? 0) + (toolbar?.offsetHeight ?? 0) + 14;
+  if (timelineRef.value) timelineScrollWidth.value = timelineRef.value.scrollWidth;
+}
+
+function syncFromTimeline(event) {
+  const target = topScrollRef.value;
+  if (target && Math.abs(target.scrollLeft - event.target.scrollLeft) > 1) {
+    target.scrollLeft = event.target.scrollLeft;
+  }
+}
+
+function syncFromTopScroll(event) {
+  const target = timelineRef.value;
+  if (target && Math.abs(target.scrollLeft - event.target.scrollLeft) > 1) {
+    target.scrollLeft = event.target.scrollLeft;
+  }
+}
+
 const modalPeople = computed(() => [
   ...members.value.map((member) => ({
     value: `user:${member.userId}`,
@@ -161,6 +182,32 @@ let suppressBarClickUntil = 0;
 const hoveredDependencyId = ref('');
 const barTooltip = ref(null);
 const barTooltipRef = ref(null);
+const toolbarRef = ref(null);
+const timelineRef = ref(null);
+const topScrollRef = ref(null);
+const timelineScrollWidth = ref(0);
+const stickyScrollTop = ref(0);
+
+watchEffect((onCleanup) => {
+  const toolbar = toolbarRef.value;
+  const timeline = timelineRef.value;
+  if (!toolbar || !timeline) return;
+  updateGanttScrollMetrics();
+  const observer = new ResizeObserver(updateGanttScrollMetrics);
+  observer.observe(toolbar);
+  observer.observe(timeline);
+  const header = document.querySelector('.app-header');
+  if (header) observer.observe(header);
+  onCleanup(() => observer.disconnect());
+});
+
+watch(
+  [zoom, labelWidth, () => snapshot.value?.currentRevision, () => diagramId.value],
+  async () => {
+    await nextTick();
+    updateGanttScrollMetrics();
+  },
+);
 let syncSocket = null;
 let syncReconnectTimer = null;
 let syncRefreshTimer = null;
@@ -2173,7 +2220,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-if="snapshot" class="gantt-toolbar">
+      <div v-if="snapshot" ref="toolbarRef" class="gantt-toolbar">
         <button class="btn btn-primary btn-sm" type="button" @click="openDirectionCreateModal">＋ Направление</button>
         <button class="btn btn-secondary btn-sm" type="button" @click="focusNewTask">＋ Задача</button>
         <div class="divider"></div>
@@ -2235,6 +2282,17 @@ onMounted(async () => {
         <p class="muted">Создайте диаграмму, чтобы добавить направления и задачи.</p>
         <button class="btn btn-primary" type="button" @click="openDiagramModal">Создать диаграмму</button>
       </section>
+
+      <div
+        v-if="snapshot"
+        class="gantt-top-scroll"
+        :style="{ top: `${stickyScrollTop}px`, gridTemplateColumns: `${labelWidth}px minmax(420px, 1fr)` }"
+      >
+        <span></span>
+        <div ref="topScrollRef" class="gantt-top-scroll-track" @scroll="syncFromTopScroll">
+          <div :style="{ width: `${timelineScrollWidth}px` }"></div>
+        </div>
+      </div>
 
       <div v-if="snapshot" class="gantt-frame" :style="{ gridTemplateColumns: `${labelWidth}px minmax(420px, 1fr)` }">
         <div class="gantt-labels">
@@ -2316,7 +2374,7 @@ onMounted(async () => {
             </div>
           </template>
         </div>
-        <div class="gantt-timeline">
+        <div ref="timelineRef" class="gantt-timeline" @scroll="syncFromTimeline">
           <div class="gantt-time-head" :style="{ minWidth: `${900 * zoom}px` }">
             <div class="gantt-month">План</div>
             <div
@@ -3134,6 +3192,13 @@ onMounted(async () => {
 .gantt-row-label:hover, .gantt-row-label.selected { background: #eff6ff; }
 .label-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .label-meta { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; white-space: nowrap; }
+.gantt-top-scroll { position: sticky; z-index: 18; display: grid; align-items: center; height: 14px; margin-bottom: 6px; background: var(--color-bg); }
+.gantt-top-scroll-track { overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
+.gantt-top-scroll-track > div { height: 1px; }
+.gantt-top-scroll-track::-webkit-scrollbar { height: 12px; }
+.gantt-top-scroll-track::-webkit-scrollbar-track { background: var(--color-surface-subtle); border-radius: 999px; }
+.gantt-top-scroll-track::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+.gantt-top-scroll-track::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .gantt-timeline { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
 .gantt-timeline::-webkit-scrollbar { height: 12px; }
 .gantt-timeline::-webkit-scrollbar-track { background: var(--color-surface-subtle); border-top: 1px solid var(--color-border); }
