@@ -48,6 +48,10 @@ test('task comments are isolated by task', async ({ page }) => {
     .fill('Only first');
   await page.getByRole('button', { name: 'Добавить комментарий' }).click();
   await expect(page.locator('.task-modal-comments')).toContainText('Only first');
+  await expect(page.locator('.task-modal-comments')).toContainText('Comment Tester');
+  await expect(page.locator('.task-modal-comments')).not.toContainText(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+  );
 
   await page.locator('.task-modal-head .btn-icon').click();
   await page
