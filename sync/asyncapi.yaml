@@ -1,29 +1,30 @@
 asyncapi: 3.0.0
 info:
   title: RP Gant Sync WebSocket
-  version: 1.0.0
-  description: WebSocket-контракт Sync / Realtime Service.
+  version: 1.1.0
+  x-status: implemented
+  description: >-
+    WebSocket-синхронизация Gantt. Клиент подключается к `/ws?token=<sync-token>`.
+    Токен выдаёт `GET /api/v1/sync/token`; project scope берётся из claims токена.
+    Subscribe/unsubscribe-сообщения не используются. Сервер отправляет события
+    только по проектам, доступным в токене; администратор получает все проекты.
 servers:
   production:
-    host: api.rp-gant.local
+    host: sync.rp-gant.ru
+    pathname: /ws
+    protocol: wss
+  local:
+    host: sync.rp-gant.localhost
     pathname: /ws
     protocol: wss
 channels:
   sync:
     address: /ws
     messages:
-      subscribe:
-        $ref: '#/components/messages/Subscribe'
-      subscribed:
-        $ref: '#/components/messages/Subscribed'
-      unsubscribe:
-        $ref: '#/components/messages/Unsubscribe'
-      unsubscribed:
-        $ref: '#/components/messages/Unsubscribed'
+      connected:
+        $ref: '#/components/messages/Connected'
       diagramChanged:
         $ref: '#/components/messages/DiagramChanged'
-      snapshotRequired:
-        $ref: '#/components/messages/SnapshotRequired'
       error:
         $ref: '#/components/messages/Error'
       ping:
@@ -35,42 +36,29 @@ operations:
     action: send
     channel:
       $ref: '#/channels/sync'
+    messages:
+      - $ref: '#/channels/sync/messages/ping'
   serverMessages:
     action: receive
     channel:
       $ref: '#/channels/sync'
+    messages:
+      - $ref: '#/channels/sync/messages/connected'
+      - $ref: '#/channels/sync/messages/diagramChanged'
+      - $ref: '#/channels/sync/messages/error'
+      - $ref: '#/channels/sync/messages/pong'
 components:
   messages:
-    Subscribe:
-      name: Subscribe
+    Connected:
+      name: Connected
       contentType: application/json
       payload:
-        $ref: './schemas/subscribe.schema.json'
-    Subscribed:
-      name: Subscribed
-      contentType: application/json
-      payload:
-        $ref: './schemas/subscribed.schema.json'
-    Unsubscribe:
-      name: Unsubscribe
-      contentType: application/json
-      payload:
-        $ref: './schemas/unsubscribe.schema.json'
-    Unsubscribed:
-      name: Unsubscribed
-      contentType: application/json
-      payload:
-        $ref: './schemas/unsubscribed.schema.json'
+        $ref: './schemas/connected.schema.json'
     DiagramChanged:
       name: DiagramChanged
       contentType: application/json
       payload:
         $ref: './schemas/diagram-changed.schema.json'
-    SnapshotRequired:
-      name: SnapshotRequired
-      contentType: application/json
-      payload:
-        $ref: './schemas/snapshot-required.schema.json'
     Error:
       name: Error
       contentType: application/json

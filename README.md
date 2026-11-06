@@ -62,7 +62,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - Кнопка **Участники** в выбранном проекте: добавление существующего пользователя, приглашение по email, смена роли и удаление.
 - Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.rp-gant.localhost**.
 - Ссылка сброса открывает форму нового пароля; смена пароля доступна в верхнем меню.
-- Уведомления и Gantt обновляются в реальном времени через `sync-service`.
+- Gantt обновляется в реальном времени через `sync-service`; уведомления загружаются через REST API, WebSocket для них пока не реализован.
 
 ## Локальные команды
 
@@ -92,7 +92,7 @@ Traefik использует собственный самоподписанны
 - `mail.rp-gant.localhost` — Mailpit UI;
 - `kafka.rp-gant.localhost` — Kafka UI;
 - `sync.rp-gant.localhost` — Sync Service WebSocket;
-- `notify.rp-gant.localhost` — Notification Service WebSocket.
+- `notify.rp-gant.localhost` — Notification Service HTTP; WebSocket запланирован, но не реализован.
 
 ## Команды разработки
 
@@ -142,6 +142,7 @@ tools/                 # проверки контрактов
 Актуальная техническая документация — README сервисов, `openapi/`, `proto/`, `events/` и каталог `docs/`.
 
 - [`docs/MIGRATION-rp-gant.md`](docs/MIGRATION-rp-gant.md) — переход с `smart-oati` на `rp-gant`, перенос БД, volumes, Helm и CI.
+- [`docs/SPEC-STATUS.md`](docs/SPEC-STATUS.md) — состояние REST/gRPC/events/WebSocket-спецификаций.
 - [`infrastructure/vps/README.md`](infrastructure/vps/README.md) — production-развёртывание на одном VPS за Jino-прокси.
 
 ## Статус

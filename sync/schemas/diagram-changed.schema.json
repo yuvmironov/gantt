@@ -4,17 +4,11 @@
   "title": "WsDiagramChanged",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "version", "diagramId", "revision", "entityType", "entityId", "operation", "payload"],
+  "required": ["type", "event"],
   "properties": {
     "type": { "const": "diagram.changed" },
-    "version": { "type": "integer", "const": 1 },
-    "diagramId": { "type": "string", "format": "uuid" },
-    "revision": { "type": "integer", "minimum": 1 },
-    "entityType": { "type": "string", "enum": ["project", "diagram", "direction", "task", "dependency", "comment", "holiday"] },
-    "entityId": { "type": "string", "format": "uuid" },
-    "operation": { "type": "string", "enum": ["create", "update", "delete"] },
-    "payload": { "type": "object", "additionalProperties": true },
-    "actorUserId": { "type": ["string", "null"], "format": "uuid" },
-    "occurredAt": { "type": "string", "format": "date-time" }
+    "event": {
+      "$ref": "../../events/schemas/event-envelope.schema.json"
+    }
   }
 }

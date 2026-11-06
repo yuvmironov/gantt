@@ -2,40 +2,40 @@ openapi: 3.1.0
 info:
   title: RP Gant Gantt API
   version: 1.2.0
-  description: >-
-    ╨Я╤Г╨▒╨╗╨╕╤З╨╜╤Л╨╣ REST API Gateway ╨┤╨╗╤П ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╤П ┬л╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ ╨У╨░╨╜╤В╨░ тАФ ╨┐╤А╨╛╨╡╨║╤В SMART
-    OATI┬╗.
+  description: Публичный REST API Gateway для приложения «Диаграмма Ганта — проект RP Gant».
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
 servers:
-  - url: https://{host}/api/v1
-    variables:
-      host:
-        default: api.rp-gant.local
+  - url: https://app.rp-gant.ru/api/v1
+    description: Production
 tags:
   - name: Auth
-    description: ╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П, ╨▓╤Е╨╛╨┤, ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╕ ╨┐╨░╤А╨╛╨╗╨╕
+    description: Регистрация, вход, сессии и пароли
   - name: Users
-    description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕ ╨╕ ╨┐╤А╨╛╤Д╨╕╨╗╨╕
+    description: Пользователи и профили
   - name: Access
-    description: ╨а╨╛╨╗╨╕, ╨┐╤А╨░╨▓╨░ ╨╕ ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨╕ ╨┐╤А╨╛╨╡╨║╤В╨╛╨▓
+    description: Роли, права и участники проектов
   - name: Executors
-    description: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+    description: Каталог исполнителей
   - name: Projects
-    description: ╨Я╤А╨╛╨╡╨║╤В╤Л ╨╕ ╨╕╤Е ╨╢╨╕╨╖╨╜╨╡╨╜╨╜╤Л╨╣ ╤Ж╨╕╨║╨╗
+    description: Проекты и их жизненный цикл
   - name: Diagrams
-    description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨╕ ╤А╨╡╨▓╨╕╨╖╨╕╨╕
+    description: Диаграммы и ревизии
   - name: Plan
-    description: ╨Э╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П, ╨╖╨░╨┤╨░╤З╨╕, ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕ ╨╕ ╨┐╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+    description: Направления, задачи, зависимости и праздники
   - name: Comments
-    description: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕ ╨╕ ╤Г╨┐╨╛╨╝╨╕╨╜╨░╨╜╨╕╤П
+    description: Комментарии и упоминания
   - name: ImportExport
-    description: ╨Р╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╨╕╨╝╨┐╨╛╤А╤В ╨╕ ╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╤Н╨║╤Б╨┐╨╛╤А╤В
+    description: Асинхронный импорт и синхронный экспорт
   - name: Notifications
-    description: ╨г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П ╨╕ ╨╜╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕
+    description: Уведомления и настройки доставки
   - name: Audit
-    description: ╨Ю╨▒╤Й╨╕╨╣ ╨╕ ╨┐╤А╨╕╨▓╨╕╨╗╨╡╨│╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨╢╤Г╤А╨╜╨░╨╗ ╨░╤Г╨┤╨╕╤В╨░
+    description: Общий и привилегированный журнал аудита
+  - name: Health
+    description: Проверка состояния сервиса
+  - name: Realtime
+    description: Токены для WebSocket-синхронизации
 security:
   - cookieAuth: []
 paths:
@@ -44,7 +44,7 @@ paths:
       tags:
         - Auth
       operationId: register
-      summary: ╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П
+      summary: Регистрация
       security: []
       requestBody:
         required: true
@@ -54,7 +54,7 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Б╨╛╨╖╨┤╨░╨╜, ╤В╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╨╡ email
+          description: Пользователь создан, требуется подтверждение email
           content:
             application/json:
               schema:
@@ -70,7 +70,7 @@ paths:
       tags:
         - Auth
       operationId: verifyEmail
-      summary: ╨Я╨╛╨┤╤В╨▓╨╡╤А╨┤╨╕╤В╤М email
+      summary: Подтвердить email
       security: []
       requestBody:
         required: true
@@ -80,7 +80,7 @@ paths:
               $ref: '#/components/schemas/VerifyEmailRequest'
       responses:
         '200':
-          description: Email ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜
+          description: Email подтвержден
           content:
             application/json:
               schema:
@@ -94,7 +94,7 @@ paths:
       tags:
         - Auth
       operationId: resendEmailVerification
-      summary: ╨Я╨╛╨▓╤В╨╛╤А╨╜╨╛ ╨╛╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨┐╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╤П
+      summary: Повторно отправить письмо подтверждения
       security: []
       requestBody:
         required: true
@@ -104,7 +104,7 @@ paths:
               $ref: '#/components/schemas/EmailRequest'
       responses:
         '202':
-          description: ╨Я╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜╨╛ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+          description: Письмо поставлено в очередь
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
@@ -114,7 +114,7 @@ paths:
       tags:
         - Auth
       operationId: login
-      summary: ╨Т╤Е╨╛╨┤
+      summary: Вход
       security: []
       requestBody:
         required: true
@@ -124,7 +124,7 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: ╨б╨╡╤Б╤Б╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          description: Сессия создана
           headers:
             Set-Cookie:
               $ref: '#/components/headers/SetCookie'
@@ -145,12 +145,12 @@ paths:
       tags:
         - Auth
       operationId: restoreSession
-      summary: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╕╤В╤М ╤Б╨╡╤Б╤Б╨╕╤О ╨┐╨╛ remember-╤В╨╛╨║╨╡╨╜╤Г
+      summary: Восстановить сессию по remember-токену
       security:
         - rememberCookie: []
       responses:
         '200':
-          description: ╨б╨╡╤Б╤Б╨╕╤П ╨▓╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜╨░
+          description: Сессия восстановлена
           headers:
             Set-Cookie:
               $ref: '#/components/headers/SetCookie'
@@ -167,10 +167,10 @@ paths:
       tags:
         - Auth
       operationId: getSession
-      summary: ╨в╨╡╨║╤Г╤Й╨░╤П ╤Б╨╡╤Б╤Б╨╕╤П ╨╕ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+      summary: Текущая сессия и пользователь
       responses:
         '200':
-          description: ╨в╨╡╨║╤Г╤Й╨░╤П ╤Б╨╡╤Б╤Б╨╕╤П
+          description: Текущая сессия
           content:
             application/json:
               schema:
@@ -182,12 +182,12 @@ paths:
       tags:
         - Auth
       operationId: logout
-      summary: ╨Т╤Л╨╣╤В╨╕ ╨╕╨╖ ╤В╨╡╨║╤Г╤Й╨╡╨╣ ╤Б╨╡╤Б╤Б╨╕╨╕
+      summary: Выйти из текущей сессии
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       responses:
         '204':
-          description: ╨б╨╡╤Б╤Б╨╕╤П ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░
+          description: Сессия завершена
           headers:
             Set-Cookie:
               $ref: '#/components/headers/SetCookie'
@@ -200,12 +200,12 @@ paths:
       tags:
         - Auth
       operationId: logoutAll
-      summary: ╨Т╤Л╨╣╤В╨╕ ╨╕╨╖ ╨▓╤Б╨╡╤Е ╤Б╨╡╤Б╤Б╨╕╨╣
+      summary: Выйти из всех сессий
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       responses:
         '204':
-          description: ╨Т╤Б╨╡ ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╤Л
+          description: Все сессии завершены
           headers:
             Set-Cookie:
               $ref: '#/components/headers/SetCookie'
@@ -218,10 +218,10 @@ paths:
       tags:
         - Auth
       operationId: listMySessions
-      summary: ╨Ь╨╛╨╕ ╤Б╨╡╤Б╤Б╨╕╨╕
+      summary: Мои сессии
       responses:
         '200':
-          description: ╨б╨┐╨╕╤Б╨╛╨║ ╤Б╨╡╤Б╤Б╨╕╨╣
+          description: Список сессий
           content:
             application/json:
               schema:
@@ -240,7 +240,7 @@ paths:
       tags:
         - Auth
       operationId: revokeMySession
-      summary: ╨Ч╨░╨▓╨╡╤А╤И╨╕╤В╤М ╤Б╨▓╨╛╤О ╤Б╨╡╤Б╤Б╨╕╤О
+      summary: Завершить свою сессию
       parameters:
         - name: sessionId
           in: path
@@ -251,7 +251,7 @@ paths:
         - $ref: '#/components/parameters/CsrfToken'
       responses:
         '204':
-          description: ╨б╨╡╤Б╤Б╨╕╤П ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░
+          description: Сессия завершена
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -263,7 +263,7 @@ paths:
       tags:
         - Auth
       operationId: requestPasswordReset
-      summary: ╨Ч╨░╨┐╤А╨╛╤Б╨╕╤В╤М ╤Б╨▒╤А╨╛╤Б ╨┐╨░╤А╨╛╨╗╤П
+      summary: Запросить сброс пароля
       security: []
       requestBody:
         required: true
@@ -273,7 +273,7 @@ paths:
               $ref: '#/components/schemas/EmailRequest'
       responses:
         '202':
-          description: ╨Ч╨░╨┐╤А╨╛╤Б ╨┐╤А╨╕╨╜╤П╤В
+          description: Запрос принят
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
@@ -283,7 +283,7 @@ paths:
       tags:
         - Auth
       operationId: resetPassword
-      summary: ╨б╨▒╤А╨╛╤Б╨╕╤В╤М ╨┐╨░╤А╨╛╨╗╤М
+      summary: Сбросить пароль
       security: []
       requestBody:
         required: true
@@ -293,7 +293,7 @@ paths:
               $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
         '204':
-          description: ╨Я╨░╤А╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Пароль изменен
           headers:
             Set-Cookie:
               $ref: '#/components/headers/SetCookie'
@@ -306,7 +306,7 @@ paths:
       tags:
         - Auth
       operationId: changePassword
-      summary: ╨б╨╝╨╡╨╜╨╕╤В╤М ╨┐╨░╤А╨╛╨╗╤М
+      summary: Сменить пароль
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -318,7 +318,7 @@ paths:
               $ref: '#/components/schemas/ChangePasswordRequest'
       responses:
         '204':
-          description: ╨Я╨░╤А╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Пароль изменен
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -330,7 +330,7 @@ paths:
       tags:
         - Users
       operationId: listUsers
-      summary: ╨б╨┐╨╕╤Б╨╛╨║ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╣
+      summary: Список пользователей
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
@@ -344,7 +344,7 @@ paths:
             $ref: '#/components/schemas/UserStatus'
       responses:
         '200':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕
+          description: Пользователи
           content:
             application/json:
               schema:
@@ -363,40 +363,15 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-    post:
-      tags:
-        - Users
-      operationId: adminCreateUser
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
-      parameters:
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AdminCreateUserRequest'
-      responses:
-        '201':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Б╨╛╨╖╨┤╨░╨╜
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
   /users/me:
     get:
       tags:
         - Users
       operationId: getCurrentUser
-      summary: ╨в╨╡╨║╤Г╤Й╨╕╨╣ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+      summary: Текущий пользователь
       responses:
         '200':
-          description: ╨Я╤А╨╛╤Д╨╕╨╗╤М
+          description: Профиль
           content:
             application/json:
               schema:
@@ -407,7 +382,7 @@ paths:
       tags:
         - Users
       operationId: updateMyProfile
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╤Б╨▓╨╛╨╣ ╨┐╤А╨╛╤Д╨╕╨╗╤М
+      summary: Изменить свой профиль
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -419,7 +394,7 @@ paths:
               $ref: '#/components/schemas/UpdateProfileRequest'
       responses:
         '200':
-          description: ╨Я╤А╨╛╤Д╨╕╨╗╤М ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜
+          description: Профиль обновлен
           content:
             application/json:
               schema:
@@ -428,188 +403,23 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /users/batch:
-    post:
-      tags:
-        - Users
-      operationId: getUsersByIds
-      summary: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕ ╨┐╨╛ ID
-      parameters:
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - userIds
-              properties:
-                userIds:
-                  type: array
-                  maxItems: 200
-                  items:
-                    type: string
-                    format: uuid
-      responses:
-        '200':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╕
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - items
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/UserSummary'
-        '400':
-          $ref: '#/components/responses/BadRequest'
   /users/{userId}:
     get:
       tags:
         - Users
       operationId: getUser
-      summary: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╨┐╨╛ ID
+      summary: Пользователь по ID
       parameters:
         - $ref: '#/components/parameters/UserId'
       responses:
         '200':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М
+          description: Пользователь
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags:
-        - Users
-      operationId: deleteUser
-      summary: ╨Я╨╛╨╗╨╜╨╛╨╡ ╤Г╨┤╨░╨╗╨╡╨╜╨╕╨╡ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeleteUserRequest'
-      responses:
-        '204':
-          description: ╨Я╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М ╤Г╨┤╨░╨╗╨╡╨╜
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '412':
-          $ref: '#/components/responses/Problem'
-  /users/{userId}/roles:
-    get:
-      tags:
-        - Users
-      operationId: getUserRoles
-      summary: ╨У╨╗╨╛╨▒╨░╨╗╤М╨╜╤Л╨╡ ╤А╨╛╨╗╨╕ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      responses:
-        '200':
-          description: ╨а╨╛╨╗╨╕
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - items
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/GlobalRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags:
-        - Users
-      operationId: setUserGlobalRoles
-      summary: ╨Ч╨░╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╨▒╨╛╤А ╨│╨╗╨╛╨▒╨░╨╗╤М╨╜╤Л╤Е ╤А╨╛╨╗╨╡╨╣
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - roles
-              properties:
-                roles:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/GlobalRole'
-      responses:
-        '200':
-          description: ╨а╨╛╨╗╨╕ ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '412':
-          $ref: '#/components/responses/Problem'
-  /users/{userId}/block:
-    post:
-      tags:
-        - Users
-      operationId: blockUser
-      summary: ╨Ч╨░╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BlockUserRequest'
-      responses:
-        '204':
-          description: ╨Ч╨░╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╨╜
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /users/{userId}/unblock:
-    post:
-      tags:
-        - Users
-      operationId: unblockUser
-      summary: ╨а╨░╨╖╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      responses:
-        '204':
-          description: ╨а╨░╨╖╨▒╨╗╨╛╨║╨╕╤А╨╛╨▓╨░╨╜
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -619,10 +429,10 @@ paths:
       tags:
         - Access
       operationId: getRoles
-      summary: ╨а╨╛╨╗╨╕
+      summary: Роли
       responses:
         '200':
-          description: ╨а╨╛╨╗╨╕
+          description: Роли
           content:
             application/json:
               schema:
@@ -641,10 +451,10 @@ paths:
       tags:
         - Access
       operationId: getPermissions
-      summary: ╨Я╤А╨░╨▓╨░
+      summary: Права
       responses:
         '200':
-          description: ╨Я╤А╨░╨▓╨░
+          description: Права
           content:
             application/json:
               schema:
@@ -663,7 +473,7 @@ paths:
       tags:
         - Executors
       operationId: listExecutors
-      summary: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+      summary: Каталог исполнителей
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
@@ -678,7 +488,7 @@ paths:
             default: false
       responses:
         '200':
-          description: ╨Ш╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╕
+          description: Исполнители
           content:
             application/json:
               schema:
@@ -699,7 +509,7 @@ paths:
       tags:
         - Executors
       operationId: createExecutor
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      summary: Создать исполнителя
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -727,7 +537,7 @@ paths:
                   maxLength: 200
       responses:
         '201':
-          description: ╨б╨╛╨╖╨┤╨░╨╜
+          description: Создан
           content:
             application/json:
               schema:
@@ -743,7 +553,7 @@ paths:
       tags:
         - Executors
       operationId: updateExecutor
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      summary: Изменить исполнителя
       parameters:
         - $ref: '#/components/parameters/ExecutorId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -769,7 +579,7 @@ paths:
                   maxLength: 200
       responses:
         '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Изменен
           content:
             application/json:
               schema:
@@ -784,14 +594,14 @@ paths:
       tags:
         - Executors
       operationId: deleteExecutor
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П
+      summary: Удалить исполнителя
       parameters:
         - $ref: '#/components/parameters/ExecutorId'
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜
+          description: Удален
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -801,7 +611,7 @@ paths:
       tags:
         - Executors
       operationId: linkExecutorUser
-      summary: ╨б╨▓╤П╨╖╨░╤В╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╤Б ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╝
+      summary: Связать исполнителя с пользователем
       parameters:
         - $ref: '#/components/parameters/ExecutorId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -820,7 +630,7 @@ paths:
                   format: uuid
       responses:
         '200':
-          description: ╨б╨▓╤П╨╖╨░╨╜
+          description: Связан
           content:
             application/json:
               schema:
@@ -831,19 +641,18 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /executors/{executorId}/unlink:
-    post:
+    delete:
       tags:
         - Executors
       operationId: unlinkExecutorUser
-      summary: ╨а╨░╨╖╨╛╤А╨▓╨░╤В╤М ╤Б╨▓╤П╨╖╤М ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╤Б ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╝
+      summary: Разорвать связь исполнителя с пользователем
       parameters:
         - $ref: '#/components/parameters/ExecutorId'
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨б╨▓╤П╨╖╤М ╤А╨░╨╖╨╛╤А╨▓╨░╨╜╨░
+          description: Связь разорвана
           content:
             application/json:
               schema:
@@ -857,13 +666,13 @@ paths:
       tags:
         - Projects
       operationId: listProjects
-      summary: ╨Ф╨╛╤Б╤В╤Г╨┐╨╜╤Л╨╡ ╨┐╤А╨╛╨╡╨║╤В╤Л
+      summary: Доступные проекты
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨Я╤А╨╛╨╡╨║╤В╤Л
+          description: Проекты
           content:
             application/json:
               schema:
@@ -884,7 +693,7 @@ paths:
       tags:
         - Projects
       operationId: createProject
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      summary: Создать проект
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -896,7 +705,7 @@ paths:
               $ref: '#/components/schemas/CreateProjectRequest'
       responses:
         '201':
-          description: ╨Я╤А╨╛╨╡╨║╤В ╤Б╨╛╨╖╨┤╨░╨╜
+          description: Проект создан
           content:
             application/json:
               schema:
@@ -914,10 +723,10 @@ paths:
       tags:
         - Projects
       operationId: getProject
-      summary: ╨Я╤А╨╛╨╡╨║╤В
+      summary: Проект
       responses:
         '200':
-          description: ╨Я╤А╨╛╨╡╨║╤В
+          description: Проект
           content:
             application/json:
               schema:
@@ -930,7 +739,7 @@ paths:
       tags:
         - Projects
       operationId: updateProject
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      summary: Изменить проект
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -942,7 +751,7 @@ paths:
               $ref: '#/components/schemas/UpdateProjectRequest'
       responses:
         '200':
-          description: ╨Я╤А╨╛╨╡╨║╤В
+          description: Проект
           content:
             application/json:
               schema:
@@ -957,13 +766,13 @@ paths:
       tags:
         - Projects
       operationId: deleteProject
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨░╤А╤Е╨╕╨▓╨╜╤Л╨╣ ╨┐╤А╨╛╨╡╨║╤В
+      summary: Удалить архивный проект
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨Я╤А╨╛╨╡╨║╤В ╤Г╨┤╨░╨╗╨╡╨╜
+          description: Проект удален
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -975,14 +784,14 @@ paths:
       tags:
         - Projects
       operationId: archiveProject
-      summary: ╨Р╤А╤Е╨╕╨▓╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╤А╨╛╨╡╨║╤В
+      summary: Архивировать проект
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨Р╤А╤Е╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜
+          description: Архивирован
           content:
             application/json:
               schema:
@@ -996,14 +805,14 @@ paths:
       tags:
         - Projects
       operationId: unarchiveProject
-      summary: ╨Т╨╡╤А╨╜╤Г╤В╤М ╨┐╤А╨╛╨╡╨║╤В ╨▓ ╨░╨║╤В╨╕╨▓╨╜╤Л╨╡
+      summary: Вернуть проект в активные
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨Р╨║╤В╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜
+          description: Активирован
           content:
             application/json:
               schema:
@@ -1017,14 +826,14 @@ paths:
       tags:
         - Projects
       operationId: restoreProject
-      summary: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╕╤В╤М ╤Г╨┤╨░╨╗╨╡╨╜╨╜╤Л╨╣ ╨┐╤А╨╛╨╡╨║╤В
+      summary: Восстановить удаленный проект
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨Т╨╛╤Б╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜ ╨▓ ╨░╤А╤Е╨╕╨▓
+          description: Восстановлен в архив
           content:
             application/json:
               schema:
@@ -1035,52 +844,19 @@ paths:
           $ref: '#/components/responses/NotFound'
         '410':
           $ref: '#/components/responses/Problem'
-  /projects/{projectId}/transfer-owner:
-    post:
-      tags:
-        - Projects
-      operationId: transferProjectOwner
-      summary: ╨Я╨╡╤А╨╡╨┤╨░╤В╤М ╨▓╨╗╨░╨┤╨╡╨╜╨╕╨╡ ╨┐╤А╨╛╨╡╨║╤В╨╛╨╝
-      parameters:
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/CsrfToken'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - newOwnerUserId
-              properties:
-                newOwnerUserId:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: ╨Т╨╗╨░╨┤╨╡╨╜╨╕╨╡ ╨┐╨╡╤А╨╡╨┤╨░╨╜╨╛
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /projects/{projectId}/members:
     get:
       tags:
         - Access
       operationId: listProjectMembers
-      summary: ╨г╤З╨░╤Б╤В╨╜╨╕╨║╨╕ ╨┐╤А╨╛╨╡╨║╤В╨░
+      summary: Участники проекта
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨г╤З╨░╤Б╤В╨╜╨╕╨║╨╕
+          description: Участники
           content:
             application/json:
               schema:
@@ -1102,7 +878,7 @@ paths:
       tags:
         - Access
       operationId: updateProjectMemberRole
-      summary: ╨б╨╝╨╡╨╜╨╕╤В╤М ╤А╨╛╨╗╤М ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨░
+      summary: Сменить роль участника
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/UserId'
@@ -1121,7 +897,7 @@ paths:
                   $ref: '#/components/schemas/ProjectRole'
       responses:
         '200':
-          description: ╨а╨╛╨╗╤М ╨╕╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          description: Роль изменена
           content:
             application/json:
               schema:
@@ -1134,7 +910,7 @@ paths:
       tags:
         - Access
       operationId: removeProjectMember
-      summary: ╨Ш╤Б╨║╨╗╤О╤З╨╕╤В╤М ╤Г╤З╨░╤Б╤В╨╜╨╕╨║╨░
+      summary: Исключить участника
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/UserId'
@@ -1142,7 +918,7 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨г╤З╨░╤Б╤В╨╜╨╕╨║ ╨╕╤Б╨║╨╗╤О╤З╨╡╨╜
+          description: Участник исключен
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1152,14 +928,14 @@ paths:
       tags:
         - Access
       operationId: listProjectInvitations
-      summary: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╤П ╨┐╤А╨╛╨╡╨║╤В╨░
+      summary: Приглашения проекта
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╤П
+          description: Приглашения
           content:
             application/json:
               schema:
@@ -1180,7 +956,7 @@ paths:
       tags:
         - Access
       operationId: createInvitation
-      summary: ╨Я╤А╨╕╨│╨╗╨░╤Б╨╕╤В╤М ╨▓ ╨┐╤А╨╛╨╡╨║╤В
+      summary: Пригласить в проект
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1202,7 +978,7 @@ paths:
                   $ref: '#/components/schemas/ProjectRole'
       responses:
         '201':
-          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡ ╤Б╨╛╨╖╨┤╨░╨╜╨╛
+          description: Приглашение создано
           content:
             application/json:
               schema:
@@ -1218,7 +994,7 @@ paths:
       tags:
         - Access
       operationId: resendInvitation
-      summary: ╨Я╨╡╤А╨╡╨╛╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      summary: Переотправить приглашение
       parameters:
         - name: invitationId
           in: path
@@ -1230,7 +1006,7 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '202':
-          description: ╨Я╨╕╤Б╤М╨╝╨╛ ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜╨╛ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+          description: Письмо поставлено в очередь
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1240,7 +1016,7 @@ paths:
       tags:
         - Access
       operationId: revokeInvitation
-      summary: ╨Ю╤В╨╛╨╖╨▓╨░╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      summary: Отозвать приглашение
       parameters:
         - name: invitationId
           in: path
@@ -1252,7 +1028,7 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨Ю╤В╨╛╨╖╨▓╨░╨╜╨╛
+          description: Отозвано
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1262,7 +1038,7 @@ paths:
       tags:
         - Access
       operationId: acceptInvitation
-      summary: ╨Я╤А╨╕╨╜╤П╤В╤М ╨┐╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡
+      summary: Принять приглашение
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1279,7 +1055,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: ╨Я╤А╨╕╨│╨╗╨░╤И╨╡╨╜╨╕╨╡ ╨┐╤А╨╕╨╜╤П╤В╨╛
+          description: Приглашение принято
           content:
             application/json:
               schema:
@@ -1293,14 +1069,14 @@ paths:
       tags:
         - Diagrams
       operationId: listDiagrams
-      summary: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨┐╤А╨╛╨╡╨║╤В╨░
+      summary: Диаграммы проекта
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+          description: Диаграммы
           content:
             application/json:
               schema:
@@ -1321,7 +1097,7 @@ paths:
       tags:
         - Diagrams
       operationId: createDiagram
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      summary: Создать диаграмму
       parameters:
         - $ref: '#/components/parameters/ProjectId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1334,7 +1110,7 @@ paths:
               $ref: '#/components/schemas/CreateDiagramRequest'
       responses:
         '201':
-          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          description: Диаграмма создана
           content:
             application/json:
               schema:
@@ -1348,10 +1124,10 @@ paths:
       tags:
         - Diagrams
       operationId: getDiagram
-      summary: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+      summary: Диаграмма
       responses:
         '200':
-          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+          description: Диаграмма
           content:
             application/json:
               schema:
@@ -1364,7 +1140,7 @@ paths:
       tags:
         - Diagrams
       operationId: updateDiagram
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      summary: Изменить диаграмму
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1376,7 +1152,7 @@ paths:
               $ref: '#/components/schemas/UpdateDiagramRequest'
       responses:
         '200':
-          description: ╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░
+          description: Диаграмма
           content:
             application/json:
               schema:
@@ -1389,13 +1165,13 @@ paths:
       tags:
         - Diagrams
       operationId: deleteDiagram
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Г
+      summary: Удалить диаграмму
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+          description: Удалена
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1405,12 +1181,12 @@ paths:
       tags:
         - Diagrams
       operationId: getDiagramSnapshot
-      summary: ╨Я╨╛╨╗╨╜╤Л╨╣ ╤Б╨╜╨╕╨╝╨╛╨║ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      summary: Полный снимок диаграммы
       parameters:
         - $ref: '#/components/parameters/DiagramId'
       responses:
         '200':
-          description: ╨б╨╜╨╕╨╝╨╛╨║
+          description: Снимок
           content:
             application/json:
               schema:
@@ -1419,54 +1195,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /diagrams/{diagramId}/changes:
-    get:
-      tags:
-        - Diagrams
-      operationId: listDiagramChanges
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╕╤П ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л ╨┐╨╛╤Б╨╗╨╡ ╤А╨╡╨▓╨╕╨╖╨╕╨╕
-      parameters:
-        - $ref: '#/components/parameters/DiagramId'
-        - name: fromRevision
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-            minimum: 0
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Offset'
-      responses:
-        '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╕╤П
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - items
-                  - page
-                  - currentRevision
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DiagramChange'
-                  page:
-                    $ref: '#/components/schemas/PageMeta'
-                  currentRevision:
-                    type: integer
-                    format: int64
-                  snapshotRequired:
-                    type: boolean
-        '403':
-          $ref: '#/components/responses/Forbidden'
   /diagrams/{diagramId}/directions:
     post:
       tags:
         - Plan
       operationId: createDirection
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      summary: Создать направление
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1479,7 +1213,7 @@ paths:
               $ref: '#/components/schemas/CreateDirectionRequest'
       responses:
         '201':
-          description: ╨б╨╛╨╖╨┤╨░╨╜╨╛
+          description: Создано
           content:
             application/json:
               schema:
@@ -1493,7 +1227,7 @@ paths:
       tags:
         - Plan
       operationId: updateDirection
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      summary: Изменить направление
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1505,7 +1239,7 @@ paths:
               $ref: '#/components/schemas/UpdateDirectionRequest'
       responses:
         '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨╛
+          description: Изменено
           content:
             application/json:
               schema:
@@ -1520,7 +1254,7 @@ paths:
       tags:
         - Plan
       operationId: deleteDirection
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡
+      summary: Удалить направление
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1535,7 +1269,7 @@ paths:
             format: int64
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜╨╛
+          description: Удалено
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1547,7 +1281,7 @@ paths:
       tags:
         - Plan
       operationId: setDirectionResponsible
-      summary: ╨Э╨░╨╖╨╜╨░╤З╨╕╤В╤М ╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╡╨╜╨╜╨╛╨│╨╛ ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П
+      summary: Назначить ответственного направления
       parameters:
         - $ref: '#/components/parameters/DirectionId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1568,7 +1302,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Э╨░╨╖╨╜╨░╤З╨╡╨╜╨╛
+          description: Назначено
           content:
             application/json:
               schema:
@@ -1580,7 +1314,7 @@ paths:
       tags:
         - Plan
       operationId: reorderDirections
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╨╛╤А╤П╨┤╨╛╨║ ╨╜╨░╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╣
+      summary: Изменить порядок направлений
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1604,7 +1338,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Я╨╛╤А╤П╨┤╨╛╨║ ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Порядок изменен
           content:
             application/json:
               schema:
@@ -1623,7 +1357,7 @@ paths:
       tags:
         - Plan
       operationId: createTask
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      summary: Создать задачу
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1636,7 +1370,7 @@ paths:
               $ref: '#/components/schemas/CreateTaskRequest'
       responses:
         '201':
-          description: ╨Ч╨░╨┤╨░╤З╨░ ╤Б╨╛╨╖╨┤╨░╨╜╨░
+          description: Задача создана
           content:
             application/json:
               schema:
@@ -1650,10 +1384,10 @@ paths:
       tags:
         - Plan
       operationId: getTask
-      summary: ╨Ч╨░╨┤╨░╤З╨░
+      summary: Задача
       responses:
         '200':
-          description: ╨Ч╨░╨┤╨░╤З╨░
+          description: Задача
           content:
             application/json:
               schema:
@@ -1666,7 +1400,7 @@ paths:
       tags:
         - Plan
       operationId: updateTask
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      summary: Изменить задачу
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1678,7 +1412,7 @@ paths:
               $ref: '#/components/schemas/UpdateTaskRequest'
       responses:
         '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          description: Изменена
           content:
             application/json:
               schema:
@@ -1693,7 +1427,7 @@ paths:
       tags:
         - Plan
       operationId: deleteTask
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      summary: Удалить задачу
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1708,7 +1442,7 @@ paths:
             format: int64
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+          description: Удалена
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1720,7 +1454,7 @@ paths:
       tags:
         - Plan
       operationId: moveTask
-      summary: ╨Я╨╡╤А╨╡╨╝╨╡╤Б╤В╨╕╤В╤М ╨╖╨░╨┤╨░╤З╤Г
+      summary: Переместить задачу
       parameters:
         - $ref: '#/components/parameters/TaskId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1751,7 +1485,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Я╨╡╤А╨╡╨╝╨╡╤Й╨╡╨╜╨░
+          description: Перемещена
           content:
             application/json:
               schema:
@@ -1765,7 +1499,7 @@ paths:
       tags:
         - Plan
       operationId: updateTaskProgress
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╤Б╤В╨░╤В╤Г╤Б ╨╕ ╨┐╤А╨╛╨│╤А╨╡╤Б╤Б
+      summary: Изменить статус и прогресс
       parameters:
         - $ref: '#/components/parameters/TaskId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1793,7 +1527,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Я╤А╨╛╨│╤А╨╡╤Б╤Б ╨╕╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Прогресс изменен
           content:
             application/json:
               schema:
@@ -1807,7 +1541,7 @@ paths:
       tags:
         - Plan
       operationId: setTaskAssignments
-      summary: ╨Э╨░╨╖╨╜╨░╤З╨╕╤В╤М ╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╡╨╜╨╜╨╛╨│╨╛, ╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╤П ╨╕ ╤Б╨╛╨╕╤Б╨┐╨╛╨╗╨╜╨╕╤В╨╡╨╗╨╡╨╣
+      summary: Назначить ответственного, исполнителя и соисполнителей
       parameters:
         - $ref: '#/components/parameters/TaskId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1831,7 +1565,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Э╨░╨╖╨╜╨░╤З╨╡╨╜╨╕╤П ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
+          description: Назначения обновлены
           content:
             application/json:
               schema:
@@ -1847,14 +1581,14 @@ paths:
       tags:
         - Plan
       operationId: listDependencies
-      summary: ╨Ч╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      summary: Зависимости диаграммы
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨Ч╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╕
+          description: Зависимости
           content:
             application/json:
               schema:
@@ -1875,7 +1609,7 @@ paths:
       tags:
         - Plan
       operationId: createDependency
-      summary: ╨б╨╛╨╖╨┤╨░╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      summary: Создать зависимость
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -1888,7 +1622,7 @@ paths:
               $ref: '#/components/schemas/CreateDependencyRequest'
       responses:
         '201':
-          description: ╨б╨╛╨╖╨┤╨░╨╜╨░
+          description: Создана
           content:
             application/json:
               schema:
@@ -1904,7 +1638,7 @@ paths:
       tags:
         - Plan
       operationId: updateDependency
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      summary: Изменить зависимость
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1916,7 +1650,7 @@ paths:
               $ref: '#/components/schemas/UpdateDependencyRequest'
       responses:
         '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜╨░
+          description: Изменена
           content:
             application/json:
               schema:
@@ -1929,13 +1663,13 @@ paths:
       tags:
         - Plan
       operationId: deleteDependency
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╤М
+      summary: Удалить зависимость
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜╨░
+          description: Удалена
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1945,7 +1679,7 @@ paths:
       tags:
         - Comments
       operationId: listComments
-      summary: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕ ╤Б╤Г╤Й╨╜╨╛╤Б╤В╨╕
+      summary: Комментарии сущности
       parameters:
         - name: entityType
           in: query
@@ -1965,7 +1699,7 @@ paths:
         - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: ╨Ъ╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╕
+          description: Комментарии
           content:
             application/json:
               schema:
@@ -1986,7 +1720,7 @@ paths:
       tags:
         - Comments
       operationId: createComment
-      summary: ╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      summary: Добавить комментарий
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1998,7 +1732,7 @@ paths:
               $ref: '#/components/schemas/CreateCommentRequest'
       responses:
         '201':
-          description: ╨б╨╛╨╖╨┤╨░╨╜
+          description: Создан
           content:
             application/json:
               schema:
@@ -2017,7 +1751,7 @@ paths:
       tags:
         - Comments
       operationId: updateComment
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      summary: Изменить комментарий
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -2029,7 +1763,7 @@ paths:
               $ref: '#/components/schemas/UpdateCommentRequest'
       responses:
         '200':
-          description: ╨Ш╨╖╨╝╨╡╨╜╨╡╨╜
+          description: Изменен
           content:
             application/json:
               schema:
@@ -2042,13 +1776,13 @@ paths:
       tags:
         - Comments
       operationId: deleteComment
-      summary: ╨г╨┤╨░╨╗╨╕╤В╤М ╨║╨╛╨╝╨╝╨╡╨╜╤В╨░╤А╨╕╨╣
+      summary: Удалить комментарий
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨г╨┤╨░╨╗╨╡╨╜
+          description: Удален
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2058,12 +1792,12 @@ paths:
       tags:
         - Plan
       operationId: getHolidays
-      summary: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕ ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      summary: Праздники диаграммы
       parameters:
         - $ref: '#/components/parameters/DiagramId'
       responses:
         '200':
-          description: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+          description: Праздники
           content:
             application/json:
               schema:
@@ -2081,7 +1815,7 @@ paths:
       tags:
         - Plan
       operationId: updateHolidays
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨┐╤А╨░╨╖╨┤╨╜╨╕╨║╨╕
+      summary: Изменить праздники
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -2104,7 +1838,7 @@ paths:
                   format: int64
       responses:
         '200':
-          description: ╨Я╤А╨░╨╖╨┤╨╜╨╕╨║╨╕ ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╤Л
+          description: Праздники обновлены
           content:
             application/json:
               schema:
@@ -2123,7 +1857,7 @@ paths:
       tags:
         - ImportExport
       operationId: startImport
-      summary: ╨Ч╨░╨┐╤Г╤Б╤В╨╕╤В╤М ╨░╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╜╤Л╨╣ ╨╕╨╝╨┐╨╛╤А╤В
+      summary: Запустить асинхронный импорт
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - $ref: '#/components/parameters/CsrfToken'
@@ -2145,7 +1879,7 @@ paths:
                   format: binary
       responses:
         '202':
-          description: ╨Ш╨╝╨┐╨╛╤А╤В ╨┐╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜ ╨▓ ╨╛╤З╨╡╤А╨╡╨┤╤М
+          description: Импорт поставлен в очередь
           content:
             application/json:
               schema:
@@ -2163,7 +1897,7 @@ paths:
       tags:
         - ImportExport
       operationId: getImportStatus
-      summary: ╨б╤В╨░╤В╤Г╤Б ╨╕╨╝╨┐╨╛╤А╤В╨░
+      summary: Статус импорта
       parameters:
         - name: jobId
           in: path
@@ -2173,7 +1907,7 @@ paths:
             format: uuid
       responses:
         '200':
-          description: ╨б╤В╨░╤В╤Г╤Б
+          description: Статус
           content:
             application/json:
               schema:
@@ -2187,7 +1921,7 @@ paths:
       tags:
         - ImportExport
       operationId: cancelImport
-      summary: ╨Ю╤В╨╝╨╡╨╜╨╕╤В╤М ╨╕╨╝╨┐╨╛╤А╤В
+      summary: Отменить импорт
       parameters:
         - name: jobId
           in: path
@@ -2199,7 +1933,7 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨Ш╨╝╨┐╨╛╤А╤В ╨╛╤В╨╝╨╡╨╜╨╡╨╜
+          description: Импорт отменен
           content:
             application/json:
               schema:
@@ -2213,7 +1947,7 @@ paths:
       tags:
         - ImportExport
       operationId: exportDiagram
-      summary: ╨н╨║╤Б╨┐╨╛╤А╤В ╨┤╨╕╨░╨│╤А╨░╨╝╨╝╤Л
+      summary: Экспорт диаграммы
       parameters:
         - $ref: '#/components/parameters/DiagramId'
         - name: format
@@ -2223,7 +1957,7 @@ paths:
             $ref: '#/components/schemas/ExportFormat'
       responses:
         '200':
-          description: ╨д╨░╨╣╨╗ ╤Н╨║╤Б╨┐╨╛╤А╤В╨░
+          description: Файл экспорта
           content:
             application/json:
               schema:
@@ -2244,7 +1978,7 @@ paths:
       tags:
         - Notifications
       operationId: listNotifications
-      summary: ╨Ь╨╛╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П
+      summary: Мои уведомления
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
@@ -2259,7 +1993,7 @@ paths:
             type: string
       responses:
         '200':
-          description: ╨г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П
+          description: Уведомления
           content:
             application/json:
               schema:
@@ -2281,10 +2015,10 @@ paths:
       tags:
         - Notifications
       operationId: getUnreadCount
-      summary: ╨Ъ╨╛╨╗╨╕╤З╨╡╤Б╤В╨▓╨╛ ╨╜╨╡╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╤Е
+      summary: Количество непрочитанных
       responses:
         '200':
-          description: ╨Ъ╨╛╨╗╨╕╤З╨╡╤Б╤В╨▓╨╛
+          description: Количество
           content:
             application/json:
               schema:
@@ -2302,7 +2036,7 @@ paths:
       tags:
         - Notifications
       operationId: markNotificationRead
-      summary: ╨Ю╤В╨╝╨╡╤В╨╕╤В╤М ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╡ ╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╨╝
+      summary: Отметить уведомление прочитанным
       parameters:
         - name: notificationId
           in: path
@@ -2314,7 +2048,7 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
-          description: ╨Ю╤В╨╝╨╡╤З╨╡╨╜╨╛
+          description: Отмечено
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -2324,13 +2058,13 @@ paths:
       tags:
         - Notifications
       operationId: markAllNotificationsRead
-      summary: ╨Ю╤В╨╝╨╡╤В╨╕╤В╤М ╨▓╤Б╨╡ ╨┐╤А╨╛╤З╨╕╤В╨░╨╜╨╜╤Л╨╝╨╕
+      summary: Отметить все прочитанными
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: ╨Ю╨▒╨╜╨╛╨▓╨╗╨╡╨╜╨╛
+          description: Обновлено
           content:
             application/json:
               schema:
@@ -2347,10 +2081,10 @@ paths:
       tags:
         - Notifications
       operationId: getNotificationPreferences
-      summary: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╣
+      summary: Настройки уведомлений
       responses:
         '200':
-          description: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕
+          description: Настройки
           content:
             application/json:
               schema:
@@ -2368,7 +2102,7 @@ paths:
       tags:
         - Notifications
       operationId: updateNotificationPreferences
-      summary: ╨Ш╨╖╨╝╨╡╨╜╨╕╤В╤М ╨╜╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╨╣
+      summary: Изменить настройки уведомлений
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -2387,7 +2121,7 @@ paths:
                     $ref: '#/components/schemas/NotificationPreference'
       responses:
         '200':
-          description: ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕
+          description: Настройки
           content:
             application/json:
               schema:
@@ -2406,7 +2140,7 @@ paths:
       tags:
         - Notifications
       operationId: getDeliveryLog
-      summary: ╨Ц╤Г╤А╨╜╨░╨╗ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕ (╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А)
+      summary: Журнал доставки (администратор)
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
@@ -2430,7 +2164,7 @@ paths:
             format: date-time
       responses:
         '200':
-          description: ╨Ц╤Г╤А╨╜╨░╨╗
+          description: Журнал
           content:
             application/json:
               schema:
@@ -2452,7 +2186,7 @@ paths:
       tags:
         - Notifications
       operationId: getDeliveryStats
-      summary: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░ ╨┤╨╛╤Б╤В╨░╨▓╨║╨╕ (╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А)
+      summary: Статистика доставки (администратор)
       parameters:
         - name: from
           in: query
@@ -2470,7 +2204,7 @@ paths:
             $ref: '#/components/schemas/NotificationChannel'
       responses:
         '200':
-          description: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░
+          description: Статистика
           content:
             application/json:
               schema:
@@ -2482,14 +2216,14 @@ paths:
       tags:
         - Audit
       operationId: listAuditEvents
-      summary: ╨Ю╨▒╤Й╨╕╨╣ ╨╢╤Г╤А╨╜╨░╨╗ ╨░╤Г╨┤╨╕╤В╨░
+      summary: Общий журнал аудита
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
         - $ref: '#/components/parameters/AuditFilter'
       responses:
         '200':
-          description: ╨б╨╛╨▒╤Л╤В╨╕╤П
+          description: События
           content:
             application/json:
               schema:
@@ -2506,48 +2240,19 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /audit/events/{eventId}:
-    get:
-      tags:
-        - Audit
-      operationId: getAuditEvent
-      summary: ╨б╨╛╨▒╤Л╤В╨╕╨╡ ╨╛╨▒╤Й╨╡╨│╨╛ ╨╢╤Г╤А╨╜╨░╨╗╨░
-      parameters:
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: occurredAt
-          in: query
-          schema:
-            type: string
-            format: date-time
-      responses:
-        '200':
-          description: ╨б╨╛╨▒╤Л╤В╨╕╨╡
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuditEvent'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /audit/privileged-events:
     get:
       tags:
         - Audit
       operationId: listPrivilegedAuditEvents
-      summary: ╨Ц╤Г╤А╨╜╨░╨╗ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╣ ╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А╨╛╨▓
+      summary: Журнал действий администраторов
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
         - $ref: '#/components/parameters/AuditFilter'
       responses:
         '200':
-          description: ╨б╨╛╨▒╤Л╤В╨╕╤П
+          description: События
           content:
             application/json:
               schema:
@@ -2564,44 +2269,15 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /audit/privileged-events/{eventId}:
-    get:
-      tags:
-        - Audit
-      operationId: getPrivilegedAuditEvent
-      summary: ╨б╨╛╨▒╤Л╤В╨╕╨╡ ╨╢╤Г╤А╨╜╨░╨╗╨░ ╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А╨╛╨▓
-      parameters:
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: occurredAt
-          in: query
-          schema:
-            type: string
-            format: date-time
-      responses:
-        '200':
-          description: ╨б╨╛╨▒╤Л╤В╨╕╨╡
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuditEvent'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /audit/actions:
     get:
       tags:
         - Audit
       operationId: getAuditActions
-      summary: ╨Ъ╨░╤В╨░╨╗╨╛╨│ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╣
+      summary: Каталог действий
       responses:
         '200':
-          description: ╨Ф╨╡╨╣╤Б╤В╨▓╨╕╤П
+          description: Действия
           content:
             application/json:
               schema:
@@ -2620,7 +2296,7 @@ paths:
       tags:
         - Audit
       operationId: getAuditStats
-      summary: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░ ╨░╤Г╨┤╨╕╤В╨░
+      summary: Статистика аудита
       parameters:
         - $ref: '#/components/parameters/AuditFilter'
         - name: groupBy
@@ -2634,13 +2310,352 @@ paths:
             default: false
       responses:
         '200':
-          description: ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░
+          description: Статистика
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditStats'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /admin/users:
+    post:
+      tags:
+        - Users
+      operationId: adminCreateUser
+      summary: Создать пользователя
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateUserRequest'
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/users/{userId}:
+    delete:
+      tags:
+        - Users
+      operationId: deleteUser
+      summary: Полное удаление пользователя
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUserRequest'
+      responses:
+        '204':
+          description: Пользователь удален
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/Problem'
+  /admin/users/{userId}/roles:
+    patch:
+      tags:
+        - Users
+      operationId: setUserGlobalRoles
+      summary: Заменить набор глобальных ролей
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roles
+              properties:
+                roles:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/GlobalRole'
+      responses:
+        '200':
+          description: Роли обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/Problem'
+  /admin/users/{userId}/block:
+    patch:
+      tags:
+        - Users
+      operationId: blockUser
+      summary: Заблокировать пользователя
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockUserRequest'
+      responses:
+        '204':
+          description: Заблокирован
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/users/{userId}/unblock:
+    patch:
+      tags:
+        - Users
+      operationId: unblockUser
+      summary: Разблокировать пользователя
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: Разблокирован
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/users/{userId}/profile:
+    patch:
+      tags:
+        - Users
+      operationId: adminUpdateUserProfile
+      summary: Обновить профиль пользователя администратором
+      responses:
+        '200':
+          description: Профиль обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /settings:
+    get:
+      tags:
+        - Access
+      operationId: getSystemSettings
+      summary: Получить системные настройки
+      responses:
+        '200':
+          description: Системные настройки
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Access
+      operationId: updateSystemSettings
+      summary: Обновить системные настройки
+      responses:
+        '200':
+          description: Настройки обновлены
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+  /sync/token:
+    get:
+      tags:
+        - Realtime
+      operationId: getSyncToken
+      summary: Выдать краткоживущий токен для WebSocket sync
+      responses:
+        '200':
+          description: Токен выдан
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - token
+                  - expiresAt
+                  - expiresIn
+                properties:
+                  token:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  expiresIn:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me/contacts:
+    get:
+      tags:
+        - Users
+      operationId: getNotificationContacts
+      summary: Контакты пользователя для уведомлений
+      responses:
+        '200':
+          description: Контакты
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me/telegram:
+    post:
+      tags:
+        - Users
+      operationId: linkTelegram
+      summary: Привязать Telegram
+      responses:
+        '200':
+          description: Telegram привязан
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - telegramUserId
+              properties:
+                code:
+                  type: string
+                telegramUserId:
+                  type: integer
+                telegramUsername:
+                  type: string
+    delete:
+      tags:
+        - Users
+      operationId: unlinkTelegram
+      summary: Отвязать Telegram
+      responses:
+        '204':
+          description: Telegram отвязан
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me/telegram/link-code:
+    post:
+      tags:
+        - Users
+      operationId: createTelegramLinkCode
+      summary: Создать код привязки Telegram
+      responses:
+        '200':
+          description: Код создан
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /health:
+    get:
+      tags:
+        - Health
+      operationId: health
+      summary: Проверка API Gateway
+      responses:
+        '200':
+          description: Сервис работает
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - service
+                  - version
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Внутренняя ошибка
 components:
   securitySchemes:
     cookieAuth:
@@ -2653,7 +2668,7 @@ components:
       name: __Host-remember
   headers:
     SetCookie:
-      description: HTTP-only cookie ╤Б╨╡╤Б╤Б╨╕╨╕ ╨╕ remember-╤В╨╛╨║╨╡╨╜╨░
+      description: HTTP-only cookie сессии и remember-токена
       schema:
         type: array
         items:
@@ -2665,7 +2680,7 @@ components:
       required: true
       schema:
         type: string
-      description: CSRF-╤В╨╛╨║╨╡╨╜ ╨╕╨╖ cookie __Host-csrf
+      description: CSRF-токен из cookie __Host-csrf
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2742,46 +2757,46 @@ components:
       in: query
       schema:
         type: string
-      description: JSON-╤Д╨╕╨╗╤М╤В╤А ╨░╤Г╨┤╨╕╤В╨░
+      description: JSON-фильтр аудита
   responses:
     BadRequest:
-      description: ╨Ю╤И╨╕╨▒╨║╨░ ╨▓╨░╨╗╨╕╨┤╨░╤Ж╨╕╨╕
+      description: Ошибка валидации
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Unauthorized:
-      description: ╨Э╨╡ ╨░╤Г╤В╨╡╨╜╤В╨╕╤Д╨╕╤Ж╨╕╤А╨╛╨▓╨░╨╜
+      description: Не аутентифицирован
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Forbidden:
-      description: ╨Э╨╡╤В ╨┐╤А╨░╨▓
+      description: Нет прав
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     NotFound:
-      description: ╨Э╨╡ ╨╜╨░╨╣╨┤╨╡╨╜╨╛
+      description: Не найдено
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: ╨Ъ╨╛╨╜╤Д╨╗╨╕╨║╤В
+      description: Конфликт
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     TooManyRequests:
-      description: ╨Я╤А╨╡╨▓╤Л╤И╨╡╨╜ ╨╗╨╕╨╝╨╕╤В
+      description: Превышен лимит
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Problem:
-      description: ╨Ю╤И╨╕╨▒╨║╨░
+      description: Ошибка
       content:
         application/problem+json:
           schema:
@@ -3191,6 +3206,9 @@ components:
           format: date-time
         namesResolved:
           type: boolean
+        diagramsCount:
+          type: integer
+          minimum: 0
     Diagram:
       type: object
       properties:
@@ -3306,6 +3324,12 @@ components:
         updatedAt:
           type: string
           format: date-time
+        createdByUserId:
+          type: string
+          format: uuid
+        updatedByUserId:
+          type: string
+          format: uuid
     Task:
       type: object
       properties:
@@ -3374,6 +3398,17 @@ components:
         updatedAt:
           type: string
           format: date-time
+        estimatedHours:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+        createdByUserId:
+          type: string
+          format: uuid
+        updatedByUserId:
+          type: string
+          format: uuid
     Dependency:
       type: object
       properties:
@@ -3478,38 +3513,6 @@ components:
           format: date
         name:
           type: string
-    DiagramChange:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        diagramId:
-          type: string
-          format: uuid
-        revision:
-          type: integer
-          format: int64
-        entityType:
-          type: string
-        entityId:
-          type: string
-          format: uuid
-        operation:
-          type: string
-          enum:
-            - create
-            - update
-            - delete
-        payload:
-          type: object
-          additionalProperties: true
-        actorUserId:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
     DiagramSnapshot:
       type: object
       required:
@@ -4289,4 +4292,3 @@ components:
           items:
             type: string
             format: uuid
-

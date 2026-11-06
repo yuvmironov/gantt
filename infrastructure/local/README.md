@@ -80,7 +80,7 @@ Traefik использует собственный самоподписанны
 - `mail.rp-gant.localhost` — Mailpit UI;
 - `kafka.rp-gant.localhost` — Kafka UI;
 - `sync.rp-gant.localhost` — Sync Service WebSocket;
-- `notify.rp-gant.localhost` — Notification Service WebSocket.
+- `notify.rp-gant.localhost` — Notification Service HTTP; WebSocket запланирован, но не реализован.
 
 ## Порты
 
@@ -102,5 +102,5 @@ Traefik использует собственный самоподписанны
 - Kafka в local — один KRaft-брокер, replication factor 1.
 - Telegram — WireMock, реальный бот не нужен.
 - Frontend — Nuxt SPA из `apps/frontend`; legacy `apps/web` Compose не запускает.
-- Sync и Notification обслуживаются через `sync.rp-gant.localhost` и `notify.rp-gant.localhost`.
+- Sync обслуживается через `sync.rp-gant.localhost`; notification-service работает по HTTP, WebSocket для уведомлений не реализован.
 - Импорт JSON v2/CSV доступен через API и модалку «Импорт» в интерфейсе.

@@ -22,15 +22,20 @@ operations:
   listUsers: { service: UserService, method: ListUsers }
   adminCreateUser: { service: UserService, method: AdminCreateUser }
   getCurrentUser: { service: UserService, method: GetCurrentUser }
+  getNotificationContacts: { service: UserService, method: GetNotificationContacts }
+  createTelegramLinkCode: { service: UserService, method: CreateTelegramLinkCode }
+  linkTelegram: { service: UserService, method: LinkTelegram }
+  unlinkTelegram: { service: UserService, method: UnlinkTelegram }
+  adminUpdateUserProfile: { service: UserService, method: UpdateUserProfile }
   updateMyProfile: { service: UserService, method: UpdateUserProfile }
-  getUsersByIds: { service: UserService, method: GetUsersByIds }
   getUser: { service: UserService, method: GetUser }
   deleteUser: { service: UserService, method: DeleteUser }
-  getUserRoles: { service: UserService, method: GetUserRoles }
   setUserGlobalRoles: { service: UserService, method: SetUserGlobalRoles }
   blockUser: { service: UserService, method: BlockUser }
   unblockUser: { service: UserService, method: UnblockUser }
   getRoles: { service: UserService, method: GetRoles }
+  getSystemSettings: { service: UserService, method: GetSystemSettings }
+  updateSystemSettings: { service: UserService, method: UpdateSystemSettings }
   getPermissions: { service: UserService, method: GetPermissions }
   listExecutors: { service: UserService, method: ListExecutors }
   createExecutor: { service: UserService, method: CreateExecutor }
@@ -46,7 +51,6 @@ operations:
   archiveProject: { service: ProjectService, method: ArchiveProject }
   unarchiveProject: { service: ProjectService, method: UnarchiveProject }
   restoreProject: { service: ProjectService, method: RestoreProject }
-  transferProjectOwner: { service: ProjectService, method: TransferProjectOwner }
   listProjectMembers: { service: UserService, method: ListProjectMembers }
   updateProjectMemberRole: { service: UserService, method: UpdateProjectMemberRole }
   removeProjectMember: { service: UserService, method: RemoveProjectMember }
@@ -61,7 +65,6 @@ operations:
   updateDiagram: { service: ProjectService, method: UpdateDiagram }
   deleteDiagram: { service: ProjectService, method: DeleteDiagram }
   getDiagramSnapshot: { service: ProjectService, method: GetDiagramSnapshot }
-  listDiagramChanges: { service: ProjectService, method: ListDiagramChanges }
   createDirection: { service: ProjectService, method: CreateDirection }
   updateDirection: { service: ProjectService, method: UpdateDirection }
   deleteDirection: { service: ProjectService, method: DeleteDirection }
@@ -97,8 +100,6 @@ operations:
   getDeliveryLog: { service: NotificationService, method: GetDeliveryLog }
   getDeliveryStats: { service: NotificationService, method: GetDeliveryStats }
   listAuditEvents: { service: AuditService, method: ListAuditEvents }
-  getAuditEvent: { service: AuditService, method: GetAuditEvent }
   listPrivilegedAuditEvents: { service: AuditService, method: ListPrivilegedAuditEvents }
-  getPrivilegedAuditEvent: { service: AuditService, method: GetPrivilegedAuditEvent }
   getAuditActions: { service: AuditService, method: GetAuditActions }
   getAuditStats: { service: AuditService, method: GetAuditStats }

@@ -28,15 +28,19 @@ const operations = paths.reduce(
   0,
 );
 
-check(paths.length === 73, `OpenAPI paths: expected 73, got ${paths.length}`);
-check(operations === 96, `OpenAPI operations: expected 96, got ${operations}`);
-check(Object.keys(openapi.components?.schemas ?? {}).length === 73, 'OpenAPI schemas: expected 73');
+check(paths.length === 76, `OpenAPI paths: expected 76, got ${paths.length}`);
+check(operations === 99, `OpenAPI operations: expected 99, got ${operations}`);
+check(Object.keys(openapi.components?.schemas ?? {}).length === 72, 'OpenAPI schemas: expected 72');
 
 const eventTypes = readJson('events/event-types.json');
-check(eventTypes.events?.length === 64, 'Event types: expected 64');
+check(eventTypes.events?.length === 68, 'Event types: expected 68');
+check(
+  eventTypes.events?.every((event) => ['implemented', 'planned'].includes(event.status)),
+  'Every event must have implemented/planned status',
+);
 
 const payloads = readJson('events/schemas/payloads.schema.json');
-check(Object.keys(payloads.$defs ?? {}).length === 76, 'Event payload definitions: expected 76');
+check(Object.keys(payloads.$defs ?? {}).length === 79, 'Event payload definitions: expected 79');
 
 const protoFiles = readdirSync(join(root, 'proto'), { recursive: true }).filter((file) =>
   String(file).endsWith('.proto'),
