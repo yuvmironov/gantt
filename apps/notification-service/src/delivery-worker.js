@@ -1,11 +1,12 @@
 import nodemailer from 'nodemailer';
+import { buildSmtpUrl } from '@rp-gant/service-kit';
 import { enqueueDeliveries } from './events.js';
 import { call } from './user-client.js';
 
 const MAX_ATTEMPTS = 3;
 
 export function startNotificationDeliveryWorker(db, userClient, env = process.env) {
-  const smtpUrl = String(env.SMTP_URL ?? '').trim();
+  const smtpUrl = buildSmtpUrl(env);
   const transporter = smtpUrl ? nodemailer.createTransport(smtpUrl) : null;
   const telegramApi = String(env.TELEGRAM_API_URL ?? 'http://telegram-mock:8080').replace(
     /\/$/,
