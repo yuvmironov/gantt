@@ -229,6 +229,7 @@ export function mapTask(task) {
     startDate: fromTimestamp(task.start_date),
     endDate: fromTimestamp(task.end_date),
     actualEndDate: fromTimestamp(task.actual_end_date),
+    estimatedHours: task.estimated_hours == null ? null : Number(task.estimated_hours),
     jiraNumber: task.jira_number,
     bpFlag: task.bp_flag,
     spFlag: task.sp_flag,
@@ -936,6 +937,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
           priority: priorityEnum(request.body?.priority),
           start_date: timestampInput(request.body?.startDate),
           end_date: timestampInput(request.body?.endDate),
+          estimated_hours: Number(request.body?.estimatedHours ?? 0),
           jira_number: request.body?.jiraNumber,
           bp_flag: Boolean(request.body?.bpFlag),
           sp_flag: Boolean(request.body?.spFlag),
@@ -993,6 +995,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       if ('priority' in body) update.priority = priorityEnum(body.priority);
       if ('startDate' in body) update.start_date = timestampInput(body.startDate);
       if ('endDate' in body) update.end_date = timestampInput(body.endDate);
+      if ('estimatedHours' in body) update.estimated_hours = Number(body.estimatedHours ?? 0);
       if ('actualEndDate' in body) update.actual_end_date = timestampInput(body.actualEndDate);
       if ('jiraNumber' in body) update.jira_number = body.jiraNumber;
       if ('bpFlag' in body) update.bp_flag = Boolean(body.bpFlag);

@@ -12,6 +12,7 @@
 - диаграммы: `CreateDiagram`, `ListDiagrams`, `GetDiagram`, `UpdateDiagram`, `DeleteDiagram`;
 - направления: `CreateDirection`, `UpdateDirection`, `DeleteDirection`, `ReorderDirections`, `SetDirectionResponsible`;
 - задачи: `CreateTask`, `GetTask`, `UpdateTask`, `MoveTask`, `UpdateTaskProgress`, `SetTaskAssignments`, `DeleteTask`;
+- при `estimated_hours > 0` окончание рассчитывается по 8 ч/день с учётом календаря и праздников; пересчёт выполняется при смене режима календаря и списка праздников;
 - зависимости: `CreateDependency`, `ListDependencies`, `UpdateDependency`, `DeleteDependency`;
 - правила зависимостей: `direction → direction` и `task → direction` разрешены, `direction → task` запрещён; циклы проверяются по всему графу;
 - БД дополнительно защищена constraint `dependencies_no_direction_to_task`;

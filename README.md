@@ -154,10 +154,10 @@ tools/                 # проверки контрактов
 - [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт, toast-уведомления.
 - [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
 - [x] Componentized Nuxt pages: /projects, /projects/:id, /gantt, /login, /admin, /profile, /notifications and /members.
-- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления.
+- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления, расчёт окончания задачи по часам (8 ч/день).
 - [x] Notification, Audit, Sync services.
 - [x] Helm charts for services and staging/prod umbrella values.
-- [x] Playwright E2E: auth, admin roles, Gantt, dependency rules/link mode, bar drag, import, members, notifications, profile and password reset.
+- [x] Playwright E2E: auth, admin roles, Gantt, dependency rules/link mode, bar drag, task hours, import, members, notifications, profile and password reset.
 - [x] Security headers, CSP, API rate limiting and auth audit events.
 - [x] Project members, invitations, password reset/change and resend verification.
 - [x] Global admin roles: создание администратора и повышение существующего пользователя.

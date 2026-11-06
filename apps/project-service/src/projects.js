@@ -125,6 +125,76 @@ function dateOnly(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
+const HOURS_PER_DAY = 8;
+const DAY_MS = 86_400_000;
+
+function isoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addIsoDays(date, days) {
+  return new Date(date.getTime() + days * DAY_MS);
+}
+
+function isWorkingDay(date, holidays) {
+  return ![0, 6].includes(date.getUTCDay()) && !holidays.has(isoDate(date));
+}
+
+function calculateAutoEndDate(startDate, estimatedHours, dayMode, holidays) {
+  const hours = Number(estimatedHours);
+  const totalDays = Math.ceil(hours / HOURS_PER_DAY);
+  if (!startDate || !Number.isFinite(totalDays) || totalDays <= 0) return null;
+  let date = new Date(`${startDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (dayMode === 'working') {
+    while (!isWorkingDay(date, holidays)) date = addIsoDays(date, 1);
+    for (let remaining = totalDays - 1; remaining > 0;) {
+      date = addIsoDays(date, 1);
+      if (isWorkingDay(date, holidays)) remaining -= 1;
+    }
+  } else {
+    date = addIsoDays(date, totalDays - 1);
+  }
+  return isoDate(date);
+}
+
+async function loadHolidayDates(db, diagramId) {
+  const result = await db.query(
+    'SELECT holiday_date FROM plan.diagram_holidays WHERE diagram_id = $1',
+    [diagramId],
+  );
+  return new Set(result.rows.map((row) => dateOnly(row.holiday_date)).filter(Boolean));
+}
+
+async function recalculateAutoTaskEnds(db, diagramId, dayMode = null) {
+  const diagram = await db.query('SELECT day_mode FROM project.diagrams WHERE id = $1', [
+    diagramId,
+  ]);
+  if (diagram.rowCount === 0) return;
+  const mode = dayMode ?? diagram.rows[0].day_mode;
+  const holidays = await loadHolidayDates(db, diagramId);
+  const tasks = await db.query(
+    `SELECT id, start_date, end_date, estimated_hours
+     FROM plan.tasks
+     WHERE diagram_id = $1 AND deleted_at IS NULL
+       AND estimated_hours IS NOT NULL AND estimated_hours > 0
+       AND start_date IS NOT NULL`,
+    [diagramId],
+  );
+  for (const task of tasks.rows) {
+    const startDate = dateOnly(task.start_date);
+    const endDate = calculateAutoEndDate(startDate, task.estimated_hours, mode, holidays);
+    if (endDate && endDate !== dateOnly(task.end_date)) {
+      await db.query(
+        `UPDATE plan.tasks
+         SET end_date = $2, version = version + 1, updated_at = now()
+         WHERE id = $1`,
+        [task.id, endDate],
+      );
+    }
+  }
+}
+
 function csvCell(value) {
   const text = value === null || value === undefined ? '' : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -173,6 +243,7 @@ function toTask(row, assignments = []) {
     start_date: toTimestamp(row.start_date),
     end_date: toTimestamp(row.end_date),
     actual_end_date: toTimestamp(row.actual_end_date),
+    estimated_hours: row.estimated_hours == null ? null : Number(row.estimated_hours),
     jira_number: row.jira_number ?? '',
     bp_flag: row.bp_flag,
     sp_flag: row.sp_flag,
@@ -1516,6 +1587,9 @@ export function createProjectImplementation({ db, userClient }) {
             actorUserId(call_),
           ],
         );
+        if (dayMode !== row.day_mode) {
+          await recalculateAutoTaskEnds(db, diagramId, dayMode);
+        }
         callback(null, { diagram: toDiagram(result.rows[0]) });
       } catch (error) {
         callback(mapDbError(error));
@@ -1925,6 +1999,26 @@ export function createProjectImplementation({ db, userClient }) {
           return;
         }
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.create');
+        const estimatedHours = Number(call_.request.estimated_hours ?? 0);
+        if (!Number.isFinite(estimatedHours) || estimatedHours < 0) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_estimated_hours'));
+          return;
+        }
+        const startDate = dateString(call_.request.start_date);
+        let endDate = dateString(call_.request.end_date);
+        if (estimatedHours > 0) {
+          if (!startDate) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'start_date_required_for_hours'));
+            return;
+          }
+          const holidays = await loadHolidayDates(db, diagramId);
+          endDate = calculateAutoEndDate(
+            startDate,
+            estimatedHours,
+            diagram.rows[0].day_mode,
+            holidays,
+          );
+        }
         const parentTaskId = String(call_.request.parent_task_id ?? '') || null;
         let parentTask = null;
         if (parentTaskId) {
@@ -1958,8 +2052,8 @@ export function createProjectImplementation({ db, userClient }) {
           `INSERT INTO plan.tasks
              (diagram_id, direction_id, parent_task_id, level, wbs_code, sort_order,
               name, description, result, priority, start_date, end_date, jira_number,
-              bp_flag, sp_flag, created_by_user_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+              bp_flag, sp_flag, created_by_user_id, estimated_hours)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
            RETURNING *`,
           [
             diagramId,
@@ -1972,12 +2066,13 @@ export function createProjectImplementation({ db, userClient }) {
             String(call_.request.description ?? ''),
             String(call_.request.result ?? ''),
             fromPriority(call_.request.priority),
-            dateString(call_.request.start_date),
-            dateString(call_.request.end_date),
+            startDate,
+            endDate,
             String(call_.request.jira_number ?? '') || null,
             Boolean(call_.request.bp_flag),
             Boolean(call_.request.sp_flag),
             actorUserId(call_),
+            estimatedHours > 0 ? estimatedHours : null,
           ],
         );
         const task = result.rows[0];
@@ -2337,6 +2432,7 @@ export function createProjectImplementation({ db, userClient }) {
           saved.push(result.rows[0]);
         }
         await client.query('COMMIT');
+        await recalculateAutoTaskEnds(db, diagramId);
         callback(null, { items: saved.map(toHoliday), revision: '0' });
       } catch (error) {
         if (client) await client.query('ROLLBACK');
@@ -2783,10 +2879,40 @@ export function createProjectImplementation({ db, userClient }) {
           callback(versionConflict());
           return;
         }
-        const diagram = await db.query(`SELECT project_id FROM project.diagrams WHERE id = $1`, [
-          task.rows[0].diagram_id,
-        ]);
+        const diagram = await db.query(
+          `SELECT project_id, day_mode FROM project.diagrams WHERE id = $1`,
+          [task.rows[0].diagram_id],
+        );
         await checkPermission(call_, userClient, diagram.rows[0].project_id, 'project.task.edit');
+        const current = task.rows[0];
+        const hasStart = hasField(call_.request, 'start_date');
+        const hasEnd = hasField(call_.request, 'end_date');
+        const hasHours = hasField(call_.request, 'estimated_hours');
+        const startDate = hasStart
+          ? dateString(call_.request.start_date)
+          : dateOnly(current.start_date);
+        const estimatedHours = hasHours
+          ? Number(call_.request.estimated_hours)
+          : Number(current.estimated_hours ?? 0);
+        if (!Number.isFinite(estimatedHours) || estimatedHours < 0) {
+          callback(grpcError(status.INVALID_ARGUMENT, 'invalid_estimated_hours'));
+          return;
+        }
+        let endDate = hasEnd ? dateString(call_.request.end_date) : dateOnly(current.end_date);
+        const recalculateEnd = estimatedHours > 0 && (hasStart || hasEnd || hasHours);
+        if (recalculateEnd) {
+          if (!startDate) {
+            callback(grpcError(status.INVALID_ARGUMENT, 'start_date_required_for_hours'));
+            return;
+          }
+          const holidays = await loadHolidayDates(db, current.diagram_id);
+          endDate = calculateAutoEndDate(
+            startDate,
+            estimatedHours,
+            diagram.rows[0].day_mode,
+            holidays,
+          );
+        }
 
         const values = [taskId];
         const sets = [];
@@ -2812,11 +2938,17 @@ export function createProjectImplementation({ db, userClient }) {
         if (hasField(call_.request, 'priority')) {
           add('priority', fromPriority(call_.request.priority));
         }
-        if (hasField(call_.request, 'start_date')) {
-          add('start_date', dateString(call_.request.start_date));
+        if (hasStart) {
+          add('start_date', startDate);
         }
-        if (hasField(call_.request, 'end_date')) {
-          add('end_date', dateString(call_.request.end_date));
+        if (hasHours) {
+          add('estimated_hours', estimatedHours > 0 ? estimatedHours : null);
+        }
+        if (hasEnd && !recalculateEnd) {
+          add('end_date', endDate);
+        }
+        if (recalculateEnd) {
+          add('end_date', endDate);
         }
         if (hasField(call_.request, 'actual_end_date')) {
           add('actual_end_date', dateString(call_.request.actual_end_date));
