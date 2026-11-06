@@ -2588,24 +2588,22 @@ onMounted(async () => {
           <div class="comment-list">
             <p v-if="commentsLoading" class="muted small">Загрузка комментариев...</p>
             <div v-for="comment in comments" :key="comment.id" class="comment">
-              <div class="comment-meta">
-                <strong>{{ comment.authorName || comment.authorUserId }}</strong>
-                <span>{{ formatShortDate(comment.createdAt) }}</span>
+              <div class="comment-head">
+                <div class="comment-author">
+                  <strong class="comment-name">{{ comment.authorName || comment.authorUserId }}</strong>
+                  <span class="comment-date">{{ formatShortDate(comment.createdAt) }}</span>
+                </div>
+                <div v-if="editingCommentId === comment.id" class="comment-actions">
+                  <button class="btn btn-sm comment-action" type="button" @click="editingCommentId = ''">Отмена</button>
+                  <button class="btn btn-sm comment-action comment-save" type="button" @click="saveComment(comment)">Сохранить</button>
+                </div>
+                <div v-else class="comment-actions">
+                  <button class="btn btn-sm comment-action" type="button" @click="startEditComment(comment)">Изменить</button>
+                  <button class="btn btn-sm comment-action comment-delete" type="button" @click="deleteComment(comment.id)">Удалить</button>
+                </div>
               </div>
-              <template v-if="editingCommentId === comment.id">
-                <textarea v-model="editCommentBody" class="textarea" rows="2" />
-                <div class="comment-actions">
-                  <button class="btn btn-sm btn-secondary" type="button" @click="editingCommentId = ''">Отмена</button>
-                  <button class="btn btn-sm btn-primary" type="button" @click="saveComment(comment)">Сохранить</button>
-                </div>
-              </template>
-              <template v-else>
-                <p>{{ comment.body }}</p>
-                <div class="comment-actions">
-                  <button class="btn btn-sm btn-ghost" type="button" @click="startEditComment(comment)">Изменить</button>
-                  <button class="btn btn-sm btn-ghost" type="button" @click="deleteComment(comment.id)">Удалить</button>
-                </div>
-              </template>
+              <textarea v-if="editingCommentId === comment.id" v-model="editCommentBody" class="textarea comment-editor" rows="2" />
+              <p v-else class="comment-text">{{ comment.body }}</p>
             </div>
             <p v-if="!comments.length" class="muted">Комментариев пока нет.</p>
           </div>
@@ -3056,11 +3054,21 @@ onMounted(async () => {
 .drawer-footer { display: flex; justify-content: space-between; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
 .inline { display: flex; gap: 8px; flex-wrap: wrap; }
 .comments { display: grid; gap: 12px; margin-top: 10px; }
-.comment { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
-.comment-head { display: flex; gap: 8px; align-items: baseline; }
-.comment-name { font-size: 12px; font-weight: 600; }
-.comment-text { margin: 4px 0 0; font-size: 13px; color: var(--color-text); }
-.comment-actions { display: flex; gap: 10px; margin-top: 4px; }
+.comment { display: block; padding: 12px 0; }
+.comment + .comment { border-top: 1px solid var(--color-border); }
+.comment-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.comment-author { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.comment-name { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.comment-date { color: var(--color-text-muted); font-size: 11px; white-space: nowrap; }
+.comment-text { margin: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: #f8fafc; color: var(--color-text); font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-editor { margin-top: 0; }
+.comment-actions { display: flex; flex-shrink: 0; gap: 6px; margin: 0; }
+.comment-actions .comment-action { padding: 3px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f1f5f9; color: #334155; font-size: 10.5px; }
+.comment-actions .comment-action:hover { background: #e2e8f0; }
+.comment-actions .comment-save { border-color: #2563eb; background: #2563eb; color: #fff; }
+.comment-actions .comment-save:hover { background: #1d4ed8; }
+.comment-actions .comment-delete { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.comment-actions .comment-delete:hover { background: #fee2e2; }
 .composer { margin-top: 12px; }
 .composer-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
 .empty-project { max-width: 440px; margin: 40px auto; }
@@ -3085,8 +3093,6 @@ onMounted(async () => {
 .task-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .task-modal-grid .full { grid-column: 1 / -1; }
 .task-modal-comments { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); display: grid; gap: 8px; }
-.task-modal-comments .comment > div { flex: 1; }
-.task-modal-comments .comment p { margin: 4px 0; font-size: 13px; }
 .comments-head { display: flex; align-items: baseline; gap: 8px; }
 .btn-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 .task-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
