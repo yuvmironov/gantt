@@ -6,6 +6,7 @@ const diagramId = ref('');
 const snapshot = ref(null);
 const selectedTask = ref(null);
 const comments = ref([]);
+const commentsLoading = ref(false);
 const commentBody = ref('');
 const editingCommentId = ref('');
 const editCommentBody = ref('');
@@ -298,6 +299,10 @@ function closeTaskModal() {
   showTaskModal.value = false;
   editingTaskId.value = '';
   selectedTask.value = null;
+  comments.value = [];
+  commentBody.value = '';
+  editingCommentId.value = '';
+  editCommentBody.value = '';
 }
 
 function parseModalPerson(value) {
@@ -570,6 +575,24 @@ function fillTaskEdit(task) {
   taskEdit.spFlag = Boolean(task.spFlag);
 }
 
+async function loadCommentsForTask(taskId) {
+  comments.value = [];
+  commentBody.value = '';
+  editingCommentId.value = '';
+  editCommentBody.value = '';
+  commentsLoading.value = true;
+  try {
+    const response = await api(`/comments?entityType=task&entityId=${taskId}`);
+    comments.value = (response.items ?? []).filter(
+      (comment) => !comment.entityId || comment.entityId === taskId,
+    );
+  } catch (reason) {
+    error.value = reason.message;
+  } finally {
+    commentsLoading.value = false;
+  }
+}
+
 async function selectTask(task) {
   selectedTask.value = task;
   progress.value = Number(task.progress) || 0;
@@ -578,7 +601,7 @@ async function selectTask(task) {
   fillAssignments(task);
   moveForm.directionId = '';
   moveForm.sortOrder = 0;
-  comments.value = (await api(`/comments?entityType=task&entityId=${task.id}`)).items ?? [];
+  await loadCommentsForTask(task.id);
 }
 
 function openDiagramModal() {
@@ -851,10 +874,10 @@ async function saveTaskAll() {
 }
 
 async function addComment() {
-  if (!selectedTask.value || !commentBody.value.trim()) return;
-  const taskId = selectedTask.value.id;
+  const taskId = editingTaskId.value || selectedTask.value?.id;
+  if (!taskId || !commentBody.value.trim()) return;
   try {
-    await api('/comments', {
+    const comment = await api('/comments', {
       method: 'POST',
       body: {
         entityType: 'task',
@@ -862,8 +885,11 @@ async function addComment() {
         body: commentBody.value,
       },
     });
+    if (comment.entityId && comment.entityId !== taskId) {
+      throw new Error('Комментарий сохранился не для выбранной задачи');
+    }
     commentBody.value = '';
-    comments.value = (await api(`/comments?entityType=task&entityId=${taskId}`)).items ?? [];
+    await loadCommentsForTask(taskId);
   } catch (reason) {
     error.value = reason.message;
   }
@@ -882,21 +908,18 @@ async function saveComment(comment) {
       body: { body: editCommentBody.value },
     });
     editingCommentId.value = '';
-    comments.value = (
-      await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)
-    ).items ?? [];
+    await loadCommentsForTask(editingTaskId.value || selectedTask.value.id);
   } catch (reason) {
     error.value = reason.message;
   }
 }
 
 async function deleteComment(commentId) {
-  if (!selectedTask.value) return;
+  const taskId = editingTaskId.value || selectedTask.value?.id;
+  if (!taskId) return;
   try {
     await api(`/comments/${commentId}`, { method: 'DELETE' });
-    comments.value = (
-      await api(`/comments?entityType=task&entityId=${selectedTask.value.id}`)
-    ).items ?? [];
+    await loadCommentsForTask(taskId);
   } catch (reason) {
     error.value = reason.message;
   }
@@ -2540,6 +2563,7 @@ onMounted(async () => {
         <div v-if="editingTaskId" class="task-modal-comments">
           <div class="comments-head"><strong>Комментарии</strong><span class="muted">{{ comments.length }}</span></div>
           <div class="comment-list">
+            <p v-if="commentsLoading" class="muted small">Загрузка комментариев...</p>
             <div v-for="comment in comments" :key="comment.id" class="comment">
               <div class="comment-meta">
                 <strong>{{ comment.authorUserId }}</strong>
