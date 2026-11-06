@@ -7,8 +7,8 @@ import { startUserGrpcServer } from './grpc.js';
 
 const app = buildApp();
 const db = createPool();
-if (process.env.DEV_AUTO_VERIFY === 'true' && (await ensureDevAdmin(db))) {
-  app.log.info('development admin is ready');
+if (await ensureDevAdmin(db)) {
+  app.log.info('initial admin is ready');
 }
 const stopOutbox = startUserOutboxPublisher(db);
 const grpc = await startUserGrpcServer({

@@ -1,0 +1,18 @@
+:80 {
+	@root host rp-gant.ru www.rp-gant.ru
+	redir @root https://app.rp-gant.ru{uri} 308
+
+	@app host app.rp-gant.ru
+	handle @app {
+		reverse_proxy frontend:3000
+	}
+
+	@sync host sync.rp-gant.ru
+	handle @sync {
+		reverse_proxy sync-service:8080
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

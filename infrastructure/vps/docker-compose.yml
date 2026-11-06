@@ -1,0 +1,314 @@
+name: ${COMPOSE_PROJECT_NAME:-rp-gant}
+
+x-node-env: &node-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  NODE_OPTIONS: --max-old-space-size=128
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    <<: *restart
+    depends_on:
+      frontend:
+        condition: service_healthy
+      sync-service:
+        condition: service_started
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 64m
+    networks: [rp-gant]
+
+  postgres:
+    image: postgres:17-alpine
+    <<: *restart
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=50
+      - -c
+      - work_mem=4MB
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../local/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m
+    networks: [rp-gant]
+
+  kafka:
+    image: apache/kafka:3.9.0
+    <<: *restart
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    mem_limit: 768m
+    networks: [rp-gant]
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
+          --topic ${KAFKA_TOPIC} --partitions 3 --replication-factor 1
+    mem_limit: 256m
+    networks: [rp-gant]
+
+  db-init:
+    image: postgres:17-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      USER_DB: ${USER_DB}
+      PROJECT_DB: ${PROJECT_DB}
+      NOTIFICATION_DB: ${NOTIFICATION_DB}
+      AUDIT_DB: ${AUDIT_DB}
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../../db:/db:ro
+      - ../local/db-init.sh:/db-init.sh:ro
+    entrypoint: ["/bin/sh", "/db-init.sh"]
+    mem_limit: 256m
+    networks: [rp-gant]
+
+  api-gateway:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/api-gateway/Dockerfile
+    image: rp-gant/api-gateway:local
+    depends_on:
+      user-service:
+        condition: service_started
+      project-service:
+        condition: service_started
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      USER_SERVICE_GRPC: user-service:50051
+      PROJECT_SERVICE_GRPC: project-service:50051
+      NOTIFICATION_SERVICE_URL: http://notification-service:8080
+      AUDIT_SERVICE_URL: http://audit-service:8080
+      SYNC_TOKEN_SECRET: ${SYNC_TOKEN_SECRET}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    mem_limit: 192m
+    networks: [rp-gant]
+
+  sync-service:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/sync-service/Dockerfile
+    image: rp-gant/sync-service:local
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      KAFKA_CONSUMER_GROUP_SYNC: sync
+      SYNC_TOKEN_SECRET: ${SYNC_TOKEN_SECRET}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    mem_limit: 160m
+    networks: [rp-gant]
+
+  audit-service:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/audit-service/Dockerfile
+    image: rp-gant/audit-service:local
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL_AUDIT}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      KAFKA_CONSUMER_GROUP_AUDIT: audit
+    mem_limit: 160m
+    networks: [rp-gant]
+
+  notification-service:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/notification-service/Dockerfile
+    image: rp-gant/notification-service:local
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      user-service:
+        condition: service_started
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL_NOTIFICATION}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      KAFKA_CONSUMER_GROUP_NOTIFICATION: notification
+      USER_SERVICE_GRPC: user-service:50051
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_FROM: ${SMTP_FROM}
+      TELEGRAM_API_URL: https://api.telegram.org
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    mem_limit: 192m
+    networks: [rp-gant]
+
+  frontend:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/frontend/Dockerfile
+    image: rp-gant/frontend:local
+    depends_on:
+      api-gateway:
+        condition: service_started
+    environment:
+      <<: *node-env
+      NODE_OPTIONS: --max-old-space-size=192
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    networks: [rp-gant]
+
+  user-service:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/user-service/Dockerfile
+    image: rp-gant/user-service:local
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      GRPC_PORT: "50051"
+      DATABASE_URL: ${DATABASE_URL_USER}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_FROM: ${SMTP_FROM}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      DEV_AUTO_VERIFY: "false"
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL}
+      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD}
+      DEV_ADMIN_LAST_NAME: ${DEV_ADMIN_LAST_NAME}
+      DEV_ADMIN_FIRST_NAME: ${DEV_ADMIN_FIRST_NAME}
+      DEV_ADMIN_MIDDLE_NAME: ${DEV_ADMIN_MIDDLE_NAME}
+    mem_limit: 224m
+    networks: [rp-gant]
+
+  project-service:
+    <<: *restart
+    build:
+      context: ../..
+      dockerfile: apps/project-service/Dockerfile
+    image: rp-gant/project-service:local
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *node-env
+      PORT: "8080"
+      GRPC_PORT: "50051"
+      DATABASE_URL: ${DATABASE_URL_PROJECT}
+      USER_SERVICE_GRPC: user-service:50051
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+    mem_limit: 224m
+    networks: [rp-gant]
+
+volumes:
+  postgres_data:
+  kafka_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  rp-gant:
+    name: rp-gant

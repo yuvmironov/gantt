@@ -131,6 +131,7 @@ events/                # события
 notifications/         # шаблоны и схемы
 db/                    # миграции и seed
 infrastructure/local/  # Docker Compose, db-init
+infrastructure/vps/    # production Compose для одного VPS за Jino-прокси
 infrastructure/helm/   # Helm charts + staging/prod values
 docs/                  # миграция и эксплуатационные заметки
 tools/                 # проверки контрактов
@@ -141,6 +142,7 @@ tools/                 # проверки контрактов
 Актуальная техническая документация — README сервисов, `openapi/`, `proto/`, `events/` и каталог `docs/`.
 
 - [`docs/MIGRATION-rp-gant.md`](docs/MIGRATION-rp-gant.md) — переход с `smart-oati` на `rp-gant`, перенос БД, volumes, Helm и CI.
+- [`infrastructure/vps/README.md`](infrastructure/vps/README.md) — production-развёртывание на одном VPS за Jino-прокси.
 
 ## Статус
 
