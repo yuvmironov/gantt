@@ -1,11 +1,11 @@
 asyncapi: 3.0.0
 info:
-  title: SMART OATI Notification WebSocket
+  title: RP Gant Notification WebSocket
   version: 1.0.0
   description: WebSocket-контракт Notification Service.
 servers:
   production:
-    host: api.smart-oati.local
+    host: api.rp-gant.local
     pathname: /ws/notifications
     protocol: wss
 channels:

@@ -2,7 +2,7 @@
 
 test('allows direction dependencies and forbids direction to task', async ({ page }) => {
   const suffix = Date.now();
-  const email = `dependency-types-${suffix}@smart-oati.test`;
+  const email = `dependency-types-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
   await page.locator('#register-tab').click();

@@ -1,5 +1,5 @@
 {
-  "name": "@smart-oati/project-service",
+  "name": "@rp-gant/project-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.0",
-    "@smart-oati/service-kit": "workspace:*",
+    "@rp-gant/service-kit": "workspace:*",
     "kafkajs": "2.2.4",
     "pg": "^8.23.1"
   }

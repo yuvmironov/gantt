@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://smart-oati.local/schemas/ws-notification-created.json",
+  "$id": "https://rp-gant.local/schemas/ws-notification-created.json",
   "title": "WsNotificationCreated",
   "type": "object",
   "additionalProperties": false,

@@ -2,11 +2,11 @@
 
 test('admin can create admins and promote users', async ({ page }) => {
   const suffix = Date.now();
-  const createdEmail = `admin-created-${suffix}@smart-oati.test`;
-  const promotedEmail = `admin-promoted-${suffix}@smart-oati.test`;
+  const createdEmail = `admin-created-${suffix}@rp-gant.test`;
+  const promotedEmail = `admin-promoted-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
-  await page.locator('#login-form input[name=email]').fill('admin@smart-oati.local');
+  await page.locator('#login-form input[name=email]').fill('admin@rp-gant.local');
   await page.locator('#login-form input[name=password]').fill('ChangeMeDevOnly!');
   await page.locator('#login-form button[type=submit]').click();
   await expect(page.locator('.projects-page')).toBeVisible();

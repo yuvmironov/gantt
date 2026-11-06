@@ -1,5 +1,5 @@
 {
-  "name": "@smart-oati/notification-service",
+  "name": "@rp-gant/notification-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "10.2.0",
-    "@smart-oati/service-kit": "workspace:*",
+    "@rp-gant/service-kit": "workspace:*",
     "kafkajs": "2.2.4",
     "nodemailer": "10.0.6",
     "pg": "^8.23.1"

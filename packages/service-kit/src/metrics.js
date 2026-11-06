@@ -2,7 +2,7 @@ import { collectDefaultMetrics, Counter, Histogram, Registry } from 'prom-client
 
 export function createMetrics() {
   const registry = new Registry();
-  collectDefaultMetrics({ register: registry, prefix: 'smart_oati_' });
+  collectDefaultMetrics({ register: registry, prefix: 'rp_gant_' });
 
   const requests = new Counter({
     name: 'http_requests_total',

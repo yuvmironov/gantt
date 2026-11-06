@@ -6,7 +6,7 @@ test('direction end covers all nested tasks', async ({ page }) => {
   await page.locator('#register-tab').click();
   await page
     .locator('#register-form input[name=email]')
-    .fill(`direction-end-${suffix}@smart-oati.test`);
+    .fill(`direction-end-${suffix}@rp-gant.test`);
   await page.locator('#register-form input[name=lastName]').fill('Direction');
   await page.locator('#register-form input[name=firstName]').fill('Dates');
   await page.locator('#register-form input[name=password]').fill('Direction123!');

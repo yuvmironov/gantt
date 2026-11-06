@@ -1,4 +1,4 @@
-import { createMetadata } from '@smart-oati/service-kit';
+import { createMetadata } from '@rp-gant/service-kit';
 import { csrfValid, sendProblem } from './auth-routes.js';
 import { call } from './project-client.js';
 import { applySchedule } from './gantt-schedule.js';
@@ -507,7 +507,7 @@ function standaloneExport(snapshotData, format) {
   }
   const payload = {
     project: snapshot.diagram?.name ?? '',
-    source: 'smart-oati',
+    source: 'rp-gant',
     exportedAt: new Date().toISOString(),
     today: new Date().toISOString().slice(0, 10),
     count: tasks.length,
@@ -552,7 +552,7 @@ function actorMetadata(userId) {
 function requireCsrf(request, reply) {
   if (csrfValid(request)) return false;
   reply.code(403).type('application/problem+json').send({
-    type: 'https://smart-oati.local/problems/csrf_invalid',
+    type: 'https://rp-gant.local/problems/csrf_invalid',
     title: 'Forbidden',
     status: 403,
     detail: 'Invalid CSRF token',
@@ -1297,7 +1297,7 @@ export async function projectRoutes(app, { userClient, projectClient }) {
       }
       if (!data) {
         return reply.code(400).type('application/problem+json').send({
-          type: 'https://smart-oati.local/problems/invalid_import',
+          type: 'https://rp-gant.local/problems/invalid_import',
           title: 'Bad Request',
           status: 400,
           detail: 'Import file is required',

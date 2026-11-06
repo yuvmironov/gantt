@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('project detail shows diagrams and members', async ({ page }) => {
   const suffix = Date.now();
-  const email = `project-detail-${suffix}@smart-oati.test`;
+  const email = `project-detail-${suffix}@rp-gant.test`;
   const projectName = `Project detail ${suffix}`;
   const diagramName = `Existing diagram ${suffix}`;
 

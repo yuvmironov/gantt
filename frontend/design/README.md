@@ -1,4 +1,4 @@
-# SMART OATI — UI/UX prototype package
+# RP Gant — UI/UX prototype package
 
 Визуальный прототип для согласования UI/UX. Не является production-кодом.
 
@@ -10,7 +10,8 @@
 | `prototype.css` | Стили компонентов и экранов |
 | `prototype.html` | Интерактивный прототип 6 экранов |
 | `ui-kit.html` | Палитра, типографика, controls, badges, modal, toast, alert |
-| `screenshots/` | PNG-скриншоты для согласования |
+
+Скриншоты в репозитории не хранятся: их можно сгенерировать локально по инструкции ниже.
 
 ## Как открыть
 
@@ -31,21 +32,10 @@ UI kit: `ui-kit.html`.
 
 ## Скриншоты
 
-| Файл | Экран |
-|---|---|
-| `screenshots/01-auth.png` | Auth |
-| `screenshots/02-projects.png` | Проекты |
-| `screenshots/03-gantt-comments.png` | Гант + комментарии |
-| `screenshots/04-notifications.png` | Уведомления |
-| `screenshots/05-audit.png` | Аудит + детали |
-| `screenshots/06-admin.png` | Админка: пользователи |
-| `screenshots/07-ui-kit.png` | UI kit |
-
-## Перегенерация скриншотов
-
-Требуется Chrome или Edge. Пример для Chrome:
+Скриншоты не входят в git. При необходимости их можно сгенерировать локально:
 
 ```powershell
+New-Item -ItemType Directory -Force screenshots
 $html = "file:///D:/path/to/prototype.html"
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" `
   --headless=new --disable-gpu --hide-scrollbars `

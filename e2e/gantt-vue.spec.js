@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('nuxt gantt page renders tasks and edit modal', async ({ page }) => {
   const suffix = Date.now();
-  const email = `gantt-${suffix}@smart-oati.test`;
+  const email = `gantt-${suffix}@rp-gant.test`;
   const password = 'GanttPassword123!';
   const taskName = `Vue task ${suffix}`;
 

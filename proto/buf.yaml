@@ -7,3 +7,7 @@ lint:
 breaking:
   use:
     - FILE
+  # Legacy paths removed during the rp-gant rename.
+  ignore_only:
+    FILE_NO_DELETE:
+      - smartoati

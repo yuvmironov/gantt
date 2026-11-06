@@ -361,7 +361,7 @@ export function createUserImplementation({
   db,
   devAutoVerify = false,
   mailer = createMailer(),
-  publicAppUrl = process.env.PUBLIC_APP_URL ?? 'https://app.localhost',
+  publicAppUrl = process.env.PUBLIC_APP_URL ?? 'https://app.rp-gant.localhost',
 }) {
   return {
     async Register(call, callback) {
@@ -438,7 +438,7 @@ export function createUserImplementation({
         if (verificationToken) {
           await sendMail(mailer, {
             to: email,
-            subject: 'Verify your SMART OATI email',
+            subject: 'Verify your RP Gant email',
             text: `Verify your email: ${publicAppUrl.replace(/\/$/, '')}/?verify=${encodeURIComponent(verificationToken)}`,
           });
         }
@@ -808,7 +808,7 @@ export function createUserImplementation({
           );
           await sendMail(mailer, {
             to: email,
-            subject: 'Verify your SMART OATI email',
+            subject: 'Verify your RP Gant email',
             text: `Verify your email: ${publicAppUrl.replace(/\/$/, '')}/?verify=${encodeURIComponent(token)}`,
           });
         }
@@ -840,7 +840,7 @@ export function createUserImplementation({
           );
           await sendMail(mailer, {
             to: email,
-            subject: 'Reset your SMART OATI password',
+            subject: 'Reset your RP Gant password',
             text: `Reset your password: ${resetLink(publicAppUrl, token)}`,
           });
         }
@@ -1187,7 +1187,7 @@ export function createUserImplementation({
           );
           await sendMail(mailer, {
             to: email,
-            subject: 'You were added to a SMART OATI project',
+            subject: 'You were added to a RP Gant project',
             text: `You now have access to the project: ${publicAppUrl}`,
           });
           await queueUserEvent(db, {
@@ -1227,7 +1227,7 @@ export function createUserImplementation({
               );
         await sendMail(mailer, {
           to: email,
-          subject: 'Invitation to SMART OATI',
+          subject: 'Invitation to RP Gant',
           text: `Accept the project invitation: ${invitationLink(publicAppUrl, token)}`,
         });
         await queueUserEvent(db, {
@@ -1297,7 +1297,7 @@ export function createUserImplementation({
         );
         await sendMail(mailer, {
           to: result.rows[0].email,
-          subject: 'Invitation to SMART OATI',
+          subject: 'Invitation to RP Gant',
           text: `Accept the project invitation: ${invitationLink(publicAppUrl, token)}`,
         });
         await queueUserEvent(db, {
@@ -1774,7 +1774,7 @@ export function createUserImplementation({
         await client.query('COMMIT');
         await sendMail(mailer, {
           to: email,
-          subject: 'SMART OATI account created',
+          subject: 'RP Gant account created',
           text: `Set your password: ${resetLink(publicAppUrl, token)}`,
         });
         await queueUserEvent(db, {
@@ -1953,7 +1953,7 @@ export function createUserImplementation({
       telegramCodes.set(code, { userId, expiresAt });
       callback(null, {
         code,
-        deep_link: `https://t.me/smart_oati_local_bot?start=${code}`,
+        deep_link: `https://t.me/rp_gant_local_bot?start=${code}`,
         expires_at: toTimestamp(expiresAt),
       });
     },

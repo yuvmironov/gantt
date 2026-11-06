@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/sync-service
+  repository: ghcr.io/yuvmironov/rp-gant/sync-service
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -77,7 +77,7 @@ env:
   - name: KAFKA_BROKERS
     value: "kafka:9092"
   - name: KAFKA_TOPIC
-    value: "smartoati.events"
+    value: "rpgant.events"
   - name: KAFKA_CONSUMER_GROUP_SYNC
     value: "sync"
   - name: SYNC_SERVICE_URL
@@ -85,7 +85,7 @@ env:
   - name: SYNC_TOKEN_SECRET
     valueFrom:
       secretKeyRef:
-        name: smart-oati-sync
+        name: rp-gant-sync
         key: token
 
 envFrom: []

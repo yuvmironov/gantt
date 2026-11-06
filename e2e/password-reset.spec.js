@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('password reset through local mail', async ({ page, context }) => {
   const suffix = Date.now();
-  const email = `reset-${suffix}@smart-oati.test`;
+  const email = `reset-${suffix}@rp-gant.test`;
   const password = 'ResetPassword123!';
   const newPassword = 'ResetPassword456!';
   const mailPage = await context.newPage();
@@ -34,13 +34,13 @@ test('password reset through local mail', async ({ page, context }) => {
   await expect
     .poll(
       async () => {
-        await mailPage.goto('https://mail.localhost/api/v1/messages');
+        await mailPage.goto('https://mail.rp-gant.localhost/api/v1/messages');
         const body = JSON.parse(await mailPage.locator('body').innerText());
         const message = body.messages?.find((item) =>
           item.To?.some((recipient) => recipient.Address === email),
         );
         if (!message) return false;
-        await mailPage.goto(`https://mail.localhost/api/v1/message/${message.ID}`);
+        await mailPage.goto(`https://mail.rp-gant.localhost/api/v1/message/${message.ID}`);
         const payload = JSON.parse(await mailPage.locator('body').innerText());
         resetLink = payload.Text?.match(/https?:\/\/\S+/)?.[0];
         return Boolean(resetLink);

@@ -5,7 +5,7 @@ test('task comments are isolated by task', async ({ page }) => {
 
   await page.goto('/login');
   await page.locator('#register-tab').click();
-  await page.locator('#register-form input[name=email]').fill(`comments-${suffix}@smart-oati.test`);
+  await page.locator('#register-form input[name=email]').fill(`comments-${suffix}@rp-gant.test`);
   await page.locator('#register-form input[name=lastName]').fill('Comment');
   await page.locator('#register-form input[name=firstName]').fill('Tester');
   await page.locator('#register-form input[name=password]').fill('Comment123!');

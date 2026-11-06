@@ -32,7 +32,7 @@ export async function startNotificationConsumer(db, userClient, env = process.en
     groupId: env.KAFKA_CONSUMER_GROUP_NOTIFICATION ?? 'notification',
   });
   await consumer.connect();
-  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'smartoati.events' });
+  await consumer.subscribe({ topic: env.KAFKA_TOPIC ?? 'rpgant.events' });
 
   await consumer.run({
     eachMessage: async ({ message }) => {

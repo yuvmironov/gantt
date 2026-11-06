@@ -2,7 +2,7 @@
 
 test('projects page creates and archives a project', async ({ page }) => {
   const suffix = Date.now();
-  const email = `projects-${suffix}@smart-oati.test`;
+  const email = `projects-${suffix}@rp-gant.test`;
   const projectName = `Projects UI ${suffix}`;
 
   await page.goto('/login');

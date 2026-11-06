@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const password = 'DemoPassword123!';
-const ownerEmail = 'demo.owner@smart-oati.local';
-const memberEmail = 'demo.member@smart-oati.local';
-const cookieJar = join(tmpdir(), `smart-oati-demo-${process.pid}.cookies`);
+const ownerEmail = 'demo.owner@rp-gant.local';
+const memberEmail = 'demo.member@rp-gant.local';
+const cookieJar = join(tmpdir(), `rp-gant-demo-${process.pid}.cookies`);
 
 function curl(path, { method = 'GET', body, headers = {} } = {}) {
   const payload = body === undefined ? undefined : JSON.stringify(body);
@@ -18,7 +18,7 @@ function curl(path, { method = 'GET', body, headers = {} } = {}) {
     cookieJar,
     '-X',
     method,
-    `https://app.localhost/api/v1${path}`,
+    `https://app.rp-gant.localhost/api/v1${path}`,
     '-H',
     'Accept: application/json',
   ];
@@ -120,6 +120,6 @@ await curl(`/projects/${project.id}/invitations`, {
 });
 
 rmSync(cookieJar, { force: true });
-console.log('Demo ready: https://app.localhost');
+console.log('Demo ready: https://app.rp-gant.localhost');
 console.log(`Owner: ${ownerEmail} / ${password}`);
 console.log(`Member: ${memberEmail} / ${password}`);

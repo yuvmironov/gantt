@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/notification-service
+  repository: ghcr.io/yuvmironov/rp-gant/notification-service
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -77,7 +77,7 @@ env:
   - name: KAFKA_BROKERS
     value: "kafka:9092"
   - name: KAFKA_TOPIC
-    value: "smartoati.events"
+    value: "rpgant.events"
   - name: KAFKA_CONSUMER_GROUP_NOTIFICATION
     value: "notification"
 
@@ -93,7 +93,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: smart-oati/notification-service
+        key: rp-gant/notification-service
         property: database_url
 
 

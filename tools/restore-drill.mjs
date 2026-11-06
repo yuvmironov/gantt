@@ -6,14 +6,9 @@ import { join, resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const composeFile = 'infrastructure/local/docker-compose.yml';
 const envFile = 'infrastructure/local/.env.local';
-const container = `smart-oati-restore-check-${process.pid}`;
-const dir = mkdtempSync(join(tmpdir(), 'smart-oati-restore-'));
-const databases = [
-  'smart_oati_user',
-  'smart_oati_project',
-  'smart_oati_notification',
-  'smart_oati_audit',
-];
+const container = `rp-gant-restore-check-${process.pid}`;
+const dir = mkdtempSync(join(tmpdir(), 'rp-gant-restore-'));
+const databases = ['rp_gant_user', 'rp_gant_project', 'rp_gant_notification', 'rp_gant_audit'];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -30,7 +25,7 @@ function run(command, args, options = {}) {
 
 function waitForPostgres() {
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const result = spawnSync('docker', ['exec', container, 'pg_isready', '-U', 'smart_oati'], {
+    const result = spawnSync('docker', ['exec', container, 'pg_isready', '-U', 'rp_gant'], {
       encoding: 'utf8',
       shell: false,
     });
@@ -47,7 +42,7 @@ function count(database, table) {
       container,
       'psql',
       '-U',
-      'smart_oati',
+      'rp_gant',
       '-d',
       database,
       '-Atc',
@@ -69,7 +64,7 @@ try {
       'postgres',
       'pg_dump',
       '-U',
-      'smart_oati',
+      'rp_gant',
       '--clean',
       '--if-exists',
       database,
@@ -84,9 +79,9 @@ try {
     '--name',
     container,
     '-e',
-    'POSTGRES_USER=smart_oati',
+    'POSTGRES_USER=rp_gant',
     '-e',
-    'POSTGRES_PASSWORD=smart_oati_dev',
+    'POSTGRES_PASSWORD=rp_gant_dev',
     '-e',
     'POSTGRES_DB=postgres',
     'postgres:17-alpine',
@@ -94,33 +89,22 @@ try {
   waitForPostgres();
 
   for (const database of databases) {
-    run('docker', ['exec', container, 'createdb', '-U', 'smart_oati', database]);
+    run('docker', ['exec', container, 'createdb', '-U', 'rp_gant', database]);
     const dump = readFileSync(join(dir, `${database}.sql`), 'utf8');
     run(
       'docker',
-      [
-        'exec',
-        '-i',
-        container,
-        'psql',
-        '-U',
-        'smart_oati',
-        '-d',
-        database,
-        '-v',
-        'ON_ERROR_STOP=1',
-      ],
+      ['exec', '-i', container, 'psql', '-U', 'rp_gant', '-d', database, '-v', 'ON_ERROR_STOP=1'],
       { input: dump },
     );
   }
   console.log('restore completed');
 
   const checks = [
-    ['smart_oati_user', 'access.users'],
-    ['smart_oati_project', 'project.projects'],
-    ['smart_oati_project', 'plan.tasks'],
-    ['smart_oati_notification', 'notify.notifications'],
-    ['smart_oati_audit', 'audit.audit_events'],
+    ['rp_gant_user', 'access.users'],
+    ['rp_gant_project', 'project.projects'],
+    ['rp_gant_project', 'plan.tasks'],
+    ['rp_gant_notification', 'notify.notifications'],
+    ['rp_gant_audit', 'audit.audit_events'],
   ];
   for (const [database, table] of checks) {
     const value = count(database, table);

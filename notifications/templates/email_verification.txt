@@ -1,6 +1,6 @@
 Здравствуйте, {{displayName}}!
 
-Подтвердите email для доступа к SMART OATI.
+Подтвердите email для доступа к RP Gant.
 
 {{actionUrl}}
 

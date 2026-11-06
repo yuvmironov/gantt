@@ -3,7 +3,7 @@
   "templates": [
     {
       "code": "email_verification",
-      "subject": "Подтвердите email в SMART OATI",
+      "subject": "Подтвердите email в RP Gant",
       "variables": [
         "displayName",
         "actionUrl",
@@ -17,7 +17,7 @@
     },
     {
       "code": "password_reset",
-      "subject": "Сброс пароля в SMART OATI",
+      "subject": "Сброс пароля в RP Gant",
       "variables": [
         "displayName",
         "actionUrl",
@@ -48,7 +48,7 @@
     },
     {
       "code": "account_activation",
-      "subject": "Активация учетной записи SMART OATI",
+      "subject": "Активация учетной записи RP Gant",
       "variables": [
         "displayName",
         "actionUrl",

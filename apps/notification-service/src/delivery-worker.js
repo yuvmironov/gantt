@@ -78,7 +78,7 @@ export function startNotificationDeliveryWorker(db, userClient, env = process.en
             if (!transporter) throw new Error('smtp_not_configured');
             if (!contact.email) throw new Error('email_not_found');
             const sent = await transporter.sendMail({
-              from: env.SMTP_FROM ?? 'SMART OATI <no-reply@smart-oati.local>',
+              from: env.SMTP_FROM ?? 'RP Gant <no-reply@rp-gant.local>',
               to: contact.email,
               subject: delivery.title,
               text: delivery.body,

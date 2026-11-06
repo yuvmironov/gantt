@@ -1,11 +1,11 @@
 asyncapi: 3.0.0
 info:
-  title: SMART OATI Sync WebSocket
+  title: RP Gant Sync WebSocket
   version: 1.0.0
   description: WebSocket-контракт Sync / Realtime Service.
 servers:
   production:
-    host: api.smart-oati.local
+    host: api.rp-gant.local
     pathname: /ws
     protocol: wss
 channels:

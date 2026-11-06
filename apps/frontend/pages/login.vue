@@ -162,7 +162,7 @@ onMounted(async () => {
     <section class="auth-brand">
       <div class="brand-lockup">
         <span class="brand-mark">▥</span>
-        <span>SMART OATI</span>
+        <span>RP Gant</span>
       </div>
       <div class="auth-brand-copy">
         <p class="eyebrow" style="color:#93c5fd">Планирование без хаоса</p>
@@ -226,7 +226,7 @@ onMounted(async () => {
           <button class="btn btn-primary btn-lg btn-block" type="submit">Обновить пароль</button>
         </form>
 
-        <p class="hint">Локальный администратор: admin@smart-oati.local</p>
+        <p class="hint">Локальный администратор: admin@rp-gant.local</p>
       </div>
     </section>
   </main>

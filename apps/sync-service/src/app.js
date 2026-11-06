@@ -1,5 +1,5 @@
-import { verifySyncToken } from '@smart-oati/shared';
-import { createService, loadConfig } from '@smart-oati/service-kit';
+import { verifySyncToken } from '@rp-gant/shared';
+import { createService, loadConfig } from '@rp-gant/service-kit';
 import { Counter, Gauge } from 'prom-client';
 import { WebSocketServer } from 'ws';
 
@@ -62,7 +62,9 @@ export function buildApp({ env = process.env, logger = true } = {}) {
   app.server.on('upgrade', (request, socket, head) => {
     let token;
     try {
-      token = new URL(request.url ?? '/', 'http://sync.localhost').searchParams.get('token');
+      token = new URL(request.url ?? '/', 'http://sync.rp-gant.localhost').searchParams.get(
+        'token',
+      );
     } catch {
       rejectUpgrade(socket, 400, 'Bad Request');
       return;

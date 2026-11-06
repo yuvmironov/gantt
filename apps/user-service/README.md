@@ -1,13 +1,13 @@
 # User & Access Service
 
-Сервис пользователей, доступа и сессий SMART OATI.
+Сервис пользователей, доступа и сессий RP Gant.
 
 Сейчас реализованы:
 
 - HTTP health `/health/live`, `/health/ready`;
 - gRPC-сервер на `50051`;
 - стандартный `grpc.health.v1.Health` со статусом `SERVING`;
-- загрузка контракта `smartoati.user.v1.UserService`;
+- загрузка контракта `rpgant.user.v1.UserService`;
 - auth: `Register`, `VerifyEmail`, `Login`, `ValidateSession`, `Logout`, `LogoutAll`;
 - сессии: `RestoreSession`, `ListMySessions`, `RevokeMySession`;
 - пароли: `ResendEmailVerification`, `RequestPasswordReset`, `ResetPassword`, `ChangePassword`;

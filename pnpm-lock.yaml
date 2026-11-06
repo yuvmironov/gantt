@@ -35,10 +35,10 @@ importers:
       '@fastify/rate-limit':
         specifier: 10.2.0
         version: 10.2.0
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
-      '@smart-oati/shared':
+      '@rp-gant/shared':
         specifier: workspace:*
         version: link:../../packages/shared
 
@@ -47,7 +47,7 @@ importers:
       '@fastify/rate-limit':
         specifier: ^10.2.0
         version: 10.2.0
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
       kafkajs:
@@ -62,7 +62,7 @@ importers:
       '@fastify/rate-limit':
         specifier: 10.2.0
         version: 10.2.0
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
       kafkajs:
@@ -80,7 +80,7 @@ importers:
       '@grpc/grpc-js':
         specifier: ^1.14.0
         version: 1.14.6
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
       kafkajs:
@@ -92,10 +92,10 @@ importers:
 
   apps/sync-service:
     dependencies:
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
-      '@smart-oati/shared':
+      '@rp-gant/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       kafkajs:
@@ -116,7 +116,7 @@ importers:
       '@node-rs/argon2':
         specifier: ^2.2.2
         version: 2.2.2
-      '@smart-oati/service-kit':
+      '@rp-gant/service-kit':
         specifier: workspace:*
         version: link:../../packages/service-kit
       kafkajs:

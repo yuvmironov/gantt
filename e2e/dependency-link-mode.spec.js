@@ -2,7 +2,7 @@
 
 test('link mode supports directions and task-to-direction', async ({ page }) => {
   const suffix = Date.now();
-  const email = `dependency-links-${suffix}@smart-oati.test`;
+  const email = `dependency-links-${suffix}@rp-gant.test`;
 
   await page.goto('/login');
   await page.locator('#register-tab').click();

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('nuxt members page renders project owner', async ({ page }) => {
   const suffix = Date.now();
-  const email = `members-${suffix}@smart-oati.test`;
+  const email = `members-${suffix}@rp-gant.test`;
   const password = 'MembersPassword123!';
   const projectName = `Members project ${suffix}`;
 

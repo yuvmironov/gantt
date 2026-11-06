@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   app: {
     head: {
-      title: "SMART OATI",
+      title: "RP Gant",
       link: [{ rel: "stylesheet", href: "/design-system.css" }],
     },
   },

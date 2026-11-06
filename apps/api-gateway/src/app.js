@@ -2,7 +2,7 @@ import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
-import { createService, loadConfig } from '@smart-oati/service-kit';
+import { createService, loadConfig } from '@rp-gant/service-kit';
 import { accessRoutes } from './access-routes.js';
 import { adminRoutes } from './admin-routes.js';
 import { extraRoutes } from './extra-routes.js';

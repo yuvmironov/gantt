@@ -110,7 +110,7 @@ export function sendProblem(reply, request, error) {
     .code(status)
     .type('application/problem+json')
     .send({
-      type: `https://smart-oati.local/problems/${code}`,
+      type: `https://rp-gant.local/problems/${code}`,
       title: TITLES[status] ?? 'Error',
       status,
       detail,
@@ -167,7 +167,7 @@ export async function authRoutes(app, { userClient }) {
     const rememberToken = request.cookies['__Host-remember'];
     if (!rememberToken) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/remember_token_required',
+        type: 'https://rp-gant.local/problems/remember_token_required',
         title: TITLES[401],
         status: 401,
         detail: 'Remember token is required',
@@ -193,7 +193,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -219,7 +219,7 @@ export async function authRoutes(app, { userClient }) {
   app.patch('/api/v1/users/me', async (request, reply) => {
     if (!csrfValid(request)) {
       return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
+        type: 'https://rp-gant.local/problems/csrf_invalid',
         title: TITLES[403],
         status: 403,
         detail: 'Invalid CSRF token',
@@ -231,7 +231,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -266,7 +266,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -322,7 +322,7 @@ export async function authRoutes(app, { userClient }) {
   app.post('/api/v1/auth/password/change', async (request, reply) => {
     if (!csrfValid(request)) {
       return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
+        type: 'https://rp-gant.local/problems/csrf_invalid',
         title: TITLES[403],
         status: 403,
         detail: 'Invalid CSRF token',
@@ -334,7 +334,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -387,7 +387,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -415,7 +415,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -441,7 +441,7 @@ export async function authRoutes(app, { userClient }) {
   app.delete('/api/v1/auth/sessions/:sessionId', async (request, reply) => {
     if (!csrfValid(request)) {
       return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
+        type: 'https://rp-gant.local/problems/csrf_invalid',
         title: TITLES[403],
         status: 403,
         detail: 'Invalid CSRF token',
@@ -453,7 +453,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -473,7 +473,7 @@ export async function authRoutes(app, { userClient }) {
       });
       if (!response.revoked) {
         return reply.code(404).type('application/problem+json').send({
-          type: 'https://smart-oati.local/problems/not_found',
+          type: 'https://rp-gant.local/problems/not_found',
           title: TITLES[404],
           status: 404,
           detail: 'Session not found',
@@ -491,7 +491,7 @@ export async function authRoutes(app, { userClient }) {
   app.post('/api/v1/auth/logout-all', async (request, reply) => {
     if (!csrfValid(request)) {
       return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
+        type: 'https://rp-gant.local/problems/csrf_invalid',
         title: TITLES[403],
         status: 403,
         detail: 'Invalid CSRF token',
@@ -503,7 +503,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -531,7 +531,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -561,7 +561,7 @@ export async function authRoutes(app, { userClient }) {
     const token = request.cookies['__Host-session'];
     if (!token) {
       return reply.code(401).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/unauthenticated',
+        type: 'https://rp-gant.local/problems/unauthenticated',
         title: TITLES[401],
         status: 401,
         detail: 'Session is required',
@@ -591,7 +591,7 @@ export async function authRoutes(app, { userClient }) {
   app.post('/api/v1/auth/logout', async (request, reply) => {
     if (!csrfValid(request)) {
       return reply.code(403).type('application/problem+json').send({
-        type: 'https://smart-oati.local/problems/csrf_invalid',
+        type: 'https://rp-gant.local/problems/csrf_invalid',
         title: TITLES[403],
         status: 403,
         detail: 'Invalid CSRF token',

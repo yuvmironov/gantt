@@ -2,12 +2,12 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "smart-oati-service.fullname" . }}
+  name: {{ include "rp-gant-service.fullname" . }}
   labels:
-    {{- include "smart-oati-service.labels" . | nindent 4 }}
+    {{- include "rp-gant-service.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.pdb.minAvailable }}
   selector:
     matchLabels:
-      {{- include "smart-oati-service.selectorLabels" . | nindent 6 }}
+      {{- include "rp-gant-service.selectorLabels" . | nindent 6 }}
 {{- end }}

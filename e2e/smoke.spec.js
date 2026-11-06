@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('local Vue MVP workflow', async ({ page }) => {
   const suffix = Date.now();
-  const email = `mvp-${suffix}@smart-oati.test`;
+  const email = `mvp-${suffix}@rp-gant.test`;
   const password = 'MvpPassword123!';
   const projectName = `MVP project ${suffix}`;
   const diagramName = `MVP diagram ${suffix}`;

@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "smart-oati-service.fullname" . }}
+  name: {{ include "rp-gant-service.fullname" . }}
   labels:
-    {{- include "smart-oati-service.labels" . | nindent 4 }}
+    {{- include "rp-gant-service.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "smart-oati-service.fullname" . }}
+    name: {{ include "rp-gant-service.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

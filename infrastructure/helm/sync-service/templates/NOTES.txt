@@ -1,10 +1,10 @@
-SMART OATI service chart installed.
+RP Gant service chart installed.
 
-Service: {{ include "smart-oati-service.fullname" . }}
-Image: {{ include "smart-oati-service.image" . }}
+Service: {{ include "rp-gant-service.fullname" . }}
+Image: {{ include "rp-gant-service.image" . }}
 Namespace: {{ .Release.Namespace }}
 
 Проверить:
 
   kubectl -n {{ .Release.Namespace }} get deploy,pods,svc
-  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "smart-oati-service.fullname" . }}
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "rp-gant-service.fullname" . }}

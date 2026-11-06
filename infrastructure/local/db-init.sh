@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-USER_DB="${USER_DB:-smart_oati_user}"
-PROJECT_DB="${PROJECT_DB:-smart_oati_project}"
-NOTIFICATION_DB="${NOTIFICATION_DB:-smart_oati_notification}"
-AUDIT_DB="${AUDIT_DB:-smart_oati_audit}"
+USER_DB="${USER_DB:-rp_gant_user}"
+PROJECT_DB="${PROJECT_DB:-rp_gant_project}"
+NOTIFICATION_DB="${NOTIFICATION_DB:-rp_gant_notification}"
+AUDIT_DB="${AUDIT_DB:-rp_gant_audit}"
 DB_ROOT="${DB_ROOT:-/db}"
 PGHOST="${PGHOST:-postgres}"
-PGUSER="${PGUSER:-smart_oati}"
-export PGPASSWORD="${PGPASSWORD:-smart_oati_dev}"
+PGUSER="${PGUSER:-rp_gant}"
+export PGPASSWORD="${PGPASSWORD:-rp_gant_dev}"
 
 apply_migration() {
   database="$1"

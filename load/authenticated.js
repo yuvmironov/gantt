@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const base = __ENV.BASE_URL || 'https://app.localhost';
+const base = __ENV.BASE_URL || 'https://app.rp-gant.localhost';
 const vus = Number(__ENV.VUS || 2);
 const password = 'LoadPassword123!';
 
@@ -23,7 +23,7 @@ export function setup() {
   const users = [];
   const stamp = Date.now();
   for (let index = 0; index < vus; index += 1) {
-    const email = `load-${stamp}-${index}@smart-oati.test`;
+    const email = `load-${stamp}-${index}@rp-gant.test`;
     const response = http.post(
       `${base}/api/v1/auth/register`,
       JSON.stringify({

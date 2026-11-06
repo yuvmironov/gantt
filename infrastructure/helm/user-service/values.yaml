@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/user-service
+  repository: ghcr.io/yuvmironov/rp-gant/user-service
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -91,7 +91,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: smart-oati/user-service
+        key: rp-gant/user-service
         property: database_url
 
 

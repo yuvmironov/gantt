@@ -1,5 +1,5 @@
 {
-  "name": "@smart-oati/sync-service",
+  "name": "@rp-gant/sync-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,8 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@smart-oati/service-kit": "workspace:*",
-    "@smart-oati/shared": "workspace:*",
+    "@rp-gant/service-kit": "workspace:*",
+    "@rp-gant/shared": "workspace:*",
     "kafkajs": "2.2.4",
     "prom-client": "15.1.3",
     "ws": "^8.18.0"

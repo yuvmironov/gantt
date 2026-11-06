@@ -1,11 +1,11 @@
 asyncapi: 3.0.0
 info:
-  title: SMART OATI Event Bus
+  title: RP Gant Event Bus
   version: 1.0.0
-  description: Контракт событий между backend-сервисами SMART OATI. Брокер не фиксируется.
+  description: Контракт событий между backend-сервисами RP Gant. Брокер не фиксируется.
 channels:
   events:
-    address: smartoati.events
+    address: rp_gant.events
     messages:
       event:
         $ref: '#/components/messages/EventEnvelope'

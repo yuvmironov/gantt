@@ -87,7 +87,7 @@ describe('service-kit', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/plain');
     expect(response.body).toContain('http_requests_total');
-    expect(response.body).toContain('smart_oati_process_cpu_user_seconds_total');
+    expect(response.body).toContain('rp_gant_process_cpu_user_seconds_total');
   });
 
   it('rejects invalid port configuration', () => {

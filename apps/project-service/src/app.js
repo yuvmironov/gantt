@@ -1,4 +1,4 @@
-import { createService, loadConfig } from '@smart-oati/service-kit';
+import { createService, loadConfig } from '@rp-gant/service-kit';
 
 const serviceName = 'project-service';
 const serviceVersion = '0.1.0';

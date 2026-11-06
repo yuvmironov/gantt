@@ -1,5 +1,5 @@
 ﻿groups:
-  - name: smart-oati
+  - name: rp-gant
     rules:
       - alert: ServiceDown
         expr: up == 0
@@ -7,7 +7,7 @@
         labels:
           severity: critical
         annotations:
-          summary: "SMART OATI target is down"
+          summary: "RP Gant target is down"
       - alert: HighErrorRate
         expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job) > 0.05
         for: 5m

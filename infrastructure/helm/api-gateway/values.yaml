@@ -2,7 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/yuvmironov/smart-oati/api-gateway
+  repository: ghcr.io/yuvmironov/rp-gant/api-gateway
   tag: main
   digest: ""
   pullPolicy: IfNotPresent
@@ -73,7 +73,7 @@ env:
   - name: SYNC_TOKEN_SECRET
     valueFrom:
       secretKeyRef:
-        name: smart-oati-sync
+        name: rp-gant-sync
         key: token
 
 envFrom: []
@@ -93,7 +93,7 @@ ingress:
   className: yandex-alb
   annotations: {}
   hosts:
-    - host: api.example.com
+    - host: api.rp-gant.example.com
       paths:
         - path: /
           pathType: Prefix

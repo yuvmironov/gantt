@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "smart-oati-service.fullname" . }}
+  name: {{ include "rp-gant-service.fullname" . }}
   labels:
-    {{- include "smart-oati-service.labels" . | nindent 4 }}
+    {{- include "rp-gant-service.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     {{- toYaml .Values.strategy | nindent 4 }}
   selector:
     matchLabels:
-      {{- include "smart-oati-service.selectorLabels" . | nindent 6 }}
+      {{- include "rp-gant-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         {{- toYaml .Values.podAnnotations | nindent 8 }}
       labels:
-        {{- include "smart-oati-service.selectorLabels" . | nindent 8 }}
+        {{- include "rp-gant-service.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -25,12 +25,12 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "smart-oati-service.serviceAccountName" . }}
+      serviceAccountName: {{ include "rp-gant-service.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ include "smart-oati-service.image" . | quote }}
+          image: {{ include "rp-gant-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}

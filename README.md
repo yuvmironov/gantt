@@ -1,6 +1,6 @@
-# SMART OATI
+# RP Gant
 
-Планировщик SMART OATI: API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt web-интерфейс для локального запуска.
+Планировщик RP Gant: API Gateway, User & Access, Project / Diagram, Notification, Audit, Sync и Nuxt web-интерфейс для локального запуска.
 
 ## Требования
 
@@ -26,12 +26,12 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - создаётся development-администратор;
 - Traefik отдаёт локальный самоподписанный сертификат.
 
-Открыть приложение: **https://app.localhost**
+Открыть приложение: **https://app.rp-gant.localhost**
 
 Данные администратора по умолчанию:
 
 ```text
-admin@smart-oati.local
+admin@rp-gant.local
 ChangeMeDevOnly!
 ```
 
@@ -39,8 +39,8 @@ ChangeMeDevOnly!
 
 ```bash
 docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile infra --profile apps ps
-curl -k https://app.localhost/health
-curl -k https://app.localhost/api/v1/health
+curl -k https://app.rp-gant.localhost/health
+curl -k https://app.rp-gant.localhost/api/v1/health
 ```
 
 Повторный запуск после `down` не требует ручных миграций — `db-init` идемпотентен.
@@ -60,7 +60,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 ## Участники, приглашения и пароли
 
 - Кнопка **Участники** в выбранном проекте: добавление существующего пользователя, приглашение по email, смена роли и удаление.
-- Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.localhost**.
+- Новые приглашения и письма для сброса пароля приходят в Mailpit: **https://mail.rp-gant.localhost**.
 - Ссылка сброса открывает форму нового пароля; смена пароля доступна в верхнем меню.
 - Уведомления и Gantt обновляются в реальном времени через `sync-service`.
 
@@ -70,7 +70,7 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 pnpm local:up       # запуск infra + apps
 pnpm local:status   # состояние контейнеров
 pnpm local:health   # проверка app, sync и Mailpit
-pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи (demo.owner@smart-oati.local / DemoPassword123!)
+pnpm local:demo     # демо-пользователи, проект, диаграмма и задачи (demo.owner@rp-gant.local / DemoPassword123!)
 pnpm local:logs     # логи
 pnpm local:down     # остановка
 pnpm local:reset    # остановка с удалением volumes
@@ -87,12 +87,12 @@ Traefik использует собственный самоподписанны
 
 ## Адреса
 
-- `app.localhost` — Nuxt web-интерфейс;
-- `api.localhost` — API Gateway;
-- `mail.localhost` — Mailpit UI;
-- `kafka.localhost` — Kafka UI;
-- `sync.localhost` — Sync Service WebSocket;
-- `notify.localhost` — Notification Service WebSocket.
+- `app.rp-gant.localhost` — Nuxt web-интерфейс;
+- `api.rp-gant.localhost` — API Gateway;
+- `mail.rp-gant.localhost` — Mailpit UI;
+- `kafka.rp-gant.localhost` — Kafka UI;
+- `sync.rp-gant.localhost` — Sync Service WebSocket;
+- `notify.rp-gant.localhost` — Notification Service WebSocket.
 
 ## Команды разработки
 
@@ -132,18 +132,20 @@ notifications/         # шаблоны и схемы
 db/                    # миграции и seed
 infrastructure/local/  # Docker Compose, db-init
 infrastructure/helm/   # Helm charts + staging/prod values
+docs/                  # миграция и эксплуатационные заметки
 tools/                 # проверки контрактов
 ```
 
 ## Документация
 
-Актуальная техническая документация — README сервисов, `openapi/`, `proto/` и `events/`. Продуктовые постановки, P0-пакет, ADR и visual design ведутся в отдельном рабочем каталоге проекта; при необходимости их можно добавить в `docs/`.
+Актуальная техническая документация — README сервисов, `openapi/`, `proto/`, `events/` и каталог `docs/`.
+
+- [`docs/MIGRATION-rp-gant.md`](docs/MIGRATION-rp-gant.md) — переход с `smart-oati` на `rp-gant`, перенос БД, volumes, Helm и CI.
 
 ## Статус
 
 - [x] Контракты OpenAPI/proto/events.
 - [x] DDL, seed, diagram export.
-- [x] P0-документы и ADR подготовлены.
 - [x] Базовый CI и проверки контрактов.
 - [x] Docker Compose для инфраструктуры и приложений.
 - [x] Автоматические миграции, seed и development-admin.
@@ -152,19 +154,18 @@ tools/                 # проверки контрактов
 - [x] User & Access: auth, sessions, HTTP health + gRPC.
 - [x] Project / Diagram: lifecycle + directions + tasks + assignments + dependencies + comments + holidays + JSON/CSV export/import. Разрешены direction→direction и task→direction; direction→task запрещён на API и в БД.
 - [x] Web-интерфейс: вход, проекты, диаграммы, Gantt, модалки задачи/направления/связей/календаря/импорта, назначения, комментарии, перемещение, фильтры, сессии, экспорт, toast-уведомления.
-- [x] Nuxt SPA is the primary interface; legacy static UI is no longer served.
-- [x] Componentized Nuxt pages: /projects, /projects/:id, /gantt, /login, /admin, /profile, /notifications and /members.
-- [x] Vue Gantt: task/direction CRUD, assignments, progress, comments, dependencies с правилами типов и стилями, calendar, import/export, realtime, drag-and-drop, project/diagram/direction creation, weekend shading, toast-уведомления, расчёт окончания задачи по часам (8 ч/день).
-- [x] Notification, Audit, Sync services.
-- [x] Helm charts for services and staging/prod umbrella values.
-- [x] Playwright E2E: auth, admin roles, Gantt, dependency rules/link mode, bar drag, task hours, import, members, notifications, profile and password reset.
-- [x] Security headers, CSP, API rate limiting and auth audit events.
-- [x] Project members, invitations, password reset/change and resend verification.
+- [x] Nuxt SPA — основной интерфейс; legacy static UI больше не обслуживается.
+- [x] Компонентные страницы Nuxt: `/projects`, `/projects/:id`, `/gantt`, `/login`, `/admin`, `/profile`, `/notifications`, `/members`.
+- [x] Vue Gantt: task/direction CRUD, назначения, прогресс, комментарии, зависимости с правилами типов и стилями, календарь, импорт/экспорт, realtime, drag-and-drop, создание проекта/диаграммы/направления, weekend shading, toast-уведомления, расчёт окончания задачи по часам (8 ч/день).
+- [x] Notification, Audit и Sync services.
+- [x] Helm charts для сервисов и umbrella values для staging/prod.
+- [x] Playwright E2E, 18 сценариев: auth, admin roles, Gantt, dependency rules/link mode, bar drag, task hours, import, members, notifications, profile и password reset.
+- [x] Security headers, CSP, API rate limiting и auth audit events.
+- [x] Project members, invitations, password reset/change и resend verification.
 - [x] Global admin roles: создание администратора и повышение существующего пользователя.
-- [x] Real-time Gantt synchronization through `sync-service`.
-- [x] Multi-user Playwright E2E with invitation and real-time updates.
-- [x] Project-scoped real-time sync tokens and authenticated WebSocket.
-- [x] Email/Telegram delivery worker, notification preferences and Telegram linking.
+- [x] Real-time синхронизация Gantt через `sync-service`.
+- [x] Project-scoped sync tokens и authenticated WebSocket.
+- [x] Email/Telegram delivery worker, notification preferences и Telegram linking.
 - [x] Session restore, profile editing and local admin user creation.
 - [x] Executor CRUD, user linking, admin user roles, blocking and user lifecycle.
 - [x] Load tests (k6 smoke: 10 VUs, 20s, p95 43 ms, 0 errors).
@@ -174,11 +175,11 @@ tools/                 # проверки контрактов
 
 ## Observability
 
-All Fastify services expose Prometheus metrics at `/metrics`: request count, request duration, process metrics and the service target status. Helm pods carry `prometheus.io/*` scrape annotations.
+Все Fastify-сервисы отдают Prometheus-метрики на `/metrics`: количество запросов, длительность, процессные метрики и статус цели. Helm-поды получают scrape-аннотации `prometheus.io/*`.
 
-`sync-service` additionally exposes `sync_ws_connections_active`, `sync_ws_auth_failures_total` and `sync_events_sent_total`. Sync tokens are signed with `SYNC_TOKEN_SECRET`; local Compose defaults to a development value, Kubernetes expects a `smart-oati-sync` Secret with key `token`.
+`sync-service` дополнительно отдаёт `sync_ws_connections_active`, `sync_ws_auth_failures_total` и `sync_events_sent_total`. Sync-токены подписаны `SYNC_TOKEN_SECRET`; local Compose использует development-значение, Kubernetes ожидает Secret `rp-gant-sync` с ключом `token`.
 
-Local monitoring:
+Локальный мониторинг:
 
 ```bash
 docker compose --env-file infrastructure/local/.env.local -f infrastructure/local/docker-compose.yml --profile monitoring up -d prometheus grafana
@@ -187,4 +188,4 @@ docker compose --env-file infrastructure/local/.env.local -f infrastructure/loca
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3001 (`admin` / `admin` locally)
 - Alert rules: `infrastructure/local/monitoring/alerts.yml`
-- Dashboard: `infrastructure/local/monitoring/grafana/dashboards/smart-oati.json`
+- Dashboard: `infrastructure/local/monitoring/grafana/dashboards/rp-gant.json`

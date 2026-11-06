@@ -1695,7 +1695,7 @@ async function exportPdf() {
     const width = 277;
     const height = (canvas.height * width) / canvas.width;
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, width, Math.min(height, 190));
-    pdf.save(`SMART_OATI_диаграмма_Ганта_${new Date().toISOString().slice(0, 10)}.pdf`);
+    pdf.save(`RP_GANT_диаграмма_Ганта_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (reason) {
     error.value = reason.message;
   }
@@ -2153,7 +2153,7 @@ onMounted(async () => {
 <template>
   <div class="app-shell gantt-shell">
     <header class="app-header">
-      <a class="app-brand" href="/projects"><span class="brand-mark">▥</span><span>SMART OATI</span></a>
+      <a class="app-brand" href="/projects"><span class="brand-mark">▥</span><span>RP Gant</span></a>
       <nav class="app-nav">
         <a href="/projects">Проекты</a>
         <a href="/members">Участники</a>

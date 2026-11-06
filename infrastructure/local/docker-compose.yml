@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME:-smart-oati}
+name: ${COMPOSE_PROJECT_NAME:-rp-gant}
 
 services:
   postgres:
@@ -6,20 +6,20 @@ services:
     profiles: ["infra"]
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-smart_oati}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart_oati_dev}
-      POSTGRES_DB: ${POSTGRES_DB:-smart_oati_user}
+      POSTGRES_USER: ${POSTGRES_USER:-rp_gant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rp_gant_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-rp_gant_user}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smart_oati}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rp_gant}"]
       interval: 5s
       timeout: 5s
       retries: 20
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   redis:
     image: redis:7-alpine
@@ -35,7 +35,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   kafka:
     image: apache/kafka:3.9.0
@@ -65,7 +65,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 30
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   kafka-init:
     image: apache/kafka:3.9.0
@@ -77,9 +77,9 @@ services:
     command:
       - |
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
-          --topic ${KAFKA_TOPIC:-smartoati.events} \
+          --topic ${KAFKA_TOPIC:-rp_gant.events} \
           --partitions 6 --replication-factor 1
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
@@ -94,7 +94,7 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       DYNAMIC_CONFIG_ENABLED: "false"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   mailpit:
     image: axllent/mailpit:v1.21
@@ -103,7 +103,7 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   telegram-mock:
     image: wiremock/wiremock:3.9.1
@@ -111,7 +111,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./telegram-mock/mappings:/home/wiremock/mappings:ro
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   db-init:
     image: postgres:17-alpine
@@ -120,18 +120,18 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      USER_DB: smart_oati_user
-      PROJECT_DB: smart_oati_project
-      NOTIFICATION_DB: smart_oati_notification
-      AUDIT_DB: smart_oati_audit
+      USER_DB: rp_gant_user
+      PROJECT_DB: rp_gant_project
+      NOTIFICATION_DB: rp_gant_notification
+      AUDIT_DB: rp_gant_audit
       PGHOST: postgres
-      PGUSER: ${POSTGRES_USER:-smart_oati}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-smart_oati_dev}
+      PGUSER: ${POSTGRES_USER:-rp_gant}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-rp_gant_dev}
     volumes:
       - ../../db:/db:ro
       - ./db-init.sh:/db-init.sh:ro
     entrypoint: ["/bin/sh", "/db-init.sh"]
-    networks: [smart-oati]
+    networks: [rp-gant]
 
 
   traefik:
@@ -155,14 +155,14 @@ services:
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
       - "--providers.file.watch=true"
       - "--log.level=INFO"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   api-gateway:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/api-gateway/Dockerfile
-    image: smart-oati/api-gateway:local
+    image: rp-gant/api-gateway:local
     restart: unless-stopped
     depends_on:
       user-service:
@@ -179,14 +179,14 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8080
       SYNC_TOKEN_SECRET: 
       RATE_LIMIT_MAX: ${SYNC_TOKEN_SECRET:-local-sync-secret}
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   sync-service:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/sync-service/Dockerfile
-    image: smart-oati/sync-service:local
+    image: rp-gant/sync-service:local
     restart: unless-stopped
     depends_on:
       kafka:
@@ -198,19 +198,19 @@ services:
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-rp_gant.events}
       KAFKA_CONSUMER_GROUP_SYNC: sync
       SYNC_SERVICE_URL: http://127.0.0.1:8080
       SYNC_TOKEN_SECRET: 
       RATE_LIMIT_MAX: ${SYNC_TOKEN_SECRET:-local-sync-secret}
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   audit-service:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/audit-service/Dockerfile
-    image: smart-oati/audit-service:local
+    image: rp-gant/audit-service:local
     restart: unless-stopped
     depends_on:
       db-init:
@@ -225,16 +225,16 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_AUDIT}
       KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-rp_gant.events}
       KAFKA_CONSUMER_GROUP_AUDIT: audit
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   notification-service:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/notification-service/Dockerfile
-    image: smart-oati/notification-service:local
+    image: rp-gant/notification-service:local
     restart: unless-stopped
     depends_on:
       db-init:
@@ -251,21 +251,21 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_NOTIFICATION}
       KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-rp_gant.events}
       KAFKA_CONSUMER_GROUP_NOTIFICATION: notification
       USER_SERVICE_GRPC: user-service:50051
       SMTP_URL: smtp://mailpit:1025
-      SMTP_FROM: SMART OATI <no-reply@smart-oati.local>
+      SMTP_FROM: RP Gant <no-reply@rp-gant.local>
       TELEGRAM_API_URL: http://telegram-mock:8080
       TELEGRAM_BOT_TOKEN: local-test-token
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   frontend:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/frontend/Dockerfile
-    image: smart-oati/frontend:local
+    image: rp-gant/frontend:local
     restart: unless-stopped
     depends_on:
       api-gateway:
@@ -281,14 +281,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   user-service:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/user-service/Dockerfile
-    image: smart-oati/user-service:local
+    image: rp-gant/user-service:local
     restart: unless-stopped
     depends_on:
       db-init:
@@ -304,10 +304,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL_USER}
       KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-rp_gant.events}
       SMTP_URL: smtp://mailpit:1025
-      SMTP_FROM: SMART OATI <no-reply@smart-oati.local>
-      PUBLIC_APP_URL: https://app.localhost
+      SMTP_FROM: RP Gant <no-reply@rp-gant.local>
+      PUBLIC_APP_URL: https://app.rp-gant.localhost
       DEV_AUTO_VERIFY: ${DEV_AUTO_VERIFY:-true}
       DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-}
       DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-}
@@ -316,14 +316,14 @@ services:
       DEV_ADMIN_MIDDLE_NAME: ${DEV_ADMIN_MIDDLE_NAME:-}
     ports:
       - "${GRPC_PORT:-50051}:${GRPC_PORT:-50051}"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   project-service:
     profiles: ["apps"]
     build:
       context: ../..
       dockerfile: apps/project-service/Dockerfile
-    image: smart-oati/project-service:local
+    image: rp-gant/project-service:local
     restart: unless-stopped
     depends_on:
       db-init:
@@ -340,8 +340,8 @@ services:
       DATABASE_URL: ${DATABASE_URL_PROJECT}
       USER_SERVICE_GRPC: user-service:50051
       KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC: ${KAFKA_TOPIC:-smartoati.events}
-    networks: [smart-oati]
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-rp_gant.events}
+    networks: [rp-gant]
 
   prometheus:
     profiles: ["monitoring"]
@@ -356,7 +356,7 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
   grafana:
     profiles: ["monitoring"]
@@ -373,7 +373,7 @@ services:
       - grafana_data:/var/lib/grafana
     ports:
       - "3001:3000"
-    networks: [smart-oati]
+    networks: [rp-gant]
 
 volumes:
   postgres_data:
@@ -383,5 +383,5 @@ volumes:
   grafana_data:
 
 networks:
-  smart-oati:
-    name: smart-oati
+  rp-gant:
+    name: rp-gant
